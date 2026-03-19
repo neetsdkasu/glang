@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8" />
+        <title>glang</title>
+        <link rel="stylesheet" href="./glang/styles.css" />
+        <script type="importmap">
+            {
+                "imports": {
+                    "charreader": "./glang/charreader.js",
+                    "logger": "./glang/logger.js",
+                    "rqueue": "./glang/rqueue.js",
+                    "scanner": "./glang/scanner.js"
+                }
+            }
+        </script>
+        <script type="module" src="./glang/script.js" defer></script>
+    </head>
+    <body>
+        <header>
+            <h4>glang</h4>
+        </header>
+        
+        <hr />
+
+        <main>
+            <div>
+                <canvas id="canvas" width="640" height="480"></canvas>
+            </div>
+
+            <div>
+                <div>
+                    <button id="stop" type="stop">STOP</button>
+                    <button id="run" type="button">RUN</button>
+                </div>
+                <details>
+                    <summary>code</summary>
+                    <textarea id="code" cols="100" rows="40">
+dim field(10,10) as integer
+sub main()
+    let x, y = 0, 0
+    for let i = 0 to 5
+        if i % 2 = 0 then
+            x += 1
+        else
+            y += 1
+        end if
+        field(x, y) += 1
+    end for
+    print "abcd", x+y, field(2,2)
+end sub
+                    </textarea>
+                </details>
+            </div>
+
+        </main>
+        
+        <hr />
+        
+        <footer></footer>
+    </body>
+</html>
