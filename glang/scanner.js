@@ -215,25 +215,23 @@ export class Scanner {
                     token: "0"
                 };
             }
-            const sig = this.#reader.next();
-            switch (sig) {
-                case ".":
-                    return this.#readNumberAfterDot("0");
+            const sym = this.#reader.next();
+            switch (sym) {
                 case "b":
                 case "B":
                     return {
                         tokenType: TokenType.BIN_INETGER,
-                        token: "0" + sig + this.#readBinInteger()
+                        token: "0" + sym + this.#readBinInteger()
                     };
                 case "x":
                 case "X":
                     return {
                         tokenType: TokenType.HEX_INTEGER,
-                        token: "0" + sig + this.#readHexInteger()
+                        token: "0" + sym + this.#readHexInteger()
                     };
                 default:
                     // allow leading zeros
-                    // unread sig char
+                    // unread sym char
                     this.#reader.back();
                     break;
             }
@@ -349,6 +347,9 @@ export class Scanner {
     }
     get row() {
         return this.#row;
+    }
+    toString() {
+        return `Scanner{ col: ${this.#col}, row: ${this.#row}, lastToken: ${this.#token?.value} }`;
     }
 }
 export default Scanner;

@@ -2,6 +2,7 @@ import Logger from "logger";
 const log = new Logger("main");
 import CharReader from "charreader";
 import Scanner from "scanner";
+import Parser from "parser";
 /**
  * UI
  */
@@ -16,8 +17,7 @@ RunButton.addEventListener("click", () => {
     const src = CodeTextarea.value;
     const reader = new CharReader(src);
     const scanner = new Scanner(reader);
-    while (scanner.scan()) {
-        log.dump("scan", scanner.token?.toString());
-    }
+    const parser = new Parser(scanner);
+    parser.parse();
 });
 export default {};
