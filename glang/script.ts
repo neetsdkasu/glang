@@ -1,5 +1,9 @@
-import Logger from "logger";
-const log = new Logger("main");
+//
+// script
+//
+
+import Logger, { LogLevel } from "logger";
+const log = new Logger("main", LogLevel.ALL);
 
 import CharReader from "charreader";
 import Scanner from "scanner";

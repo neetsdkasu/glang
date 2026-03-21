@@ -36,19 +36,39 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "sub",
     "then",
     "to",
-    "while"
+    "while",
+    "abs",
+    "sign",
+    "cos",
+    "sin",
+    "tan",
+    "floor",
+    "ceil"
 ]));
 
-function parseNumber(token: Token): number {
+const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
+const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
+
+log.dump("POSITIVE_INTEGER_BOUND", POSITIVE_INTEGER_BOUND);
+log.dump("NEGATIVE_INTEGER_BOUND", NEGATIVE_INTEGER_BOUND);
+
+function parseNumber(token: Token, negative?: boolean): number {
     switch (token.tokenType) {
         case TokenType.INTEGER:
-            return 2;
         case TokenType.BIN_INETGER:
-            return 3;
         case TokenType.HEX_INTEGER:
-            return 4;
+            const bi = BigInt(token.value);
+            if (negative) {
+                if (bi > NEGATIVE_INTEGER_BOUND) {
+                    throw boundaryError("unexpedted number.", token);
+                }
+            } else if (bi > POSITIVE_INTEGER_BOUND) {
+                throw boundaryError("unexpedted number.", token);
+            }
+            return Number(bi);
         case TokenType.FLOATING_POINT:
-            return 5;
+            const fp = parseFloat(token.value);
+            return fp;
         default:
             throw `BUG: wrong param token of parseNumber. ( ${token.toString()} )`;
     }
