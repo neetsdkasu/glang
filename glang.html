@@ -39,17 +39,33 @@
                     <textarea id="code" cols="100" rows="40">
 dim field(10,10) as integer
 sub main()
-    let x, y = 0, 0
-    for let i = 0 to 5
+    let x = 0
+    let y = 0
+    for let i = 0 to 5 step 1
         if i % 2 = 0 then
             x += 1
         else
             y += 1
         end if
-        field(x, y) += 1
+        call add(x, y, 1)
     end for
-    print "abcd", x+y, field(2,2)
+    let s = fizzbuzz(18)
+    print "abcd", x+y, field(2,2), s
 end sub
+sub add(x as integer, y as integer, v as integer)
+    field(x, y) += v
+end sub
+func fizzbuzz(n as integer) as string
+    if n % 15 = 0 then
+        return "FizzBuzz"
+    else if n % 5 = 0 then
+        return "Buzz"
+    else if n % 3 = 0 then
+        return "Fizz"
+    else
+        return cstr(n)
+    end if
+end func
                     </textarea>
                 </details>
             </div>

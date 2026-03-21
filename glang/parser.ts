@@ -21,22 +21,30 @@ function boundaryError(msg: string, obj: ToString): string {
 const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "as",
     "break",
+    "call",
     "continue",
     "dim",
     "do",
     "else",
     "end",
     "for",
+    "func",
     "if",
-    "integer",
     "let",
     "return",
     "step",
-    "string",
     "sub",
     "then",
     "to",
     "while",
+    "boolean",
+    "float",
+    "integer",
+    "string",
+    "cbool",
+    "cfloat",
+    "cint",
+    "cstr",
     "abs",
     "sign",
     "cos",
@@ -83,26 +91,25 @@ export class Parser {
 
     parse(): void {
 
-        if (!this.#scanner.scan()) {
+        while (this.#scanner.scan()) {
 
-            log.info("no code");
+            const cmdToken = this.#scanner.token!;
 
-            return;
-        }
+            log.dump("cmdToken", cmdToken.toString());
 
-        const cmdToken = this.#scanner.token!;
+            if (cmdToken.tokenType !== TokenType.WORD) {
+                throw syntaxError("illegal first token in line.", cmdToken);
+            }
 
-        log.dump("cmdToken", cmdToken.toString());
-
-        if (cmdToken.tokenType !== TokenType.WORD) {
-            throw syntaxError("illegal first token in line.", cmdToken);
-        }
-
-        switch (cmdToken.value.toLowerCase()) {
-            case "dim":
-                this.#parseDim();
-                break;
-            default:
+            switch (cmdToken.value.toLowerCase()) {
+                case "dim":
+                    this.#parseDim();
+                    break;
+                case "sub":
+                    break;
+                default:
+                    throw `unimplemented error. ( ${cmdToken.toString()} )`;
+            }
         }
 
         log.info("done");
@@ -185,19 +192,23 @@ export class Parser {
         }
 
         if (!this.#scanner.scan()) {
-            throw syntaxError("require type keyword `integer` or `string`. [dim]", this.#scanner);
+            throw syntaxError("require type keyword `integer` or `string` or `boolean` or `float`. [dim]", this.#scanner);
         }
         const typeToken = this.#scanner.token!;
 
         log.dump("type", typeToken.value.toLowerCase());
 
         switch (typeToken.value.toLowerCase()) {
+            case "boolean":
+                break;
+            case "float":
+                break;
             case "integer":
                 break;
             case "string":
                 break;
             default:
-                throw syntaxError("require type keyword `integer` or `string`. [dim]", typeToken);
+                throw syntaxError("require type keyword `integer` or `string` or `boolean` or `float`. [dim]", typeToken);
         }
 
         if (this.#scanner.scan()) {
