@@ -12,11 +12,11 @@ interface ToString {
 }
 
 function syntaxError<R>(msg: string, obj: ToString): Result<R,string> {
-    return Result.err<R,string>(`Syntax Error: ${msg} ( ${obj.toString()} )`);
+    return Result.err(`Syntax Error: ${msg} ( ${obj.toString()} )`);
 }
 
 function boundaryError<R>(msg: string, obj: ToString): Result<R,string> {
-    return Result.err<R,string>(`Boundary Error: ${msg} ( ${obj.toString()} )`);
+    return Result.err(`Boundary Error: ${msg} ( ${obj.toString()} )`);
 }
 
 const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
