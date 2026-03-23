@@ -1,13 +1,14 @@
 //
 // Logger
 //
+import { callToString } from "utils";
 export var LogLevel;
 (function (LogLevel) {
     LogLevel[LogLevel["OFF"] = 0] = "OFF";
     LogLevel[LogLevel["ERROR"] = 1] = "ERROR";
-    LogLevel[LogLevel["WARNING"] = 2] = "WARNING";
+    LogLevel[LogLevel["WARN"] = 2] = "WARN";
     LogLevel[LogLevel["INFO"] = 4] = "INFO";
-    LogLevel[LogLevel["DUMP"] = 8] = "DUMP";
+    LogLevel[LogLevel["DEBUG"] = 8] = "DEBUG";
     LogLevel[LogLevel["ALL"] = 15] = "ALL";
 })(LogLevel || (LogLevel = {}));
 export class Logger {
@@ -23,8 +24,13 @@ export class Logger {
         }
     }
     dump(msg, obj) {
-        if (this.#level & LogLevel.DUMP) {
+        if (this.#level & LogLevel.DEBUG) {
             console.log(`[${this.#name}]d: ${msg}: ${obj}`);
+        }
+    }
+    show(msg, obj) {
+        if (this.#level & LogLevel.DEBUG) {
+            console.log(`[${this.#name}]d: ${msg}: ${callToString(obj)}`);
         }
     }
     info(msg) {
@@ -33,7 +39,7 @@ export class Logger {
         }
     }
     warn(msg) {
-        if (this.#level & LogLevel.WARNING) {
+        if (this.#level & LogLevel.WARN) {
             console.log(`[${this.#name}]w: ${msg}`);
         }
     }

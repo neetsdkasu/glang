@@ -21,6 +21,7 @@ RunButton.addEventListener("click", () => {
     const reader = new CharReader(src);
     const scanner = new Scanner(reader);
     const parser = new Parser(scanner);
-    parser.parse();
+    const res = parser.parse();
+    log.show("res", res);
 });
 export default {};

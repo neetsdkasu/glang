@@ -2,13 +2,15 @@
 // Logger
 //
 
+import { callToString } from "utils";
+
 export enum LogLevel {
-    OFF     = 0,
-    ERROR   = 1 << 0,
-    WARNING = 1 << 1,
-    INFO    = 1 << 2,
-    DUMP    = 1 << 3,
-    ALL = ERROR | WARNING | INFO | DUMP
+    OFF   = 0,
+    ERROR = 1 << 0,
+    WARN  = 1 << 1,
+    INFO  = 1 << 2,
+    DEBUG = 1 << 3,
+    ALL = ERROR | WARN | INFO | DEBUG
 }
 
 export class Logger {
@@ -25,8 +27,14 @@ export class Logger {
     }
 
     dump(msg: string, obj: any): void {
-        if (this.#level & LogLevel.DUMP) {
+        if (this.#level & LogLevel.DEBUG) {
             console.log(`[${this.#name}]d: ${msg}: ${obj}`);
+        }
+    }
+
+    show(msg: string, obj: any): void {
+        if (this.#level & LogLevel.DEBUG) {
+            console.log(`[${this.#name}]d: ${msg}: ${callToString(obj)}`);
         }
     }
 
@@ -37,7 +45,7 @@ export class Logger {
     }
 
     warn(msg: string): void {
-        if (this.#level & LogLevel.WARNING) {
+        if (this.#level & LogLevel.WARN) {
             console.log(`[${this.#name}]w: ${msg}`);
         }
     }

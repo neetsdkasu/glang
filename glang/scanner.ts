@@ -3,7 +3,7 @@
 //
 
 import CharReader from "charreader";
-import RQueue from "rqueue";
+import Result from "result";
 
 export enum TokenType {
     LINE_END,
@@ -109,10 +109,10 @@ function isWordChar(ch: string): boolean {
     return true;
 }
 
-export const ErrString = "Syntax Error: String Token";
-export const ErrBinInteger = "Syntax Error: Binary Integer Token";
-export const ErrHexInteger = "Syntax Error: Hex Integer Token";
-export const ErrWord = "Syntax Error: Word Token";
+const ErrString = "Syntax Error: String Token";
+const ErrBinInteger = "Syntax Error: Binary Integer Token";
+const ErrHexInteger = "Syntax Error: Hex Integer Token";
+const ErrWord = "Syntax Error: Word Token";
 
 export class Scanner {
     #reader: CharReader;
@@ -152,7 +152,7 @@ export class Scanner {
         }
     }
 
-    scan(): boolean {
+    scan(): Result<boolean,string> {
 
         if (this.#token?.tokenType === TokenType.LINE_END) {
             this.#row++;
@@ -165,7 +165,7 @@ export class Scanner {
 
         if (!this.#reader.hasNext()) {
             this.#col = this.#reader.pos() - this.#linestart;
-            return false;
+            return Result.ok(false);
         }
 
         let ch = this.#reader.next();
@@ -175,28 +175,40 @@ export class Scanner {
             tokenType = CharToTokenTypeMap.get(ch)!;
         } else if (ch === STRING_CHAR) {
             tokenType = TokenType.STRING;
-            ch = this.#readString();
+            const strRes = this.#readString();
+            if (strRes.isErr) {
+                return Result.err(strRes.error);
+            }
+            ch = strRes.result;
         } else if (OPERATOR_CHARS.includes(ch)) {
             tokenType = TokenType.OPERATOR;
             this.#reader.back();
             ch = this.#readOperator();
         } else if (DIGIT_CHARS.includes(ch)) {
-            const num = this.#readNumber(ch);
+            const numRes = this.#readNumber(ch);
+            if (numRes.isErr) {
+                return Result.err(numRes.error);
+            }
+            const num = numRes.result;
             tokenType = num.tokenType;
             ch = num.token;
         } else {
             tokenType = TokenType.WORD;
-            ch = this.#readWord(ch);
+            const wordRes = this.#readWord(ch);
+            if (wordRes.isErr) {
+                return Result.err(wordRes.error);
+            }
+            ch = wordRes.result;
         }
 
         this.#col = this.#reader.pos() - this.#linestart;
 
         this.#token = new Token(tokenType, ch, this.#col, this.#row);
 
-        return true;
+        return Result.ok(true);
     }
 
-    #readString(): string {
+    #readString(): Result<string,string> {
         let s = "";
         let end = false;
         while (this.#reader.hasNext()) {
@@ -204,7 +216,7 @@ export class Scanner {
             if (end) {
                 if (ch !== STRING_CHAR) {
                     this.#reader.back();
-                    return s;
+                    return Result.ok(s);
                 }
                 end = false;
                 s += ch;
@@ -214,7 +226,7 @@ export class Scanner {
                 s += ch;
             }
         }
-        throw ErrString;
+        return Result.err(`${ErrString} ( ${this.toString()} )`);
     }
 
     #readOperator(): string {
@@ -231,28 +243,36 @@ export class Scanner {
         return s;
     }
 
-    #readNumber(head: string): { tokenType: TokenType, token: string } {
+    #readNumber(head: string): Result<{ tokenType: TokenType, token: string }, string> {
         if (head === "0") {
             if (!this.#reader.hasNext()) {
-                return {
+                return Result.ok({
                     tokenType: TokenType.INTEGER,
                     token: "0"
-                };
+                });
             }
             const sym = this.#reader.next();
             switch (sym) {
                 case "b":
                 case "B":
-                    return {
+                    const binRes = this.#readBinInteger();
+                    if (binRes.isErr) {
+                        return Result.err(binRes.error);
+                    }
+                    return Result.ok({
                         tokenType: TokenType.BIN_INETGER,
-                        token: "0" + sym + this.#readBinInteger()
-                    };
+                        token: "0" + sym + binRes.result
+                    });
                 case "x":
                 case "X":
-                    return {
+                    const hexRes = this.#readHexInteger();
+                    if (hexRes.isErr) {
+                        return Result.err(hexRes.error);
+                    }
+                    return Result.ok({
                         tokenType: TokenType.HEX_INTEGER,
-                        token: "0" + sym + this.#readHexInteger()
-                    };
+                        token: "0" + sym + hexRes.result
+                    });
                 default:
                     // allow leading zeros
                     // unread sym char
@@ -265,7 +285,7 @@ export class Scanner {
             const ch = this.#reader.next();
             if (!DIGIT_CHARS.includes(ch)) {
                 if (ch === ".") {
-                    return this.#readNumberAfterDot(intpart);
+                    return Result.ok(this.#readNumberAfterDot(intpart));
                 } else {
                     this.#reader.back();
                     break;
@@ -273,10 +293,10 @@ export class Scanner {
             }
             intpart += ch;
         }
-        return {
+        return Result.ok({
             tokenType: TokenType.INTEGER,
             token: intpart,
-        };
+        });
     }
 
     /**
@@ -315,7 +335,7 @@ export class Scanner {
         };
     }
 
-    #readBinInteger(): string {
+    #readBinInteger(): Result<string,string> {
         let bin = "";
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
@@ -326,12 +346,12 @@ export class Scanner {
             bin += ch;
         }
         if (bin.length === 0) {
-            throw ErrBinInteger;
+            return Result.err(`${ErrBinInteger} ( ${this.toString()} )`);
         }
-        return bin;
+        return Result.ok(bin);
     }
 
-    #readHexInteger(): string {
+    #readHexInteger(): Result<string,string> {
         let hex = "";
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
@@ -342,17 +362,17 @@ export class Scanner {
             hex += ch;
         }
         if (hex.length === 0) {
-            throw ErrHexInteger;
+            return Result.err(`${ErrHexInteger} ( ${this.toString()} )`);
         }
-        return hex;
+        return Result.ok(hex);
     }
 
     /**
      * 
      */
-    #readWord(head: string): string {
+    #readWord(head: string): Result<string,string> {
         if (!isWordChar(head) || DIGIT_CHARS.includes(head)) {
-            throw ErrWord;
+            return Result.err(`${ErrWord} ( ${this.toString()} )`);
         }
         let word = head;
         while (this.#reader.hasNext()) {
@@ -363,7 +383,7 @@ export class Scanner {
             }
             word += ch;
         }
-        return word;
+        return Result.ok(word);
     }
 
     get token(): Token | undefined {
