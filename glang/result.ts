@@ -55,6 +55,14 @@ export class Result<R,E> {
         }
     }
 
+    map<S>(f: (result: R) => S): Result<S,E> {
+        if (this.#ok) {
+            return Result.ok(f(this.#result!));
+        } else {
+            return Result.err(this.#error!);
+        }
+    }
+
     toString(): string {
         if (this.#ok) {
             return `Result.Ok{ result: ${callToString(this.#result)} }`;

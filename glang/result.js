@@ -47,6 +47,14 @@ export class Result {
             return Result.err(this.#error);
         }
     }
+    map(f) {
+        if (this.#ok) {
+            return Result.ok(f(this.#result));
+        }
+        else {
+            return Result.err(this.#error);
+        }
+    }
     toString() {
         if (this.#ok) {
             return `Result.Ok{ result: ${callToString(this.#result)} }`;
