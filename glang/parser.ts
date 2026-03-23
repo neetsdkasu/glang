@@ -138,7 +138,6 @@ export class Parser {
         log.info("parse dim...");
 
         let scanRes = this.#scanner.scan();
-
         if (scanRes.isErr) {
             return Result.err(scanRes.error);
         }
@@ -184,11 +183,11 @@ export class Parser {
                 case TokenType.INTEGER:
                 case TokenType.BIN_INETGER:
                 case TokenType.HEX_INTEGER:
-                    const res = parseNumber(sizeToken);
-                    if (res.isErr) {
-                        return Result.err(res.error!);
+                    const numRes = parseNumber(sizeToken);
+                    if (numRes.isErr) {
+                        return Result.err(numRes.error);
                     }
-                    const d = res.result!;
+                    const d = numRes.result;
 
                     log.dump(`d[${dims.length+1}]`, d);
                     
@@ -205,6 +204,7 @@ export class Parser {
                 default:
                     return syntaxError("require positive integer as dimension size. [dim]", sizeToken);
             }
+
             scanRes = this.#scanner.scan();
             if (scanRes.isErr) {
                 return Result.err(scanRes.error);

@@ -153,11 +153,11 @@ export class Parser {
                 case TokenType.INTEGER:
                 case TokenType.BIN_INETGER:
                 case TokenType.HEX_INTEGER:
-                    const res = parseNumber(sizeToken);
-                    if (res.isErr) {
-                        return Result.err(res.error);
+                    const numRes = parseNumber(sizeToken);
+                    if (numRes.isErr) {
+                        return Result.err(numRes.error);
                     }
-                    const d = res.result;
+                    const d = numRes.result;
                     log.dump(`d[${dims.length + 1}]`, d);
                     if (d === 0) {
                         return boundaryError("dimension size must be positive integer. [dim]", sizeToken);
