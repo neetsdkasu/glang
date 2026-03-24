@@ -5,7 +5,7 @@ import Logger, { LogLevel } from "logger";
 const log = new Logger("parser", LogLevel.ALL);
 
 import Scanner, { Token, TokenType } from "scanner";
-import Result from "result";
+import { Result } from "utils";
 
 interface ToString {
     toString(): string;

@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "logger";
 const log = new Logger("parser", LogLevel.ALL);
 import { TokenType } from "scanner";
-import Result from "result";
+import { Result } from "utils";
 function syntaxError(msg, obj) {
     return Result.err(`Syntax Error: ${msg} ( ${obj.toString()} )`);
 }

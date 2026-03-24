@@ -1,7 +1,7 @@
 //
 // Scanner
 //
-import Result from "result";
+import { Result } from "utils";
 export var TokenType;
 (function (TokenType) {
     TokenType[TokenType["LINE_END"] = 0] = "LINE_END";

@@ -3,7 +3,7 @@
 //
 
 import CharReader from "charreader";
-import Result from "result";
+import { Result } from "utils";
 
 export enum TokenType {
     LINE_END,
