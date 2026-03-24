@@ -4,10 +4,8 @@
 
 export function callToString(v: any): any {
     if (v) {
-        if (v["toString"]) {
-            if (typeof v["toString"] === "function") {
-                return v.toString();
-            }
+        if (typeof v["toString"] === "function") {
+            return v.toString();
         }
     }
     return v;

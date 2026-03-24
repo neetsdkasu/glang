@@ -5,9 +5,9 @@
 import RQueue from "rqueue";
 
 class Item {
-    value: string;
-    pos: number;
-    len: number;
+    readonly value: string;
+    readonly pos: number;
+    readonly len: number;
 
     constructor(value: string, pos: number, len: number) {
         this.value = value;
@@ -19,12 +19,12 @@ class Item {
 const BACKUP_SIZE = 5;
 
 export class CharReader {
-    #iterator: Iterator<string>;
+    readonly #iterator: Iterator<string>;
     #last: IteratorResult<string, undefined>;
     #consumed: string = ""; 
     #pos: number = 0;
     #len: number = 0;
-    #rq: RQueue<Readonly<Item>> = new RQueue(BACKUP_SIZE);
+    readonly #rq: RQueue<Readonly<Item>> = new RQueue(BACKUP_SIZE);
 
     constructor(src: string) {
         this.#iterator = src[Symbol.iterator]();

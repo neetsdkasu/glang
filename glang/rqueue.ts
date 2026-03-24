@@ -3,17 +3,25 @@
 //
 
 class Item<T> {
-    value: T | undefined = undefined;
-    version: number = -100;
+    #value: T | undefined = undefined;
+    #version: number = -100;
 
     set(value: T, version: number): void {
-        this.value = value;
-        this.version = version;
+        this.#value = value;
+        this.#version = version;
+    }
+
+    get value(): T | undefined {
+        return this.#value;
+    }
+
+    get version(): number {
+        return this.#version;
     }
 }
 
 export class RQueue<T> {
-    #items: Item<T>[];
+    readonly #items: Item<T>[];
     #front: number = 0;
     #end: number = 0;
     #len: number = 0;

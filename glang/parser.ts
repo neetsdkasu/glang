@@ -88,7 +88,7 @@ function parseNumber(token: Token, negative?: boolean): Result<number,string> {
 }
 
 export class Parser {
-    #scanner: Scanner;
+    readonly #scanner: Scanner;
 
     constructor(scanner: Scanner) {
         this.#scanner = scanner;

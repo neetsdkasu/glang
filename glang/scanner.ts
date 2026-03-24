@@ -27,36 +27,20 @@ export enum TokenType {
 }
 
 export class Token {
-    #tokenType: TokenType;
-    #value: string;
-    #col: number;
-    #row: number;
+    readonly tokenType: TokenType;
+    readonly value: string;
+    readonly col: number;
+    readonly row: number;
     
     constructor(tokenType: TokenType, value: string, col: number, row: number) {
-        this.#tokenType = tokenType;
-        this.#value = value;
-        this.#col = col;
-        this.#row = row;
-    }
-
-    get tokenType(): TokenType {
-        return this.#tokenType;
-    }
-
-    get value(): string {
-        return this.#value;
-    }
-
-    get col(): number {
-        return this.#col;
-    }
-
-    get row(): number {
-        return this.#row;
+        this.tokenType = tokenType;
+        this.value = value;
+        this.col = col;
+        this.row = row;
     }
 
     toString(): string {
-        return `Token{ tokenType: ${TokenType[this.#tokenType]}, value: "${this.#value}", pos: ${this.#col}, row: ${this.#row} }`;
+        return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row} }`;
     }
 }
 
@@ -115,7 +99,7 @@ const ErrHexInteger = "Syntax Error: Hex Integer Token";
 const ErrWord = "Syntax Error: Word Token";
 
 export class Scanner {
-    #reader: CharReader;
+    readonly #reader: CharReader;
     #col: number = 0;
     #row: number = 0;
     #linestart: number = 0;
