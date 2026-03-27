@@ -2,11 +2,17 @@
 // RQueue
 //
 class Item {
-    value = undefined;
-    version = -100;
+    #value = undefined;
+    #version = -100;
     set(value, version) {
-        this.value = value;
-        this.version = version;
+        this.#value = value;
+        this.#version = version;
+    }
+    get value() {
+        return this.#value;
+    }
+    get version() {
+        return this.#version;
     }
 }
 export class RQueue {

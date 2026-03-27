@@ -24,30 +24,18 @@ export var TokenType;
     TokenType[TokenType["SEMICOLON"] = 17] = "SEMICOLON";
 })(TokenType || (TokenType = {}));
 export class Token {
-    #tokenType;
-    #value;
-    #col;
-    #row;
+    tokenType;
+    value;
+    col;
+    row;
     constructor(tokenType, value, col, row) {
-        this.#tokenType = tokenType;
-        this.#value = value;
-        this.#col = col;
-        this.#row = row;
-    }
-    get tokenType() {
-        return this.#tokenType;
-    }
-    get value() {
-        return this.#value;
-    }
-    get col() {
-        return this.#col;
-    }
-    get row() {
-        return this.#row;
+        this.tokenType = tokenType;
+        this.value = value;
+        this.col = col;
+        this.row = row;
     }
     toString() {
-        return `Token{ tokenType: ${TokenType[this.#tokenType]}, value: "${this.#value}", pos: ${this.#col}, row: ${this.#row} }`;
+        return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row} }`;
     }
 }
 const WhiteSpaceRegExp = /^\s+$/;

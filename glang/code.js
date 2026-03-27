@@ -11,6 +11,10 @@ export var Vtype;
     Vtype[Vtype["ARRAY"] = 32] = "ARRAY";
     Vtype[Vtype["ARRAY_2D"] = 64] = "ARRAY_2D";
     Vtype[Vtype["ARRAY_3D"] = 96] = "ARRAY_3D";
+    Vtype[Vtype["SUB"] = 128] = "SUB";
+    Vtype[Vtype["FUNC"] = 256] = "FUNC";
+    Vtype[Vtype["UNKNOWN"] = 512] = "UNKNOWN";
+    Vtype[Vtype["INFER"] = 1024] = "INFER";
     Vtype[Vtype["PRIMITIVE_TYPE"] = 30] = "PRIMITIVE_TYPE";
     Vtype[Vtype["NUMBER_TYPE"] = 12] = "NUMBER_TYPE";
     Vtype[Vtype["ARRAY_TYPE"] = 96] = "ARRAY_TYPE";
@@ -26,58 +30,54 @@ export var Vtype;
     Vtype[Vtype["STR_ARRAY"] = 48] = "STR_ARRAY";
     Vtype[Vtype["STR_ARRAY_2D"] = 80] = "STR_ARRAY_2D";
     Vtype[Vtype["STR_ARRAY_3D"] = 112] = "STR_ARRAY_3D";
+    Vtype[Vtype["INFER_PRIMITIVE"] = 1054] = "INFER_PRIMITIVE";
+    Vtype[Vtype["INFER_NUMBER"] = 1036] = "INFER_NUMBER";
 })(Vtype || (Vtype = {}));
+export class NameInfo {
+    src;
+    name;
+    vtype;
+    varId;
+    blockId;
+    blockVarId;
+    constructor(src, name, vtype, varId, blockId, blockVarId) {
+        this.src = src;
+        this.name = name;
+        this.vtype = vtype;
+        this.varId = varId;
+        this.blockId = blockId;
+        this.blockVarId = blockVarId;
+    }
+}
 export var CodeKind;
 (function (CodeKind) {
     CodeKind[CodeKind["BLOCK"] = 0] = "BLOCK";
     CodeKind[CodeKind["DIM"] = 1] = "DIM";
 })(CodeKind || (CodeKind = {}));
 export class Code {
-    #kind;
-    constructor(kind) {
-        this.#kind = kind;
-    }
-    get kind() {
-        return this.#kind;
-    }
-}
-export class CBlock extends Code {
-    static #idCount = 0;
-    static ResetIdCount() {
-        CBlock.#idCount = 0;
-    }
-    #id;
-    constructor() {
-        super(CodeKind.BLOCK);
-        this.#id = CBlock.#idCount++;
-    }
-    get id() {
-        return this.#id;
+    kind;
+    src;
+    constructor(kind, src) {
+        this.kind = kind;
+        this.src = src;
     }
 }
-export class CDim extends Code {
-    #blockId;
-    #name;
-    #vtype;
-    #dims;
-    constructor(blockId, name, vtype, dims) {
-        super(CodeKind.DIM);
-        this.#blockId = blockId;
-        this.#name = name;
-        this.#vtype = vtype;
-        this.#dims = dims;
+export class Block extends Code {
+    id;
+    body;
+    constructor(src, id, body) {
+        super(CodeKind.BLOCK, src);
+        this.id = id;
+        this.body = body;
     }
-    get blockId() {
-        return this.#blockId;
-    }
-    get name() {
-        return this.#name;
-    }
-    get vtype() {
-        return this.#vtype;
-    }
-    get dims() {
-        return this.#dims;
+}
+export class Dim extends Code {
+    nameInfo;
+    dims;
+    constructor(src, nameInfo, dims) {
+        super(CodeKind.DIM, src);
+        this.nameInfo = nameInfo;
+        this.dims = dims;
     }
 }
 export default {};

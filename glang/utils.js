@@ -9,6 +9,24 @@ export function callToString(v) {
     }
     return v;
 }
+export function inRange(min, max, value) {
+    return min <= value && value <= max;
+}
+export function assert(test, msg) {
+    if (!test) {
+        throw new Error(`assert error: msg="${msg}"`);
+    }
+}
+export function assertEq(a, b, msg) {
+    if (a !== b) {
+        throw new Error(`assertEq error: msg="${msg}", (a=${callToString(a)}) !== (b=${callToString(b)})`);
+    }
+}
+export function assertNe(a, b, msg) {
+    if (a === b) {
+        throw new Error(`assertNe error: msg="${msg}", (a=${callToString(a)}) === (b=${callToString(b)})`);
+    }
+}
 export class Result {
     #ok;
     #result;

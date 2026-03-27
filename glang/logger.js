@@ -12,40 +12,40 @@ export var LogLevel;
     LogLevel[LogLevel["ALL"] = 15] = "ALL";
 })(LogLevel || (LogLevel = {}));
 export class Logger {
-    #name;
-    #level;
+    name;
+    level;
     constructor(name, level) {
-        this.#name = name;
+        this.name = name;
         if (level) {
-            this.#level = level;
+            this.level = level;
         }
         else {
-            this.#level = LogLevel.ERROR;
+            this.level = LogLevel.ERROR;
         }
     }
     dump(msg, obj) {
-        if (this.#level & LogLevel.DEBUG) {
-            console.log(`[${this.#name}]d: ${msg}: ${obj}`);
+        if (this.level & LogLevel.DEBUG) {
+            console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
     }
     show(msg, obj) {
-        if (this.#level & LogLevel.DEBUG) {
-            console.log(`[${this.#name}]d: ${msg}: ${callToString(obj)}`);
+        if (this.level & LogLevel.DEBUG) {
+            console.log(`[${this.name}]d: ${msg}: ${callToString(obj)}`);
         }
     }
     info(msg) {
-        if (this.#level & LogLevel.INFO) {
-            console.log(`[${this.#name}]i: ${msg}`);
+        if (this.level & LogLevel.INFO) {
+            console.log(`[${this.name}]i: ${msg}`);
         }
     }
     warn(msg) {
-        if (this.#level & LogLevel.WARN) {
-            console.log(`[${this.#name}]w: ${msg}`);
+        if (this.level & LogLevel.WARN) {
+            console.log(`[${this.name}]w: ${msg}`);
         }
     }
     error(msg) {
-        if (this.#level & LogLevel.ERROR) {
-            console.log(`[${this.#name}]E: ${msg}`);
+        if (this.level & LogLevel.ERROR) {
+            console.log(`[${this.name}]E: ${msg}`);
         }
     }
 }

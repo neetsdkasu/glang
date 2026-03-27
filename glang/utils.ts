@@ -11,6 +11,27 @@ export function callToString(v: any): any {
     return v;
 }
 
+export function inRange(min: number, max: number, value: number): boolean {
+    return min <= value && value <= max;
+}
+
+export function assert(test: boolean, msg?: string): void {
+    if (!test) {
+        throw new Error(`assert error: msg="${msg}"`);
+    }
+}
+
+export function assertEq<T>(a: T, b: T, msg?: string): void {
+    if (a !== b) {
+        throw new Error(`assertEq error: msg="${msg}", (a=${callToString(a)}) !== (b=${callToString(b)})`);
+    }
+}
+
+export function assertNe<T>(a: T, b: T, msg?: string): void {
+    if (a === b) {
+        throw new Error(`assertNe error: msg="${msg}", (a=${callToString(a)}) === (b=${callToString(b)})`);
+    }
+}
 
 export class Result<R,E> {
     #ok: boolean;

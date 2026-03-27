@@ -2,6 +2,8 @@
 // Code
 // 
 
+import { Token } from "scanner";
+
 export enum Vtype {
     VOID            = 1 << 0,
     BOOLEAN         = 1 << 1,
@@ -11,6 +13,10 @@ export enum Vtype {
     ARRAY           = 1 << 5,
     ARRAY_2D        = 2 << 5,  // === (1 << 6)
     ARRAY_3D        = 3 << 5,  // === (1 << 5) | (1 << 6)
+    SUB             = 1 << 7,
+    FUNC            = 1 << 8,
+    UNKNOWN         = 1 << 9,
+    INFER           = 1 << 10,
     PRIMITIVE_TYPE  = BOOLEAN | INTEGER | FLOATING_POINT | STRING,
     NUMBER_TYPE     = INTEGER | FLOATING_POINT,
     ARRAY_TYPE      = ARRAY | ARRAY_2D | ARRAY_3D,
@@ -25,7 +31,26 @@ export enum Vtype {
     FLOAT_ARRAY_3D  = FLOATING_POINT | ARRAY_3D,
     STR_ARRAY       = STRING | ARRAY,
     STR_ARRAY_2D    = STRING | ARRAY_2D,
-    STR_ARRAY_3D    = STRING | ARRAY_3D
+    STR_ARRAY_3D    = STRING | ARRAY_3D,
+    INFER_PRIMITIVE = INFER | PRIMITIVE_TYPE,
+    INFER_NUMBER    = INFER | NUMBER_TYPE
+}
+
+export class NameInfo {
+    readonly src: Token;
+    readonly name: string;
+    readonly vtype: Vtype;
+    readonly varId: number;
+    readonly blockId: number;
+    readonly blockVarId: number;
+    constructor(src: Token, name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
+        this.src = src;
+        this.name = name;
+        this.vtype = vtype;
+        this.varId = varId;
+        this.blockId = blockId;
+        this.blockVarId = blockVarId;
+    }
 }
 
 export enum CodeKind {
@@ -34,43 +59,33 @@ export enum CodeKind {
 }
 
 export class Code {
-    #kind: CodeKind;
+    readonly kind: CodeKind;
+    readonly src: readonly Token[];
 
-    constructor(kind: CodeKind) {
-        this.#kind = kind;
-    }
-
-    get kind(): CodeKind {
-        return this.#kind;
+    constructor(kind: CodeKind, src: Token[]) {
+        this.kind = kind;
+        this.src = src;
     }
 }
 
-export class CBlock extends Code {
-    static #idCount = 0;
-    static ResetIdCount() {
-        CBlock.#idCount = 0;
-    }
-
+export class Block extends Code {
     readonly id: number;
+    readonly body: Code[];
 
-    constructor() {
-        super(CodeKind.BLOCK);
-        this.id = CBlock.#idCount++;
+    constructor(src: Token[], id: number, body: Code[]) {
+        super(CodeKind.BLOCK, src);
+        this.id = id;
+        this.body = body;
     }
-
 }
 
-export class CDim extends Code {
-    readonly blockId: number;
-    readonly name: string;
-    readonly vtype: Vtype;
+export class Dim extends Code {
+    readonly nameInfo: NameInfo;
     readonly dims: readonly number[];
 
-    constructor(blockId: number, name: string, vtype: Vtype, dims: number[]) {
-        super(CodeKind.DIM);
-        this.blockId = blockId;
-        this.name = name;
-        this.vtype = vtype;
+    constructor(src: Token[], nameInfo: NameInfo, dims: number[]) {
+        super(CodeKind.DIM, src);
+        this.nameInfo = nameInfo;
         this.dims = dims;
     }
 }
