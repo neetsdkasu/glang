@@ -239,8 +239,8 @@ export class Scanner {
                         token: "0" + sym + hexRes.result
                     });
                 default:
-                    // allow leading zeros
-                    // unread sym char
+                    // 先行ゼロを許容します
+                    // 読み込んだ文字は後の処理に任せるため一度未読に戻します
                     this.#reader.back();
                     break;
             }
@@ -265,9 +265,10 @@ export class Scanner {
         });
     }
     /**
-     * the reader has already consume dot char "." when this method is called.
-     * if the dot char does not mean a floating point, this method set to unread the dot.
-     * @param intpart: must not include the dot.
+     * 小数点かもしれないドット記号"."を#readerが読み取った後の状態で呼び出されることを想定しています
+     * このメソッド内で小数点ではないと判定された場合はそのドット記号を未読状態になるようにこのメソッドから#reader.back()を呼び出します
+     * @param intpart: ドット記号"."直前までの整数部分の文字列
+     * @returns
      */
     #readNumberAfterDot(intpart) {
         if (this.#reader.hasNext()) {
@@ -288,12 +289,11 @@ export class Scanner {
                 };
             }
             else {
-                // unread head char
+                // ドット記号に続く文字が数字ではないので未読に戻します
                 this.#reader.back();
             }
         }
-        // the dot does not mean a floating point
-        // unread the dot char
+        // ドット記号"."が小数点ではなかったため未読状態に戻します
         this.#reader.back();
         return {
             tokenType: TokenType.INTEGER,
@@ -311,7 +311,7 @@ export class Scanner {
             bin += ch;
         }
         if (bin.length === 0) {
-            return Result.err(`${ErrBinInteger} ( ${this.toString()} )`);
+            return Result.err(`${ErrBinInteger} ( ${this} )`);
         }
         return Result.ok(bin);
     }
@@ -326,16 +326,17 @@ export class Scanner {
             hex += ch;
         }
         if (hex.length === 0) {
-            return Result.err(`${ErrHexInteger} ( ${this.toString()} )`);
+            return Result.err(`${ErrHexInteger} ( ${this} )`);
         }
         return Result.ok(hex);
     }
     /**
-     *
+     * @param head
+     * @returns
      */
     #readWord(head) {
         if (!isWordChar(head) || DIGIT_CHARS.includes(head)) {
-            return Result.err(`${ErrWord} ( ${this.toString()} )`);
+            return Result.err(`${ErrWord} ( ${this} )`);
         }
         let word = head;
         while (this.#reader.hasNext()) {

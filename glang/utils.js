@@ -19,6 +19,11 @@ export function assertNe(a, b, msg) {
         throw new Error(`assertNe error: msg="${msg}", (a=${a}) === (b=${b})`);
     }
 }
+export class Unimplemented extends Error {
+    constructor(obj) {
+        super(`未実装なのでエラー. ( ${obj} )`);
+    }
+}
 export class Result {
     #ok;
     #result;

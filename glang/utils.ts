@@ -24,6 +24,12 @@ export function assertNe<T>(a: T, b: T, msg?: string): void {
     }
 }
 
+export class Unimplemented extends Error {
+    constructor(obj?: any) {
+        super(`未実装なのでエラー. ( ${obj} )`);
+    }
+}
+
 export class Result<R,E> {
     #ok: boolean;
     #result: R | undefined;

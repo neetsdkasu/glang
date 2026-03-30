@@ -5,12 +5,8 @@ import Logger, { LogLevel } from "logger";
 const log = new Logger("parser", LogLevel.ALL);
 
 import Scanner, { Token, TokenType } from "scanner";
-import { Result } from "utils";
+import { Result, Unimplemented } from "utils";
 import * as C from "code";
-
-interface ToString {
-    toString(): string;
-}
 
 /*
 古いtscのせいでArray<T>にfindLastメソッドがないのだけど
@@ -23,12 +19,12 @@ declare global {
 }
 */
 
-function syntaxError<R>(msg: string, obj: ToString): Result<R,string> {
-    return Result.err(`Syntax Error: ${msg} ( ${obj.toString()} )`);
+function syntaxError<R>(msg: string, obj: any): Result<R,string> {
+    return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
 }
 
-function boundaryError<R>(msg: string, obj: ToString): Result<R,string> {
-    return Result.err(`Boundary Error: ${msg} ( ${obj.toString()} )`);
+function boundaryError<R>(msg: string, obj: any): Result<R,string> {
+    return Result.err(`Boundary Error: ${msg} ( ${obj} )`);
 }
 
 const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
@@ -50,12 +46,16 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "then",
     "to",
     "while",
+    "byval",
+    "byref",
+    "ref",
     "true",
     "false",
     "boolean",
     "float",
     "integer",
-    "string"
+    "string",
+    "main"
 ]));
 
 class FuncRetArg {
@@ -73,7 +73,7 @@ class FuncRetArg {
      * 呼び出し側は標準関数との関係であいまいさ(INFER)で型が未決定を含む場合がある
      * 
      * @param def: 関数定義のほう
-     * @return ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
+     * @returns ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
      */
     checkConsistencyWith(def: FuncRetArg): Result<boolean,string> {
         let hasInfer = false;
@@ -209,8 +209,8 @@ class FuncInfo {
             log.error("other", other);
             throw new Error("BUG: require this.definition !== other.definition");
         }
-        const def = this.definition ? this : other; // define
-        const cal = this.definition ? other : this; // caller
+        const def = this.definition ? this : other; // 定義側
+        const cal = this.definition ? other : this; // 呼び出し側
         return cal.retArg.checkConsistencyWith(def.retArg);
     }
 
@@ -220,11 +220,12 @@ class FuncInfo {
 }
 
 class Env {
-    #nameMapStack: NameMap[] = [];
-    #codeBodyStack: C.Code[][] = [];
-    #totalBlockCount: number = 0;
-    #totalVarCount: number = 0;
-    #userFuncMap: Map<string,FuncInfo> = new Map();
+    #nameMapStack: NameMap[] = []; // ブロックネストの各ブロックに束縛される名前を管理します(トップレベルのブロックにはユーザ関数名も配置します).
+    #codeBodyStack: C.Code[][] = []; // ブロックネストの各ブロックに置かれるコードリストを管理します.
+    #totalBlockCount: number = 0; // ユニークなブロックIDを生成するために使用します.
+    #totalVarCount: number = 0; // ユニークな変数IDを生成するために使用します.
+    #userFuncMap: Map<string,FuncInfo> = new Map(); // ユーザ関数の情報を管理します.
+    #uniqueNameMap: Map<string,Token> = new Map(); // ユーザ関数名と同名の変数が関数定義前に指定されていることを検出する目的に使用されます.
 
     constructor() {}
 
@@ -234,6 +235,7 @@ class Env {
         this.#codeBodyStack = [];
         this.#totalVarCount = 0;
         this.#userFuncMap.clear();
+        this.#uniqueNameMap.clear();
     }
 
     get isToplevel(): boolean {
@@ -248,11 +250,21 @@ class Env {
         return this.#totalVarCount++;
     }
 
+    /**
+     * 変数名などを束縛するブロックをブロックネスト最深部に追加します.
+     * 
+     * @param blockSrc ブロックを構築するソースコード情報(func/sub/for/if/elseなど). トップレベルのみnull.
+     */
     push(blockSrc: Token[] | null): void {
         this.#nameMapStack.push(new NameMap(this.#newBlockId(), blockSrc));
         this.#codeBodyStack.push([]);
     }
 
+    /**
+     * 最深ブロックを取り除きます.
+     * 
+     * @returns 
+     */
     pop(): Result<{blockId: number, blockSrc: Token[]|null, body: C.Code[]},string> {
         if (this.#codeBodyStack.length === 0) {
             return Result.err("no block");
@@ -262,20 +274,48 @@ class Env {
         return Result.ok({blockId:map.blockId, blockSrc: map.blockSrc, body: body});
     }
 
+    /**
+     * sub/func/dim/letで指定された名前を最深ブロックに登録します.
+     * 指定された名前に問題がある場合に限りResult.errを返します.
+     * 
+     * @param src 
+     * @param name 
+     * @param vtype 
+     * @returns 
+     */
     addName(src: Token, name: string, vtype: C.Vtype): Result<C.NameInfo,string> {
         name = name.toLowerCase();
-        // 最新のブラウザのJavascriptのArrayにはfindLastがあるらしいが…使ってるtscが古いため…
+        if (ReservedWordSet.has(name)) {
+            return syntaxError(`名前に予約語は使用できません. "${name}"`, src);
+        }
+        if (StdFuncWordMap.has(name)) {
+            return syntaxError(`名前に標準関数名は使用できません. "${name}"`, src);
+        }
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
             const nameMap = this.#nameMapStack.at(-i)!;
             if (nameMap.has(name)) {
-                return Result.err(`duplicate name: "${name}"`);
+                const info = nameMap.get(name)!;
+                if (info.vtype === C.Vtype.SUB || info.vtype === C.Vtype.FUNC) {
+                    return syntaxError(`ユーザ関数名との名前の重複はできません(シャドーイングはできない仕様です)."${name}"`, src);
+                } else {
+                    return syntaxError(`ブロックネストのチェーン内で他の名前と重複はできません(シャドーイングはできない仕様です)."${name}"`, src);
+                }
             }
+        }
+        if (!this.#uniqueNameMap.has(name)) {
+            this.#uniqueNameMap.set(name, src);
         }
         const current = this.#nameMapStack.at(-1)!;
         const nameInfo = current.set(src, name, vtype, this.#newVarId());
         return Result.ok(nameInfo);
     }
 
+    /**
+     * 最深ブロックからトップレベルブロックまでに指定した名前で登録されているならその情報を取得します.
+     * 
+     * @param name 
+     * @returns 
+     */
     findName(name: string): C.NameInfo | undefined {
         name = name.toLowerCase();
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
@@ -287,6 +327,12 @@ class Env {
         return undefined;
     }
 
+    /**
+     * 最深ブロックからトップレベルブロックまでに指定した名前が登録されているか確認します.
+     * 
+     * @param name 
+     * @returns 
+     */
     hasName(name: string): boolean {
         name = name.toLowerCase();
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
@@ -298,32 +344,89 @@ class Env {
         return false;
     }
 
+    /**
+     * ブロック末尾にコードを追加します.
+     * 
+     * @param code 
+     */
     addCode(code: C.Code): void {
         this.#codeBodyStack.at(-1)!.push(code);
     }
 
+    /**
+     * 指定した名前のユーザ関数に関する情報を取得します.
+     * 
+     * @param name 
+     * @returns 
+     */
     findUserFunc(name: string): FuncInfo | undefined {
-        return this.#userFuncMap.get(name.toLowerCase());
+        name = name.toLowerCase();
+        return this.#userFuncMap.get(name);
     }
 
+    /**
+     * ユーザ関数の情報を登録します.
+     * ユーザ関数定義(func/sub)のほか、関数定義前に式中で使用されたユーザ関数(らしき名前)もここで登録します.
+     * 
+     * @param src 
+     * @param name 
+     * @param retArg 
+     * @param definition 
+     * @returns 
+     */
     setUserFunc(src: Token, name: string, retArg: FuncRetArg, definition: boolean): Result<FuncInfo,string> {
         name = name.toLowerCase();
+        if (ReservedWordSet.has(name)) {
+            if (name !== "main") {
+                return syntaxError(`ユーザ関数名に予約語は使用できません. "${name}"`, src);
+            } else if (retArg.checkConsistencyWith(new FuncRetArg(C.Vtype.VOID, [])).isErr) {
+                if (definition) {
+                    return syntaxError("main関数は`sub main()`で定義される必要があります.", src);
+                } else {
+                    return syntaxError("main関数は`call main()`で呼び出させれる必要があります.", src);
+                }
+            }
+        }
+        if (StdFuncWordMap.has(name)) {
+            return syntaxError(`ユーザ関数名に標準関数名は使用できません. "${name}"`, src);
+        }
+        if (this.#uniqueNameMap.has(name)) {
+            const dup = this.#uniqueNameMap.get(name)!;
+            return syntaxError(`ユーザ関数名との名前の重複はできません(シャドーイングはできない仕様です)."${name}"`, dup);
+        }
         let varId: number;
-        let varInfo = this.#nameMapStack.at(0)?.get(name);
+        const varInfo = this.#nameMapStack.at(0)?.get(name);
         if (varInfo) {
+            if (varInfo.vtype !== C.Vtype.SUB && varInfo.vtype !== C.Vtype.FUNC) {
+                // #uniqueNameMapのとこで弾かれているはず.
+                log.error("varInfo", varInfo);
+                throw new Error("BUG: グローバル変数名でユーザ関数名が使用されています.");
+            }
             varId = varInfo.varId;
         } else {
             const vtype = retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
             varId = this.#newVarId();
-            varInfo = this.#nameMapStack.at(0)!.set(src, name, vtype, varId);
+            this.#nameMapStack.at(0)!.set(src, name, vtype, varId);
         }
         const funcInfo = new FuncInfo(src, name, retArg, varId, definition);
         const current = this.#userFuncMap.get(name);
         if (current) {
-            const validation = current.validate(funcInfo);
-            if (validation.isErr) {
-                return Result.err(validation.error);
+            if (current.definition && definition) {
+                return syntaxError(`すでに存在するユーザ関数名です.ユーザ関数定義が重複しています. "${name}"`, src);
             }
+            if (current.definition !== definition) {
+                // どちらかが関数定義の場合にのみ検証します.
+                // 想定ではcurrentが関数定義前に式中に現れたユーザ関数名の情報になります.
+                const validation = current.validate(funcInfo);
+                if (validation.isErr) {
+                    return syntaxError(validation.error, definition ? current.src : src);
+                }
+            }
+            if (definition) {
+                this.#userFuncMap.set(name, funcInfo);
+            }
+        } else {
+            this.#userFuncMap.set(name, funcInfo);
         }
         return Result.ok(funcInfo);
     }
@@ -332,9 +435,59 @@ class Env {
 export class Parser {
     readonly #scanner: Scanner;
     readonly #env: Env = new Env();
+    #scanError: Result<undefined,string> | undefined = undefined; // #scanのエラー保持.
+    #scanToken: Token | undefined = undefined; // #scanのトークン保持.
+    #noMoreTokens: boolean = false; // #scanでソースコード終端到達.
 
     constructor(scanner: Scanner) {
         this.#scanner = scanner;
+    }
+
+    /**
+     * #scanner.scan()の呼び出し代行します.
+     * エラーの場合#scanErrorにエラーを設定します.
+     * 引数msgを受け取った場合、ソースコード終端到達をエラー扱いにし、msgをエラーメッセージとします.
+     * ソースコード終端末尾到達で#noMoreTokensをtrueに設定します.
+     * 
+     * @param msg 
+     * @returns trueならエラー発生なし, falseならエラー発生あり.
+     */
+    #scan(msg?: string): boolean {
+        const res = this.#scanner.scan();
+        this.#scanToken = this.#scanner.token;
+        if (res.isErr) {
+            this.#scanError = Result.err(res.error);
+            return false;
+        } else if (!res.result) {
+            this.#noMoreTokens = true;
+            if (msg !== undefined) {
+                this.#scanError = syntaxError(msg, this.#scanner);
+                return false;
+            }
+        } else {
+            this.#scanError = undefined;
+        }
+        return true;
+    }
+
+    #getScanToken(): Token {
+        if (this.#scanToken) {
+            return this.#scanToken;
+        } else {
+            throw new Error("BUG: 不正な呼び出し.");
+        }
+    }
+
+    #getScanError<T>(): Result<T,string> {
+        if (this.#scanError) {
+            return Result.err(this.#scanError?.error);
+        } else {
+            throw new Error("BUG: 不正な呼び出し.");
+        }
+    }
+
+    #isNoMoreTokens(): boolean {
+        return this.#noMoreTokens;
     }
 
     parse(): Result<C.Code[],string> {
@@ -342,20 +495,19 @@ export class Parser {
         this.#env.push(null);
 
         while (true) {
-            const scanRes = this.#scanner.scan();
-            if (scanRes.isErr) {
-                return Result.err(scanRes.error);
+            if (!this.#scan()) {
+                return this.#getScanError();
             }
-            if (!scanRes.result) {
+            if (this.#isNoMoreTokens()) {
                 break;
             }
 
-            const cmdToken = this.#scanner.token!;
+            const cmdToken = this.#getScanToken();
 
-            log.dump("cmdToken", cmdToken.toString());
+            log.dump("cmdToken", cmdToken);
 
             if (cmdToken.tokenType !== TokenType.WORD) {
-                return syntaxError("illegal first token in line.", cmdToken);
+                return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
             }
 
             let res: Result<undefined,string>;
@@ -368,12 +520,22 @@ export class Parser {
                     res = this.#parseSub(cmdToken);
                     break;
                 default:
-                    throw new Error(`unimplemented error. ( ${cmdToken.toString()} )`);
+                    throw new Unimplemented(cmdToken);
             }
 
             if (res.isErr) {
                 return Result.err(res.error);
             }
+        }
+
+        const mainSub = this.#env.findUserFunc("main");
+        if (mainSub === undefined || !mainSub.definition) {
+            return Result.err("main関数を定義する必要があります.")
+        }
+
+        if (!this.#env.isToplevel) {
+            // ブロックが閉じておらずendが足りてない
+            throw new Unimplemented();
         }
 
         const code = this.#env.pop();
@@ -391,14 +553,10 @@ export class Parser {
 
         log.info("parse dim...");
 
-        let scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan("配列名を指定してください.")) {
+            return this.#getScanError();
         }
-        if (!scanRes.result) {
-            return syntaxError("require an array name. [dim]", this.#scanner);
-        }
-        const arrNameToken = this.#scanner.token!;
+        const arrNameToken = this.#getScanToken();
         src.push(arrNameToken);
         
         const arrName = arrNameToken.value.toLowerCase();
@@ -406,38 +564,27 @@ export class Parser {
         log.dump("arrName", arrName);
 
         if (arrNameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("require an array name. [dim]", arrNameToken);
-        }
-        if (ReservedWordSet.has(arrName)) {
-            return syntaxError("wrong array name (reserved keyword). [dim]", arrNameToken);
-        }
-        if (StdFuncWordMap.has(arrName)) {
-            return syntaxError("wrong array name (same stdfunc name). [dim]", arrNameToken);
+            return syntaxError("この位置では配列名以外は不正です.", arrNameToken);
         }
 
-        scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan("配列の次元指定を開始するための開き丸括弧が必要です.")) {
+            return this.#getScanError();
         }
-        if (!scanRes.result) {
-            return syntaxError("require left round bracket. [dim]", this.#scanner);
-        }
-        const lbrToken = this.#scanner.token!;
+        const lbrToken = this.#getScanToken();
         src.push(lbrToken);
 
         if (lbrToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("require left round bracket. [dim]", this.#scanner);
+            return syntaxError("この位置では配列の次元指定を開始するための開き丸括弧以外は不正です.", this.#scanner);
         }
 
         let dims: number[] = [];
         let dm: number = 1;
 
         while (true) {
-            scanRes = this.#scanner.scan();
-            if (scanRes.isErr) {
-                return Result.err(scanRes.error);
+            if (!this.#scan()) {
+                return this.#getScanError();
             }
-            if (!scanRes.result) {
+            if (this.#isNoMoreTokens()) {
                 break;
             }
 
@@ -457,65 +604,52 @@ export class Parser {
                     log.dump(`d[${dims.length+1}]`, d);
                     
                     if (d === 0) {
-                        return boundaryError("dimension size must be positive integer. [dim]", sizeToken);
+                        return boundaryError("配列の次元サイズに0を指定はできません.", sizeToken);
                     }
                     dm *= d;
                     if (dm > 1e6) {
-                        return boundaryError("product of dimension sizes must be less than 1000001. [dim]", sizeToken);
+                        return boundaryError("配列の次元サイズの積が1000001以下になるように次元サイズを指定してください. ", sizeToken);
                     }
 
                     dims.push(d);
                     break;
                 default:
-                    return syntaxError("require positive integer as dimension size. [dim]", sizeToken);
+                    return syntaxError("この位置では正の整数リテラルによる次元サイズ以外は不正です.", sizeToken);
             }
 
-            scanRes = this.#scanner.scan();
-            if (scanRes.isErr) {
-                return Result.err(scanRes.error);
+            if (!this.#scan("閉じ丸括弧またはカンマが必要です.")) {
+                return this.#getScanError();
             }
-            if (!scanRes.result)
-            {
-                return syntaxError("require comma or right round bracket. [dim]", this.#scanner);
-            }
-            const symToken = this.#scanner.token!;
+            const symToken = this.#getScanToken();
             src.push(symToken);
 
             if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 break;
             } else if (symToken.tokenType === TokenType.COMMA) {
                 if (dims.length === 3) {
-                    return boundaryError("number of dimensions must be less than 4. [dim]", symToken);
+                    return boundaryError("配列の次元は3以下までです.この位置ではカンマは不正です.", symToken);
                 }
             } else {
-                return syntaxError("require comma or right round bracket. [dim]", symToken);
+                return syntaxError("この位置では閉じ丸括弧とカンマ以外は不正です.", symToken);
             }
         }
 
         log.dump("dims", dims);
 
-        scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan("キーワード`as`が必要です.")) {
+            return this.#getScanError();
         }
-        if (!scanRes.result) {
-            return syntaxError("require keyword `as`. [dim]", this.#scanner);
-        }
-        const asToken = this.#scanner.token!;
+        const asToken = this.#getScanToken();
         src.push(asToken);
 
         if (asToken.value.toLowerCase() !== "as") {
-            return syntaxError("require keyword `as`. [dim]", asToken);
+            return syntaxError("この位置ではキーワード`as`以外は不正です.", asToken);
         }
 
-        scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan("型名(boolean/float/integer/string)を指定してください")) {
+            return this.#getScanError();
         }
-        if (!scanRes.result) {
-            return syntaxError("require type keyword `integer` or `string` or `boolean` or `float`. [dim]", this.#scanner);
-        }
-        const typeToken = this.#scanner.token!;
+        const typeToken = this.#getScanToken();
         src.push(typeToken);
 
         log.dump("type", typeToken.value);
@@ -536,7 +670,7 @@ export class Parser {
                 vtype = C.Vtype.STRING;
                 break;
             default:
-                return syntaxError("require type keyword `integer` or `string` or `boolean` or `float`. [dim]", typeToken);
+                return syntaxError("この位置では型名(boolean/float/integer/string)以外は不正です.", typeToken);
         }
 
         switch (dims.length) {
@@ -553,15 +687,14 @@ export class Parser {
                 throw new Error("BUG");
         }
 
-        scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan()) {
+            return this.#getScanError();
         }
-        if (scanRes.result) {
-            const endToken = this.#scanner.token!;
-            src.push(endToken);
+        if (!this.#isNoMoreTokens()) {
+            const endToken = this.#getScanToken();
+            // src.push(endToken);
             if (endToken.tokenType !== TokenType.LINE_END) {
-                return syntaxError("unexpected token. [dim]", endToken);
+                return syntaxError("不正な文字です.", endToken);
             }
         }
 
@@ -583,38 +716,35 @@ export class Parser {
         log.info("parse sub...");
 
         if (!this.#env.isToplevel) {
-            return syntaxError("`sub` is toplevel keyword", subToken);
+            return syntaxError("`sub`はトップレベルでのみ使用できます.", subToken);
         }
 
-        let scanRes = this.#scanner.scan();
-        if (scanRes.isErr) {
-            return Result.err(scanRes.error);
+        if (!this.#scan("ユーザ関数名が必要です.")) {
+            return this.#getScanError();
         }
-        if (!scanRes.result) {
-            return syntaxError("require sub name", this.#scanner);
-        }
-        const subNameToken = this.#scanner.token!;
+        const subNameToken = this.#getScanToken();
         src.push(subNameToken);
 
         log.dump("subName", subNameToken.value);
 
         if (subNameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("require sub name", subNameToken);
+            return syntaxError("この位置ではユーザ関数名以外は不正です.", subNameToken);
         }
 
         const subName = subNameToken.value.toLowerCase();
-        if (ReservedWordSet.has(subName)) {
-            return syntaxError("wrong array name (reserved keyword). [sub]", subNameToken);
+ 
+        if (!this.#scan("開き丸括弧が必要です.")) {
+            return this.#getScanError();
         }
-        if (StdFuncWordMap.has(subName)) {
-            return syntaxError("wrong array name (same stdfunc name). [sub]", subNameToken);
+        const lrbToken = this.#getScanToken();
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("この位置では開き丸括弧以外は不正です.", lrbToken);
         }
-        const nameInfo = this.#env.findName(subName);
-
-        
 
 
-        throw new Error("unimplemented error");
+    
+
+        throw new Unimplemented(this.#scanner);
     }
 
 }
