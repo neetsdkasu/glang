@@ -1,7 +1,6 @@
 //
 // Logger
 //
-import { callToString } from "utils";
 export var LogLevel;
 (function (LogLevel) {
     LogLevel[LogLevel["OFF"] = 0] = "OFF";
@@ -13,40 +12,45 @@ export var LogLevel;
 })(LogLevel || (LogLevel = {}));
 export class Logger {
     name;
-    level;
+    #level;
+    get level() {
+        return this.#level;
+    }
     constructor(name, level) {
         this.name = name;
         if (level) {
-            this.level = level;
+            this.#level = level;
         }
         else {
-            this.level = LogLevel.ERROR;
+            this.#level = LogLevel.ERROR;
         }
     }
     dump(msg, obj) {
-        if (this.level & LogLevel.DEBUG) {
+        if (this.#level & LogLevel.DEBUG) {
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
     }
-    show(msg, obj) {
-        if (this.level & LogLevel.DEBUG) {
-            console.log(`[${this.name}]d: ${msg}: ${callToString(obj)}`);
-        }
-    }
     info(msg) {
-        if (this.level & LogLevel.INFO) {
+        if (this.#level & LogLevel.INFO) {
             console.log(`[${this.name}]i: ${msg}`);
         }
     }
     warn(msg) {
-        if (this.level & LogLevel.WARN) {
+        if (this.#level & LogLevel.WARN) {
             console.log(`[${this.name}]w: ${msg}`);
         }
     }
-    error(msg) {
-        if (this.level & LogLevel.ERROR) {
-            console.log(`[${this.name}]E: ${msg}`);
+    error(msg, obj) {
+        if (this.#level & LogLevel.ERROR) {
+            console.log(`[${this.name}]E: ${msg}: ${obj}`);
         }
+    }
+    temp(level, proccess) {
+        const saved = this.#level;
+        this.#level = level;
+        const result = proccess();
+        this.#level = saved;
+        return result;
     }
 }
 export default Logger;

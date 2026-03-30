@@ -58,22 +58,70 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "string"
 ]));
 
-type FuncRetArg = [C.Vtype, C.Vtype[]];
+class FuncRetArg {
+    readonly ret: C.Vtype;
+    readonly args: C.Vtype[];
 
+    constructor(ret: C.Vtype, args: C.Vtype[]) {
+        this.ret = ret;
+        this.args = args;
+    }
+
+    /**
+     * ユーザ定義関数(func/sub)の整合性チェック
+     * 関数呼び出し側(this側)の戻り値の型や引数の数と型を定義(def側)どおりか確認する
+     * 呼び出し側は標準関数との関係であいまいさ(INFER)で型が未決定を含む場合がある
+     * 
+     * @param def: 関数定義のほう
+     * @return ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
+     */
+    checkConsistencyWith(def: FuncRetArg): Result<boolean,string> {
+        let hasInfer = false;
+        if (this.ret & C.Vtype.INFER) {
+            hasInfer = true;
+            if ((this.ret & def.ret) !== def.ret) {
+                return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+            }
+        } else if (this.ret !== def.ret) {
+            return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+        }
+        if (this.args.length !== def.args.length) {
+            return Result.err(`引数の数が不一致 (this: ${this.args.length}, def: ${def.args.length})`);
+        }
+        for (let i = 0; i < this.args.length; i++) {
+            const ta = this.args[i];
+            const da = def.args[i];
+            if (ta & C.Vtype.INFER) {
+                hasInfer = true;
+                if ((ta & da) !== da) {
+                    return Result.err(`${i+1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+                }
+            } else if (ta !== da) {
+                return Result.err(`${i+1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+            }
+        }
+        return Result.ok(hasInfer);
+    }
+
+};
+
+/**
+ * 標準関数
+ */
 const StdFuncWordMap: Readonly<Map<string,FuncRetArg>> = Object.freeze(new Map([
-    ["cbool", <FuncRetArg>[C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]]],
-    ["cfloat", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]]],
-    ["cint", <FuncRetArg>[C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]]],
-    ["cstr", <FuncRetArg>[C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]]],
-    ["abs", <FuncRetArg>[C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]]],
-    ["sign", <FuncRetArg>[C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]]],
-    ["cos", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]]],
-    ["sin", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]]],
-    ["tan", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]]],
-    ["pow", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]]],
-    ["sqrt", <FuncRetArg>[C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]]],
-    ["floor", <FuncRetArg>[C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT]]],
-    ["ceil", <FuncRetArg>[C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT]]] 
+    ["cbool", new FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
+    ["cfloat", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
+    ["cint", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
+    ["cstr", new FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
+    ["abs", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["sign", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["cos", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sin", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["tan", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["pow", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sqrt", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["floor", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
+    ["ceil", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
 ]));
 
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
@@ -135,11 +183,48 @@ class NameMap {
 }
 
 
+class FuncInfo {
+    readonly src: Token;
+    readonly name: string;
+    readonly retArg: FuncRetArg;
+    readonly varId: number;
+    readonly definition: boolean;
+
+    constructor(src: Token, name: string, retArg: FuncRetArg, varId: number, definition: boolean) {
+        this.src = src;
+        this.name = name;
+        this.retArg = retArg;
+        this.varId = varId;
+        this.definition = definition;
+    }
+
+    validate(other: FuncInfo): Result<boolean,string> {
+        if (this.varId !== other.varId || this.name !== other.name) {
+            log.error("this", this);
+            log.error("other", other);
+            throw new Error("BUG: unmatch varId or name");
+        }
+        if (this.definition === other.definition) {
+            log.error("this", this);
+            log.error("other", other);
+            throw new Error("BUG: require this.definition !== other.definition");
+        }
+        const def = this.definition ? this : other; // define
+        const cal = this.definition ? other : this; // caller
+        return cal.retArg.checkConsistencyWith(def.retArg);
+    }
+
+    toString(): string {
+        return `FuncInfo{ src: ${this.src}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition} }`;
+    }
+}
+
 class Env {
     #nameMapStack: NameMap[] = [];
     #codeBodyStack: C.Code[][] = [];
     #totalBlockCount: number = 0;
     #totalVarCount: number = 0;
+    #userFuncMap: Map<string,FuncInfo> = new Map();
 
     constructor() {}
 
@@ -148,9 +233,10 @@ class Env {
         this.#nameMapStack = [];
         this.#codeBodyStack = [];
         this.#totalVarCount = 0;
+        this.#userFuncMap.clear();
     }
 
-    get isGlobal(): boolean {
+    get isToplevel(): boolean {
         return this.#nameMapStack.length === 1;
     }
 
@@ -177,6 +263,7 @@ class Env {
     }
 
     addName(src: Token, name: string, vtype: C.Vtype): Result<C.NameInfo,string> {
+        name = name.toLowerCase();
         // 最新のブラウザのJavascriptのArrayにはfindLastがあるらしいが…使ってるtscが古いため…
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
             const nameMap = this.#nameMapStack.at(-i)!;
@@ -190,6 +277,7 @@ class Env {
     }
 
     findName(name: string): C.NameInfo | undefined {
+        name = name.toLowerCase();
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
             const nameMap = this.#nameMapStack.at(-i)!;
             if (nameMap.has(name)) {
@@ -200,6 +288,7 @@ class Env {
     }
 
     hasName(name: string): boolean {
+        name = name.toLowerCase();
         for (let i = 1; i <= this.#nameMapStack.length; i++) {
             const nameMap = this.#nameMapStack.at(-i)!;
             if (nameMap.has(name)) {
@@ -211,6 +300,32 @@ class Env {
 
     addCode(code: C.Code): void {
         this.#codeBodyStack.at(-1)!.push(code);
+    }
+
+    findUserFunc(name: string): FuncInfo | undefined {
+        return this.#userFuncMap.get(name.toLowerCase());
+    }
+
+    setUserFunc(src: Token, name: string, retArg: FuncRetArg, definition: boolean): Result<FuncInfo,string> {
+        name = name.toLowerCase();
+        let varId: number;
+        let varInfo = this.#nameMapStack.at(0)?.get(name);
+        if (varInfo) {
+            varId = varInfo.varId;
+        } else {
+            const vtype = retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
+            varId = this.#newVarId();
+            varInfo = this.#nameMapStack.at(0)!.set(src, name, vtype, varId);
+        }
+        const funcInfo = new FuncInfo(src, name, retArg, varId, definition);
+        const current = this.#userFuncMap.get(name);
+        if (current) {
+            const validation = current.validate(funcInfo);
+            if (validation.isErr) {
+                return Result.err(validation.error);
+            }
+        }
+        return Result.ok(funcInfo);
     }
 }
 
@@ -286,17 +401,17 @@ export class Parser {
         const arrNameToken = this.#scanner.token!;
         src.push(arrNameToken);
         
-        const arrName = arrNameToken.value;
+        const arrName = arrNameToken.value.toLowerCase();
 
         log.dump("arrName", arrName);
 
         if (arrNameToken.tokenType !== TokenType.WORD) {
             return syntaxError("require an array name. [dim]", arrNameToken);
         }
-        if (ReservedWordSet.has(arrName.toLowerCase())) {
+        if (ReservedWordSet.has(arrName)) {
             return syntaxError("wrong array name (reserved keyword). [dim]", arrNameToken);
         }
-        if (StdFuncWordMap.has(arrName.toLowerCase())) {
+        if (StdFuncWordMap.has(arrName)) {
             return syntaxError("wrong array name (same stdfunc name). [dim]", arrNameToken);
         }
 
@@ -403,7 +518,7 @@ export class Parser {
         const typeToken = this.#scanner.token!;
         src.push(typeToken);
 
-        log.dump("type", typeToken.value.toLowerCase());
+        log.dump("type", typeToken.value);
 
         let vtype: C.Vtype;
 
@@ -463,6 +578,42 @@ export class Parser {
     }
 
     #parseSub(subToken: Token): Result<undefined,string> {
+        const src: Token[] = [subToken];
+
+        log.info("parse sub...");
+
+        if (!this.#env.isToplevel) {
+            return syntaxError("`sub` is toplevel keyword", subToken);
+        }
+
+        let scanRes = this.#scanner.scan();
+        if (scanRes.isErr) {
+            return Result.err(scanRes.error);
+        }
+        if (!scanRes.result) {
+            return syntaxError("require sub name", this.#scanner);
+        }
+        const subNameToken = this.#scanner.token!;
+        src.push(subNameToken);
+
+        log.dump("subName", subNameToken.value);
+
+        if (subNameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("require sub name", subNameToken);
+        }
+
+        const subName = subNameToken.value.toLowerCase();
+        if (ReservedWordSet.has(subName)) {
+            return syntaxError("wrong array name (reserved keyword). [sub]", subNameToken);
+        }
+        if (StdFuncWordMap.has(subName)) {
+            return syntaxError("wrong array name (same stdfunc name). [sub]", subNameToken);
+        }
+        const nameInfo = this.#env.findName(subName);
+
+        
+
+
         throw new Error("unimplemented error");
     }
 

@@ -5,6 +5,7 @@
 import { Token } from "scanner";
 
 export enum Vtype {
+    NONE            = 0,
     VOID            = 1 << 0,
     BOOLEAN         = 1 << 1,
     INTEGER         = 1 << 2,
@@ -15,7 +16,7 @@ export enum Vtype {
     ARRAY_3D        = 3 << 5,  // === (1 << 5) | (1 << 6)
     SUB             = 1 << 7,
     FUNC            = 1 << 8,
-    UNKNOWN         = 1 << 9,
+    REFERENCE       = 1 << 9,
     INFER           = 1 << 10,
     PRIMITIVE_TYPE  = BOOLEAN | INTEGER | FLOATING_POINT | STRING,
     NUMBER_TYPE     = INTEGER | FLOATING_POINT,

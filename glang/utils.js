@@ -1,14 +1,6 @@
 //
 // utils
 //
-export function callToString(v) {
-    if (v) {
-        if (typeof v["toString"] === "function") {
-            return v.toString();
-        }
-    }
-    return v;
-}
 export function inRange(min, max, value) {
     return min <= value && value <= max;
 }
@@ -19,12 +11,12 @@ export function assert(test, msg) {
 }
 export function assertEq(a, b, msg) {
     if (a !== b) {
-        throw new Error(`assertEq error: msg="${msg}", (a=${callToString(a)}) !== (b=${callToString(b)})`);
+        throw new Error(`assertEq error: msg="${msg}", (a=${a}) !== (b=${b})`);
     }
 }
 export function assertNe(a, b, msg) {
     if (a === b) {
-        throw new Error(`assertNe error: msg="${msg}", (a=${callToString(a)}) === (b=${callToString(b)})`);
+        throw new Error(`assertNe error: msg="${msg}", (a=${a}) === (b=${b})`);
     }
 }
 export class Result {
@@ -82,10 +74,10 @@ export class Result {
     }
     toString() {
         if (this.#ok) {
-            return `Result.Ok{ result: ${callToString(this.#result)} }`;
+            return `Result.Ok{ result: ${this.#result} }`;
         }
         else {
-            return `Result.Err{ error: ${callToString(this.#error)} }`;
+            return `Result.Err{ error: ${this.#error} }`;
         }
     }
 }

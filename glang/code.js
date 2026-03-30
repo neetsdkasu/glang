@@ -3,6 +3,7 @@
 // 
 export var Vtype;
 (function (Vtype) {
+    Vtype[Vtype["NONE"] = 0] = "NONE";
     Vtype[Vtype["VOID"] = 1] = "VOID";
     Vtype[Vtype["BOOLEAN"] = 2] = "BOOLEAN";
     Vtype[Vtype["INTEGER"] = 4] = "INTEGER";
@@ -13,7 +14,7 @@ export var Vtype;
     Vtype[Vtype["ARRAY_3D"] = 96] = "ARRAY_3D";
     Vtype[Vtype["SUB"] = 128] = "SUB";
     Vtype[Vtype["FUNC"] = 256] = "FUNC";
-    Vtype[Vtype["UNKNOWN"] = 512] = "UNKNOWN";
+    Vtype[Vtype["REFERENCE"] = 512] = "REFERENCE";
     Vtype[Vtype["INFER"] = 1024] = "INFER";
     Vtype[Vtype["PRIMITIVE_TYPE"] = 30] = "PRIMITIVE_TYPE";
     Vtype[Vtype["NUMBER_TYPE"] = 12] = "NUMBER_TYPE";

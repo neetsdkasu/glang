@@ -2,15 +2,6 @@
 // utils
 //
 
-export function callToString(v: any): any {
-    if (v) {
-        if (typeof v["toString"] === "function") {
-            return v.toString();
-        }
-    }
-    return v;
-}
-
 export function inRange(min: number, max: number, value: number): boolean {
     return min <= value && value <= max;
 }
@@ -23,13 +14,13 @@ export function assert(test: boolean, msg?: string): void {
 
 export function assertEq<T>(a: T, b: T, msg?: string): void {
     if (a !== b) {
-        throw new Error(`assertEq error: msg="${msg}", (a=${callToString(a)}) !== (b=${callToString(b)})`);
+        throw new Error(`assertEq error: msg="${msg}", (a=${a}) !== (b=${b})`);
     }
 }
 
 export function assertNe<T>(a: T, b: T, msg?: string): void {
     if (a === b) {
-        throw new Error(`assertNe error: msg="${msg}", (a=${callToString(a)}) === (b=${callToString(b)})`);
+        throw new Error(`assertNe error: msg="${msg}", (a=${a}) === (b=${b})`);
     }
 }
 
@@ -94,9 +85,9 @@ export class Result<R,E> {
 
     toString(): string {
         if (this.#ok) {
-            return `Result.Ok{ result: ${callToString(this.#result)} }`;
+            return `Result.Ok{ result: ${this.#result} }`;
         } else {
-            return `Result.Err{ error: ${callToString(this.#error)} }`;
+            return `Result.Err{ error: ${this.#error} }`;
         }
     }
 
