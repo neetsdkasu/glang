@@ -37,6 +37,16 @@ export class Token {
     toString() {
         return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row} }`;
     }
+    static lineToString(tokens) {
+        return tokens.map((token) => {
+            if (token.tokenType === TokenType.STRING) {
+                return `"${token.value.replaceAll('"', '""')}"`;
+            }
+            else {
+                return token.value.toLowerCase();
+            }
+        }).join(" ");
+    }
 }
 const WhiteSpaceRegExp = /^\s+$/;
 const LINE_END_CHAR = "\n";

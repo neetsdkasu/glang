@@ -25,8 +25,11 @@ export class Logger {
             this.#level = LogLevel.ERROR;
         }
     }
-    dump(msg, obj) {
+    dump(msg, obj, ...args) {
         if (this.#level & LogLevel.DEBUG) {
+            if (typeof obj === "function") {
+                obj = obj(...args);
+            }
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
     }

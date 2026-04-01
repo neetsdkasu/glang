@@ -28,8 +28,11 @@ export class Logger {
         }
     }
 
-    dump(msg: string, obj: any): void {
+    dump(msg: string, obj: any, ...args: any): void {
         if (this.#level & LogLevel.DEBUG) {
+            if (typeof obj === "function") {
+                obj = obj(...args);
+            }
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
     }
