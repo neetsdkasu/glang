@@ -898,6 +898,8 @@ export class Parser {
             return Result.err(res.error);
         }
 
+        // TODO #env.push と 仮引数名をブロックに登録
+
         log.dump("src", Token.lineToString, src);
         log.info("parsed sub");
 
