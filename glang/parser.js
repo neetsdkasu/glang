@@ -265,6 +265,8 @@ class Env {
      * @param blockSrc ブロックを構築するソースコード情報(func/sub/for/if/elseなど). トップレベルのみnull.
      */
     push(blockSrc) {
+        log.info("new block");
+        log.dump("block src", Token.lineToString, blockSrc ?? []);
         this.#nameMapStack.push(new NameMap(this.#newBlockId(), blockSrc));
         this.#codeBodyStack.push([]);
     }
@@ -274,11 +276,13 @@ class Env {
      * @returns
      */
     pop() {
+        log.info("drop block");
         if (this.#codeBodyStack.length === 0) {
             return Result.err("no block");
         }
         const map = this.#nameMapStack.pop();
         const body = this.#codeBodyStack.pop();
+        log.dump("block src", Token.lineToString, map.blockSrc ?? []);
         return Result.ok({ blockId: map.blockId, blockSrc: map.blockSrc, body: body });
     }
     /**
@@ -291,6 +295,7 @@ class Env {
      * @returns
      */
     addName(src, name, vtype) {
+        log.info("add name");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
             return syntaxError(`名前に予約語は使用できません. "${name}"`, src);
@@ -315,6 +320,7 @@ class Env {
         }
         const current = this.#nameMapStack.at(-1);
         const nameInfo = current.set(src, name, vtype, this.#newVarId());
+        log.dump("added name", name);
         return Result.ok(nameInfo);
     }
     /**
@@ -379,6 +385,7 @@ class Env {
      * @returns
      */
     addUserFunc(src, name, retArg, definition, argNames) {
+        log.info("add func");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
             if (name !== "main") {
@@ -465,6 +472,7 @@ class Env {
         else {
             this.#userFuncMap.set(name, [funcInfo]);
         }
+        log.dump("added func", name);
         return Result.ok(funcInfo);
     }
 }
@@ -543,6 +551,9 @@ export class Parser {
             switch (cmdToken.value.toLowerCase()) {
                 case "dim":
                     res = this.#parseDim(cmdToken);
+                    break;
+                case "let":
+                    res = this.#parseLet(cmdToken);
                     break;
                 case "sub":
                     res = this.#parseSub(cmdToken);
@@ -802,9 +813,18 @@ export class Parser {
         if (res.isErr) {
             return Result.err(res.error);
         }
+        this.#env.push(src);
+        for (let i = 0; i < argNames.length; i++) {
+            this.#env.addName(src[0], argNames[i], argTypes[i]);
+        }
+        this.#env.push(src);
         log.dump("src", Token.lineToString, src);
-        log.info("parsed sub");
+        log.info("parsed sub.");
         return Result.ok(undefined);
+    }
+    #parseLet(letToken) {
+        log.info("parse let...");
+        throw new Unimplemented(this.#scanner);
     }
 }
 export default Parser;

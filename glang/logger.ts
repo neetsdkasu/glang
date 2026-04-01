@@ -32,6 +32,8 @@ export class Logger {
         if (this.#level & LogLevel.DEBUG) {
             if (typeof obj === "function") {
                 obj = obj(...args);
+            } else if (args) {
+                obj = `${obj} ${args}`;
             }
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
