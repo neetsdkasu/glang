@@ -4,24 +4,25 @@
 import { Result } from "utils";
 export var TokenType;
 (function (TokenType) {
-    TokenType[TokenType["LINE_END"] = 0] = "LINE_END";
-    TokenType[TokenType["LEFT_ROUND_BRACKET"] = 1] = "LEFT_ROUND_BRACKET";
-    TokenType[TokenType["RIGHT_ROUND_BRACKET"] = 2] = "RIGHT_ROUND_BRACKET";
-    TokenType[TokenType["LEFT_SQUARE_BRACKET"] = 3] = "LEFT_SQUARE_BRACKET";
-    TokenType[TokenType["RIGHT_SQUARE_BRACKET"] = 4] = "RIGHT_SQUARE_BRACKET";
-    TokenType[TokenType["LEFT_CURLY_BRACKET"] = 5] = "LEFT_CURLY_BRACKET";
-    TokenType[TokenType["RIGHT_CURLY_BRACKET"] = 6] = "RIGHT_CURLY_BRACKET";
-    TokenType[TokenType["COMMA"] = 7] = "COMMA";
-    TokenType[TokenType["BACKQUOTE"] = 8] = "BACKQUOTE";
-    TokenType[TokenType["OPERATOR"] = 9] = "OPERATOR";
-    TokenType[TokenType["INTEGER"] = 10] = "INTEGER";
-    TokenType[TokenType["FLOATING_POINT"] = 11] = "FLOATING_POINT";
-    TokenType[TokenType["HEX_INTEGER"] = 12] = "HEX_INTEGER";
-    TokenType[TokenType["BIN_INETGER"] = 13] = "BIN_INETGER";
-    TokenType[TokenType["STRING"] = 14] = "STRING";
-    TokenType[TokenType["WORD"] = 15] = "WORD";
-    TokenType[TokenType["COLON"] = 16] = "COLON";
-    TokenType[TokenType["SEMICOLON"] = 17] = "SEMICOLON";
+    TokenType[TokenType["EOF"] = 0] = "EOF";
+    TokenType[TokenType["EOL"] = 1] = "EOL";
+    TokenType[TokenType["LEFT_ROUND_BRACKET"] = 2] = "LEFT_ROUND_BRACKET";
+    TokenType[TokenType["RIGHT_ROUND_BRACKET"] = 3] = "RIGHT_ROUND_BRACKET";
+    TokenType[TokenType["LEFT_SQUARE_BRACKET"] = 4] = "LEFT_SQUARE_BRACKET";
+    TokenType[TokenType["RIGHT_SQUARE_BRACKET"] = 5] = "RIGHT_SQUARE_BRACKET";
+    TokenType[TokenType["LEFT_CURLY_BRACKET"] = 6] = "LEFT_CURLY_BRACKET";
+    TokenType[TokenType["RIGHT_CURLY_BRACKET"] = 7] = "RIGHT_CURLY_BRACKET";
+    TokenType[TokenType["COMMA"] = 8] = "COMMA";
+    TokenType[TokenType["BACKQUOTE"] = 9] = "BACKQUOTE";
+    TokenType[TokenType["OPERATOR"] = 10] = "OPERATOR";
+    TokenType[TokenType["INTEGER"] = 11] = "INTEGER";
+    TokenType[TokenType["FLOATING_POINT"] = 12] = "FLOATING_POINT";
+    TokenType[TokenType["HEX_INTEGER"] = 13] = "HEX_INTEGER";
+    TokenType[TokenType["BIN_INETGER"] = 14] = "BIN_INETGER";
+    TokenType[TokenType["STRING"] = 15] = "STRING";
+    TokenType[TokenType["WORD"] = 16] = "WORD";
+    TokenType[TokenType["COLON"] = 17] = "COLON";
+    TokenType[TokenType["SEMICOLON"] = 18] = "SEMICOLON";
 })(TokenType || (TokenType = {}));
 export class Token {
     tokenType;
@@ -49,7 +50,7 @@ export class Token {
     }
 }
 const WhiteSpaceRegExp = /^\s+$/;
-const LINE_END_CHAR = "\n";
+const EOL_CHAR = "\n";
 const LEFT_ROUND_BRACKET_CHAR = "(";
 const RIGHT_ROUND_BRACKET_CHAR = ")";
 const LEFT_SQUARE_BRACKET_CHAR = "[";
@@ -66,7 +67,7 @@ const OPERATOR_CHARS = "+-*/%=<>.~^@?!|&\\";
 const DIGIT_CHARS = "0123456789";
 const HEX_DIGIT_CHARS = DIGIT_CHARS + "ABCDEF" + "abcdef";
 const CharToTokenTypeMap = Object.freeze(new Map([
-    [LINE_END_CHAR, TokenType.LINE_END],
+    [EOL_CHAR, TokenType.EOL],
     [LEFT_ROUND_BRACKET_CHAR, TokenType.LEFT_ROUND_BRACKET],
     [RIGHT_ROUND_BRACKET_CHAR, TokenType.RIGHT_ROUND_BRACKET],
     [LEFT_SQUARE_BRACKET_CHAR, TokenType.LEFT_SQUARE_BRACKET],
@@ -109,7 +110,7 @@ export class Scanner {
     #skipWhitespaces() {
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
-            if (ch.match(WhiteSpaceRegExp) && ch !== LINE_END_CHAR) {
+            if (ch.match(WhiteSpaceRegExp) && ch !== EOL_CHAR) {
                 continue;
             }
             this.#reader.back();
@@ -125,14 +126,14 @@ export class Scanner {
             return;
         }
         while (this.#reader.hasNext()) {
-            if (this.#reader.next() === LINE_END_CHAR) {
+            if (this.#reader.next() === EOL_CHAR) {
                 this.#reader.back();
                 return;
             }
         }
     }
     scan() {
-        if (this.#token?.tokenType === TokenType.LINE_END) {
+        if (this.#token?.tokenType === TokenType.EOL) {
             this.#row++;
             this.#linestart = this.#reader.len();
         }
@@ -141,10 +142,11 @@ export class Scanner {
         this.#skipComment();
         if (!this.#reader.hasNext()) {
             this.#col = this.#reader.pos() - this.#linestart;
+            this.#token = new Token(TokenType.EOF, "", this.#col, this.#row);
             return Result.ok(false);
         }
         let ch = this.#reader.next();
-        let tokenType = TokenType.LINE_END;
+        let tokenType = TokenType.EOL;
         if (CharToTokenTypeMap.has(ch)) {
             tokenType = CharToTokenTypeMap.get(ch);
         }

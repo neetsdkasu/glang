@@ -6,7 +6,8 @@ import CharReader from "charreader";
 import { Result } from "utils";
 
 export enum TokenType {
-    LINE_END,
+    EOF,
+    EOL,
     LEFT_ROUND_BRACKET,
     RIGHT_ROUND_BRACKET,
     LEFT_SQUARE_BRACKET,
@@ -56,7 +57,7 @@ export class Token {
 
 const WhiteSpaceRegExp = /^\s+$/;
 
-const LINE_END_CHAR = "\n";
+const EOL_CHAR = "\n";
 const LEFT_ROUND_BRACKET_CHAR = "(";
 const RIGHT_ROUND_BRACKET_CHAR = ")";
 const LEFT_SQUARE_BRACKET_CHAR = "[";
@@ -74,7 +75,7 @@ const DIGIT_CHARS = "0123456789";
 const HEX_DIGIT_CHARS = DIGIT_CHARS + "ABCDEF" + "abcdef";
 
 const CharToTokenTypeMap: Readonly<Map<string, TokenType>> = Object.freeze(new Map([
-    [LINE_END_CHAR, TokenType.LINE_END],
+    [EOL_CHAR, TokenType.EOL],
     [LEFT_ROUND_BRACKET_CHAR, TokenType.LEFT_ROUND_BRACKET],
     [RIGHT_ROUND_BRACKET_CHAR, TokenType.RIGHT_ROUND_BRACKET],
     [LEFT_SQUARE_BRACKET_CHAR, TokenType.LEFT_SQUARE_BRACKET],
@@ -122,7 +123,7 @@ export class Scanner {
     #skipWhitespaces(): void {
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
-            if (ch.match(WhiteSpaceRegExp) && ch !== LINE_END_CHAR) {
+            if (ch.match(WhiteSpaceRegExp) && ch !== EOL_CHAR) {
                 continue;
             }
             this.#reader.back();
@@ -139,7 +140,7 @@ export class Scanner {
             return;
         }
         while (this.#reader.hasNext()) {
-            if (this.#reader.next() === LINE_END_CHAR) {
+            if (this.#reader.next() === EOL_CHAR) {
                 this.#reader.back();
                 return;
             }
@@ -148,7 +149,7 @@ export class Scanner {
 
     scan(): Result<boolean,string> {
 
-        if (this.#token?.tokenType === TokenType.LINE_END) {
+        if (this.#token?.tokenType === TokenType.EOL) {
             this.#row++;
             this.#linestart = this.#reader.len();
         }
@@ -159,11 +160,12 @@ export class Scanner {
 
         if (!this.#reader.hasNext()) {
             this.#col = this.#reader.pos() - this.#linestart;
+            this.#token = new Token(TokenType.EOF, "", this.#col, this.#row);
             return Result.ok(false);
         }
 
         let ch = this.#reader.next();
-        let tokenType = TokenType.LINE_END;
+        let tokenType = TokenType.EOL;
 
         if (CharToTokenTypeMap.has(ch)) {
             tokenType = CharToTokenTypeMap.get(ch)!;

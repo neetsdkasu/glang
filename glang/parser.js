@@ -700,10 +700,10 @@ export class Parser {
             return this.#getScanError();
         }
         if (!this.#isNoMoreTokens()) {
-            const lineEndToken = this.#getScanToken();
+            const eolToken = this.#getScanToken();
             // src.push(endToken);
-            if (lineEndToken.tokenType !== TokenType.LINE_END) {
-                return syntaxError("不正な文字です.", lineEndToken);
+            if (eolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字です.", eolToken);
             }
         }
         const varInfo = this.#env.addName(dimToken, arrName, vtype);
@@ -804,9 +804,9 @@ export class Parser {
         if (!this.#scan("対となる`end sub`が必要です.")) {
             return this.#getScanError();
         }
-        const lineEndToken = this.#getScanToken();
-        if (lineEndToken.tokenType !== TokenType.LINE_END) {
-            return syntaxError("不正な文字です.", lineEndToken);
+        const eolToken = this.#getScanToken();
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字です.", eolToken);
         }
         const retArg = new FuncRetArg(C.Vtype.VOID, argTypes);
         const res = this.#env.addUserFunc(src[0], subName, retArg, true, argNames);
