@@ -129,6 +129,9 @@ class FuncRetArg {
         }
         return Result.ok(hasInfer);
     }
+    toString() {
+        return `FuncRetArg{ ret: ${C.Vtype[this.ret]}, args: [${this.args.map(t => C.Vtype[t])}] }`;
+    }
 }
 ;
 /**
@@ -205,16 +208,25 @@ class FuncInfo {
     varId;
     definition;
     argNames;
-    constructor(src, name, retArg, varId, definition, argNames) {
+    outerBlockId;
+    innerBlockId;
+    constructor(src, name, retArg, varId, definition) {
         this.src = src;
         this.name = name;
         this.retArg = retArg;
         this.varId = varId;
-        this.definition = definition;
-        if ((definition && (argNames === undefined)) || (!definition && (argNames !== undefined))) {
-            throw new Error("BUG");
+        if (definition === undefined) {
+            this.definition = false;
+            this.argNames = undefined;
+            this.outerBlockId = undefined;
+            this.innerBlockId = undefined;
         }
-        this.argNames = argNames;
+        else {
+            this.definition = true;
+            this.argNames = definition.argNames;
+            this.outerBlockId = definition.outerBlockId;
+            this.innerBlockId = definition.innerBlockId;
+        }
     }
     validate(other) {
         if (this.varId !== other.varId || this.name !== other.name) {
@@ -232,7 +244,7 @@ class FuncInfo {
         return cal.retArg.checkConsistencyWith(def.retArg);
     }
     toString() {
-        return `FuncInfo{ src: ${this.src}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition} }`;
+        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
 class Env {
@@ -268,8 +280,10 @@ class Env {
     push(blockSrc) {
         log.info("new block");
         log.dump("block src", Token.lineToString, blockSrc ?? []);
-        this.#nameMapStack.push(new NameMap(this.#newBlockId(), blockSrc));
+        const blockId = this.#newBlockId();
+        this.#nameMapStack.push(new NameMap(blockId, blockSrc));
         this.#codeBodyStack.push([]);
+        return blockId;
     }
     /**
      * 最深ブロックを取り除きます.
@@ -408,7 +422,10 @@ class Env {
             const dup = this.#uniqueNameMap.get(name);
             return syntaxError(`ユーザ関数名との名前の重複はできません(シャドーイングはできない仕様です)."${name}"`, dup);
         }
-        if (definition && argNames !== undefined) {
+        if (definition) {
+            if (argNames === undefined) {
+                throw new Error("BUG");
+            }
             if (retArg.args.length !== argNames.length) {
                 throw new Error("BUG");
             }
@@ -421,8 +438,8 @@ class Env {
                 if (StdFuncWordMap.has(argName)) {
                     return syntaxError(`仮引数名に標準関数名は使用できません. "${argName}"`, src);
                 }
-                if (this.hasName(argName)) {
-                    return syntaxError(`仮引数名にグローバル変数名は使用できません. "${argName}"`, src);
+                if (this.hasName(argName) || argName === name) {
+                    return syntaxError(`仮引数名にグローバル変数名やユーザ関数名は使用できません. "${argName}"`, src);
                 }
                 if (dup.has(argName)) {
                     return syntaxError(`仮引数名が重複しています. "${argName}"`, src);
@@ -445,7 +462,25 @@ class Env {
             varId = this.#newVarId();
             this.#nameMapStack.at(0).set(src, name, vtype, varId);
         }
-        const funcInfo = new FuncInfo(src, name, retArg, varId, definition, argNames);
+        let argNameAndBlockIds = undefined;
+        if (definition) {
+            const outerBlockId = this.push(src);
+            const args = [];
+            for (let i = 0; i < argNames.length; i++) {
+                const argRes = this.addName(src, argNames[i], retArg.args[i]);
+                if (argRes.isErr) {
+                    return Result.err(argRes.error);
+                }
+                args.push(argRes.result);
+            }
+            const innerBlockId = this.push(src);
+            argNameAndBlockIds = {
+                argNames: args,
+                outerBlockId: outerBlockId,
+                innerBlockId: innerBlockId
+            };
+        }
+        const funcInfo = new FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
         const funcList = this.#userFuncMap.get(name);
         if (funcList) {
             let defined = false;
@@ -654,7 +689,7 @@ export class Parser {
         if (line.len > 1) {
             return syntaxError("不正な文字です.", line.front);
         }
-        const varInfo = this.#env.addName(dimToken, arrName, vtype);
+        const varInfo = this.#env.addName(src, arrName, vtype);
         if (varInfo.isErr) {
             return Result.err(varInfo.error);
         }
@@ -740,15 +775,11 @@ export class Parser {
             return syntaxError("不正な文字です.", eolToken);
         }
         const retArg = new FuncRetArg(C.Vtype.VOID, argTypes);
-        const res = this.#env.addUserFunc(src[0], subName, retArg, true, argNames);
+        const res = this.#env.addUserFunc(src, subName, retArg, true, argNames);
         if (res.isErr) {
             return Result.err(res.error);
         }
-        this.#env.push(src);
-        for (let i = 0; i < argNames.length; i++) {
-            this.#env.addName(src[0], argNames[i], argTypes[i]);
-        }
-        this.#env.push(src);
+        log.dump("func info", res.result);
         log.dump("src", Token.lineToString, src);
         log.info("parsed sub.");
         return Result.ok(undefined);

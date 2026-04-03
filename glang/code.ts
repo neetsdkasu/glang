@@ -38,13 +38,13 @@ export enum Vtype {
 }
 
 export class NameInfo {
-    readonly src: Token;
+    readonly src: Token[];
     readonly name: string;
     readonly vtype: Vtype;
     readonly varId: number;
     readonly blockId: number;
     readonly blockVarId: number;
-    constructor(src: Token, name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
+    constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
         this.src = src;
         this.name = name;
         this.vtype = vtype;
