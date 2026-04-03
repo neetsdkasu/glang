@@ -83,6 +83,14 @@ export class RQueue<T> {
             return this.#items[this.#front].value;
         }
     }
+
+    static wrap<T>(items: T[]): RQueue<T> {
+        const rq = new RQueue<T>(items.length);
+        for (const item of items) {
+            rq.enqueue(item);
+        }
+        return rq;
+    }
 }
 
 export default RQueue;

@@ -75,5 +75,12 @@ export class RQueue {
             return this.#items[this.#front].value;
         }
     }
+    static wrap(items) {
+        const rq = new RQueue(items.length);
+        for (const item of items) {
+            rq.enqueue(item);
+        }
+        return rq;
+    }
 }
 export default RQueue;

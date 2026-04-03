@@ -3,6 +3,7 @@
 //
 import Logger, { LogLevel } from "logger";
 const log = new Logger("parser", LogLevel.ALL);
+import RQueue from "rqueue";
 import { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
 import * as C from "code";
@@ -479,87 +480,61 @@ class Env {
 export class Parser {
     #scanner;
     #env = new Env();
-    #scanError = undefined; // #scanのエラー保持.
-    #scanToken = undefined; // #scanのトークン保持.
-    #noMoreTokens = false; // #scanでソースコード終端到達.
     constructor(scanner) {
         this.#scanner = scanner;
     }
     /**
-     * #scanner.scan()の呼び出し代行します.
-     * エラーの場合#scanErrorにエラーを設定します.
-     * 引数msgを受け取った場合、ソースコード終端到達をエラー扱いにし、msgをエラーメッセージとします.
-     * ソースコード終端末尾到達で#noMoreTokensをtrueに設定します.
-     *
-     * @param msg
-     * @returns trueならエラー発生なし, falseならエラー発生あり.
+     * 一行分トークンを読み込む.
+     * @returns 1個以上のトークンを含むことが保証されるRQueue.末尾のトークンはEOLかEOF.
      */
-    #scan(msg) {
-        const res = this.#scanner.scan();
-        this.#scanToken = this.#scanner.token;
-        if (res.isErr) {
-            this.#scanError = Result.err(res.error);
-            return false;
-        }
-        else if (!res.result) {
-            this.#noMoreTokens = true;
-            if (msg !== undefined) {
-                this.#scanError = syntaxError(msg, this.#scanner);
-                return false;
+    #scanLine() {
+        const line = [];
+        while (true) {
+            const res = this.#scanner.scan();
+            if (res.isErr) {
+                return Result.err(res.error);
+            }
+            const token = this.#scanner.token;
+            line.push(token);
+            if (!res.result || token.tokenType === TokenType.EOL || token.tokenType === TokenType.EOF) {
+                break;
             }
         }
-        else {
-            this.#scanError = undefined;
-        }
-        return true;
-    }
-    #getScanToken() {
-        if (this.#scanToken) {
-            return this.#scanToken;
-        }
-        else {
-            throw new Error("BUG: 不正な呼び出し.");
-        }
-    }
-    #getScanError() {
-        if (this.#scanError) {
-            return Result.err(this.#scanError?.error);
-        }
-        else {
-            throw new Error("BUG: 不正な呼び出し.");
-        }
-    }
-    #isNoMoreTokens() {
-        return this.#noMoreTokens;
+        return Result.ok(RQueue.wrap(line));
     }
     parse() {
         this.#env.reset();
         this.#env.push(null);
         while (true) {
-            if (!this.#scan()) {
-                return this.#getScanError();
+            const lineRes = this.#scanLine();
+            if (lineRes.isErr) {
+                return Result.err(lineRes.error);
             }
-            if (this.#isNoMoreTokens()) {
+            const line = lineRes.result;
+            const cmdToken = line.front;
+            log.dump("cmdToken", cmdToken);
+            if (cmdToken.tokenType === TokenType.EOF) {
                 break;
             }
-            const cmdToken = this.#getScanToken();
-            log.dump("cmdToken", cmdToken);
+            if (cmdToken.tokenType === TokenType.EOL) {
+                continue;
+            }
             if (cmdToken.tokenType !== TokenType.WORD) {
                 return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
             }
             let res;
             switch (cmdToken.value.toLowerCase()) {
                 case "dim":
-                    res = this.#parseDim(cmdToken);
+                    res = this.#parseDim(line);
                     break;
                 case "let":
-                    res = this.#parseLet(cmdToken);
+                    res = this.#parseLet(line);
                     break;
                 case "sub":
-                    res = this.#parseSub(cmdToken);
+                    res = this.#parseSub(line);
                     break;
                 default:
-                    throw new Unimplemented(cmdToken);
+                    throw new Unimplemented(line);
             }
             if (res.isErr) {
                 return Result.err(res.error);
@@ -580,37 +555,26 @@ export class Parser {
         log.info("done");
         return Result.ok(code.result.body);
     }
-    #parseDim(dimToken) {
+    #parseDim(line) {
+        const dimToken = line.dequeue();
         const src = [dimToken];
         log.info("parse dim...");
-        if (!this.#scan("配列名を指定してください.")) {
-            return this.#getScanError();
-        }
-        const arrNameToken = this.#getScanToken();
+        const arrNameToken = line.dequeue();
         src.push(arrNameToken);
         const arrName = arrNameToken.value.toLowerCase();
         log.dump("arrName", arrName);
         if (arrNameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("この位置では配列名以外は不正です.", arrNameToken);
+            return syntaxError("配列名が必要です.", arrNameToken);
         }
-        if (!this.#scan("配列の次元指定を開始するための開き丸括弧が必要です.")) {
-            return this.#getScanError();
-        }
-        const lbrToken = this.#getScanToken();
+        const lbrToken = line.dequeue();
         src.push(lbrToken);
         if (lbrToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("この位置では配列の次元指定を開始するための開き丸括弧以外は不正です.", this.#scanner);
+            return syntaxError("配列の次元サイズ指定を開始するための開き丸括弧が必要です.", lbrToken);
         }
         let dims = [];
         let dm = 1;
-        while (true) {
-            if (!this.#scan()) {
-                return this.#getScanError();
-            }
-            if (this.#isNoMoreTokens()) {
-                break;
-            }
-            const sizeToken = this.#getScanToken();
+        while (line.len) {
+            const sizeToken = line.dequeue();
             src.push(sizeToken);
             switch (sizeToken.tokenType) {
                 case TokenType.INTEGER:
@@ -632,12 +596,9 @@ export class Parser {
                     dims.push(d);
                     break;
                 default:
-                    return syntaxError("この位置では正の整数リテラルによる次元サイズ以外は不正です.", sizeToken);
+                    return syntaxError("正の整数リテラルによる次元サイズ指定が必要です.", sizeToken);
             }
-            if (!this.#scan("閉じ丸括弧またはカンマが必要です.")) {
-                return this.#getScanError();
-            }
-            const symToken = this.#getScanToken();
+            const symToken = line.dequeue();
             src.push(symToken);
             if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 break;
@@ -648,22 +609,16 @@ export class Parser {
                 }
             }
             else {
-                return syntaxError("この位置では閉じ丸括弧とカンマ以外は不正です.", symToken);
+                return syntaxError("閉じ丸括弧またはカンマが必要です.", symToken);
             }
         }
         log.dump("dims", dims);
-        if (!this.#scan("キーワード`as`が必要です.")) {
-            return this.#getScanError();
-        }
-        const asToken = this.#getScanToken();
+        const asToken = line.dequeue();
         src.push(asToken);
         if (asToken.value.toLowerCase() !== "as") {
-            return syntaxError("この位置ではキーワード`as`以外は不正です.", asToken);
+            return syntaxError("キーワード`as`が必要です.", asToken);
         }
-        if (!this.#scan("型名(boolean/float/integer/string)が必要です")) {
-            return this.#getScanError();
-        }
-        const typeToken = this.#getScanToken();
+        const typeToken = line.dequeue();
         src.push(typeToken);
         log.dump("type", typeToken.value);
         let vtype;
@@ -681,7 +636,7 @@ export class Parser {
                 vtype = C.Vtype.STRING;
                 break;
             default:
-                return syntaxError("この位置では型名(boolean/float/integer/string)以外は不正です.", typeToken);
+                return syntaxError("型名(boolean/float/integer/string)が必要です.", typeToken);
         }
         switch (dims.length) {
             case 1:
@@ -696,15 +651,8 @@ export class Parser {
             default:
                 throw new Error("BUG");
         }
-        if (!this.#scan()) {
-            return this.#getScanError();
-        }
-        if (!this.#isNoMoreTokens()) {
-            const eolToken = this.#getScanToken();
-            // src.push(endToken);
-            if (eolToken.tokenType !== TokenType.EOL) {
-                return syntaxError("不正な文字です.", eolToken);
-            }
+        if (line.len > 1) {
+            return syntaxError("不正な文字です.", line.front);
         }
         const varInfo = this.#env.addName(dimToken, arrName, vtype);
         if (varInfo.isErr) {
@@ -716,60 +664,46 @@ export class Parser {
         log.info("parsed dim.");
         return Result.ok(undefined);
     }
-    #parseSub(subToken) {
+    #parseSub(line) {
+        const subToken = line.dequeue();
         const src = [subToken];
         log.info("parse sub...");
         if (!this.#env.isToplevel) {
             return syntaxError("`sub`はトップレベルでのみ使用できます.", subToken);
         }
-        if (!this.#scan("ユーザ関数名が必要です.")) {
-            return this.#getScanError();
-        }
-        const subNameToken = this.#getScanToken();
+        const subNameToken = line.dequeue();
         src.push(subNameToken);
         log.dump("subName", subNameToken.value);
         if (subNameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("この位置ではユーザ関数名以外は不正です.", subNameToken);
+            return syntaxError("ユーザ関数名が必要です.", subNameToken);
         }
         const subName = subNameToken.value.toLowerCase();
-        if (!this.#scan("開き丸括弧が必要です.")) {
-            return this.#getScanError();
-        }
-        const lrbToken = this.#getScanToken();
+        const lrbToken = line.dequeue();
         src.push(lrbToken);
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("この位置では開き丸括弧以外は不正です.", lrbToken);
+            return syntaxError("仮引数定義のための開き丸括弧が必要です.", lrbToken);
         }
         let argTypes = [];
         let argNames = [];
-        while (true) {
-            if (!this.#scan((argTypes.length == ~0 ? "閉じ括弧または" : "") + "引数リストが必要です.")) {
-                return this.#getScanError();
-            }
-            const argNameToken = this.#getScanToken();
+        while (line.len) {
+            const argNameToken = line.dequeue();
             src.push(argNameToken);
             if (argTypes.length === 0 && argNameToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 // 引数なしの関数.
                 break;
             }
             if (argNameToken.tokenType !== TokenType.WORD) {
-                return syntaxError("この位置では仮引数名以外は不正です.", argNameToken);
+                return syntaxError((argTypes.length == ~0 ? "閉じ括弧または" : "") + "仮引数定義が必要です.", argNameToken);
             }
             const argName = argNameToken.value.toLowerCase();
             argNames.push(argName);
             log.dump(`argName[${argNames.length}]`, argName);
-            if (!this.#scan("キーワード`as`が必要です.")) {
-                return this.#getScanError();
-            }
-            const asToken = this.#getScanToken();
+            const asToken = line.dequeue();
             src.push(asToken);
             if (asToken.value.toLowerCase() !== "as") {
-                return syntaxError("この位置ではキーワード`as`以外は不正です.", asToken);
+                return syntaxError("キーワード`as`が必要です.", asToken);
             }
-            if (!this.#scan("仮引数の型名(boolean/float/integer/string)が必要です.")) {
-                return this.#getScanError();
-            }
-            const argTypeToken = this.#getScanToken();
+            const argTypeToken = line.dequeue();
             src.push(argTypeToken);
             const argType = argTypeToken.value.toLowerCase();
             switch (argType) {
@@ -786,25 +720,22 @@ export class Parser {
                     argTypes.push(C.Vtype.STRING);
                     break;
                 default:
-                    return syntaxError("この位置では型名(boolean/float/integer/string)以外は不正です.", argTypeToken);
+                    return syntaxError("型名(boolean/float/integer/string)が必要です.", argTypeToken);
             }
             log.dump(`argType[${argTypes.length}]`, argType);
-            if (!this.#scan("カンマまたは閉じ丸括弧が必要です.")) {
-                return this.#getScanError();
-            }
-            const symToken = this.#getScanToken();
+            const symToken = line.dequeue();
             src.push(symToken);
             if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 break;
             }
             if (symToken.tokenType !== TokenType.COMMA) {
-                return syntaxError("この位置ではカンマまたは閉じ丸括弧以外は不正です.", symToken);
+                return syntaxError("カンマまたは閉じ丸括弧が必要です.", symToken);
             }
         }
-        if (!this.#scan("対となる`end sub`が必要です.")) {
-            return this.#getScanError();
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("対となる`end sub`が必要です.", eolToken);
         }
-        const eolToken = this.#getScanToken();
         if (eolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字です.", eolToken);
         }
@@ -822,7 +753,7 @@ export class Parser {
         log.info("parsed sub.");
         return Result.ok(undefined);
     }
-    #parseLet(letToken) {
+    #parseLet(line) {
         log.info("parse let...");
         throw new Unimplemented(this.#scanner);
     }
