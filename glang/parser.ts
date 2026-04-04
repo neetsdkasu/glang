@@ -91,73 +91,26 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "main"
 ]));
 
-class FuncRetArg {
-    readonly ret: C.Vtype;
-    readonly args: C.Vtype[];
-
-    constructor(ret: C.Vtype, args: C.Vtype[]) {
-        this.ret = ret;
-        this.args = args;
-    }
-
-    /**
-     * ユーザ定義関数(func/sub)の整合性チェック
-     * 関数呼び出し側(this側)の戻り値の型や引数の数と型を定義(def側)どおりか確認する
-     * 呼び出し側は標準関数との関係であいまいさ(INFER)で型が未決定を含む場合がある
-     * 
-     * @param def: 関数定義のほう
-     * @returns ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
-     */
-    checkConsistencyWith(def: FuncRetArg): Result<boolean,string> {
-        let hasInfer = false;
-        if (this.ret & C.Vtype.INFER) {
-            hasInfer = true;
-            if ((this.ret & def.ret) !== def.ret) {
-                return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
-            }
-        } else if (this.ret !== def.ret) {
-            return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
-        }
-        if (this.args.length !== def.args.length) {
-            return Result.err(`引数の数が不一致 (this: ${this.args.length}, def: ${def.args.length})`);
-        }
-        for (let i = 0; i < this.args.length; i++) {
-            const ta = this.args[i];
-            const da = def.args[i];
-            if (ta & C.Vtype.INFER) {
-                hasInfer = true;
-                if ((ta & da) !== da) {
-                    return Result.err(`${i+1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
-                }
-            } else if (ta !== da) {
-                return Result.err(`${i+1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
-            }
-        }
-        return Result.ok(hasInfer);
-    }
-
-    toString(): string {
-        return `FuncRetArg{ ret: ${C.Vtype[this.ret]}, args: [${this.args.map(t => C.Vtype[t])}] }`;
-    }
-};
 
 /**
  * 標準関数
  */
-const StdFuncWordMap: Readonly<Map<string,FuncRetArg>> = Object.freeze(new Map([
-    ["cbool", new FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
-    ["cfloat", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
-    ["cint", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
-    ["cstr", new FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
-    ["abs", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["sign", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["cos", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["sin", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["tan", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["pow", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["sqrt", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["floor", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
-    ["ceil", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
+const StdFuncWordMap: Readonly<Map<string,C.FuncRetArg>> = Object.freeze(new Map([
+    ["cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
+    ["cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
+    ["cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
+    ["cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
+    ["abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER])],
+    ["min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER])],
+    ["cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sin", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["floor", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
+    ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
 ]));
 
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
@@ -219,61 +172,12 @@ class NameMap {
 }
 
 
-class FuncInfo {
-    readonly src: Token[];
-    readonly name: string;
-    readonly retArg: FuncRetArg;
-    readonly varId: number;
-    readonly definition: boolean;
-    readonly argNames: C.NameInfo[] | undefined;
-    readonly outerBlockId: number | undefined;
-    readonly innerBlockId: number | undefined;
-
-    constructor(src: Token[], name: string, retArg: FuncRetArg, varId: number, definition?: { argNames: C.NameInfo[], outerBlockId: number, innerBlockId: number } | undefined) {
-        this.src = src;
-        this.name = name;
-        this.retArg = retArg;
-        this.varId = varId;
-        if (definition === undefined) {
-            this.definition = false;
-            this.argNames = undefined;
-            this.outerBlockId = undefined;
-            this.innerBlockId = undefined;
-        } else {
-            this.definition = true;
-            this.argNames = definition.argNames;
-            this.outerBlockId = definition.outerBlockId;
-            this.innerBlockId = definition.innerBlockId;
-        }
-    }
-
-    validate(other: FuncInfo): Result<boolean,string> {
-        if (this.varId !== other.varId || this.name !== other.name) {
-            log.error("this", this);
-            log.error("other", other);
-            throw new Error("BUG: unmatch varId or name");
-        }
-        if (this.definition === other.definition) {
-            log.error("this", this);
-            log.error("other", other);
-            throw new Error("BUG: require this.definition !== other.definition");
-        }
-        const def = this.definition ? this : other; // 定義側
-        const cal = this.definition ? other : this; // 呼び出し側
-        return cal.retArg.checkConsistencyWith(def.retArg);
-    }
-
-    toString(): string {
-        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
-    }
-}
-
 class Env {
     #nameMapStack: NameMap[] = []; // ブロックネストの各ブロックに束縛される名前を管理します(トップレベルのブロックにはユーザ関数名も配置します).
     #codeBodyStack: C.Code[][] = []; // ブロックネストの各ブロックに置かれるコードリストを管理します.
     #totalBlockCount: number = 0; // ユニークなブロックIDを生成するために使用します.
     #totalVarCount: number = 0; // ユニークな変数IDを生成するために使用します.
-    #userFuncMap: Map<string,FuncInfo[]> = new Map(); // ユーザ関数の情報を管理します.
+    #userFuncMap: Map<string,C.FuncInfo[]> = new Map(); // ユーザ関数の情報を管理します.
     #uniqueNameMap: Map<string,Token[]> = new Map(); // ユーザ関数名と同名の変数が関数定義前に指定されていることを検出する目的に使用されます.
 
     constructor() {}
@@ -416,7 +320,7 @@ class Env {
      * @param name 
      * @returns 
      */
-    findUserFunc(name: string): readonly FuncInfo[] | undefined {
+    findUserFunc(name: string): readonly C.FuncInfo[] | undefined {
         name = name.toLowerCase();
         return this.#userFuncMap.get(name);
     }
@@ -432,13 +336,13 @@ class Env {
      * @param argNames 仮引数名のリスト.関数定義の場合は必須.関数呼び出しの場合は省略またｈundefinedを渡す必要があります.
      * @returns 
      */
-    addUserFunc(src: Token[], name: string, retArg: FuncRetArg, definition: boolean, argNames?: string[] | undefined): Result<FuncInfo,string> {
+    addUserFunc(src: Token[], name: string, retArg: C.FuncRetArg, definition: boolean, argNames?: string[] | undefined): Result<C.FuncInfo,string> {
         log.info("add func");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
             if (name !== "main") {
                 return syntaxError(`ユーザ関数名に予約語は使用できません. "${name}"`, src);
-            } else if (retArg.checkConsistencyWith(new FuncRetArg(C.Vtype.VOID, [])).isErr) {
+            } else if (retArg.checkConsistencyWith(new C.FuncRetArg(C.Vtype.VOID, [])).isErr) {
                 if (definition) {
                     return syntaxError("main関数は`sub main()`で定義される必要があります.", src);
                 } else {
@@ -510,7 +414,7 @@ class Env {
                 innerBlockId: innerBlockId
             };
         }
-        const funcInfo = new FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
+        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
         const funcList = this.#userFuncMap.get(name);
         if (funcList) {
             let defined = false;
@@ -866,7 +770,7 @@ export class Parser {
             return syntaxError("不正な文字です.", eolToken);
         }
 
-        const retArg = new FuncRetArg(C.Vtype.VOID, argTypes);
+        const retArg = new C.FuncRetArg(C.Vtype.VOID, argTypes);
 
         const res = this.#env.addUserFunc(src, subName, retArg, true, argNames);
         if (res.isErr) {

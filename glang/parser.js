@@ -85,72 +85,25 @@ const ReservedWordSet = Object.freeze(new Set([
     "object",
     "main"
 ]));
-class FuncRetArg {
-    ret;
-    args;
-    constructor(ret, args) {
-        this.ret = ret;
-        this.args = args;
-    }
-    /**
-     * ユーザ定義関数(func/sub)の整合性チェック
-     * 関数呼び出し側(this側)の戻り値の型や引数の数と型を定義(def側)どおりか確認する
-     * 呼び出し側は標準関数との関係であいまいさ(INFER)で型が未決定を含む場合がある
-     *
-     * @param def: 関数定義のほう
-     * @returns ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
-     */
-    checkConsistencyWith(def) {
-        let hasInfer = false;
-        if (this.ret & C.Vtype.INFER) {
-            hasInfer = true;
-            if ((this.ret & def.ret) !== def.ret) {
-                return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
-            }
-        }
-        else if (this.ret !== def.ret) {
-            return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
-        }
-        if (this.args.length !== def.args.length) {
-            return Result.err(`引数の数が不一致 (this: ${this.args.length}, def: ${def.args.length})`);
-        }
-        for (let i = 0; i < this.args.length; i++) {
-            const ta = this.args[i];
-            const da = def.args[i];
-            if (ta & C.Vtype.INFER) {
-                hasInfer = true;
-                if ((ta & da) !== da) {
-                    return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
-                }
-            }
-            else if (ta !== da) {
-                return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
-            }
-        }
-        return Result.ok(hasInfer);
-    }
-    toString() {
-        return `FuncRetArg{ ret: ${C.Vtype[this.ret]}, args: [${this.args.map(t => C.Vtype[t])}] }`;
-    }
-}
-;
 /**
  * 標準関数
  */
 const StdFuncWordMap = Object.freeze(new Map([
-    ["cbool", new FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
-    ["cfloat", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
-    ["cint", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
-    ["cstr", new FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
-    ["abs", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["sign", new FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["cos", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["sin", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["tan", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["pow", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["sqrt", new FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["floor", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
-    ["ceil", new FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])]
+    ["cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
+    ["cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
+    ["cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
+    ["cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
+    ["abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
+    ["max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])],
+    ["min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])],
+    ["cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sin", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["floor", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
+    ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])]
 ]));
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
 const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
@@ -199,52 +152,6 @@ class NameMap {
     }
     get(name) {
         return this.#map.get(name);
-    }
-}
-class FuncInfo {
-    src;
-    name;
-    retArg;
-    varId;
-    definition;
-    argNames;
-    outerBlockId;
-    innerBlockId;
-    constructor(src, name, retArg, varId, definition) {
-        this.src = src;
-        this.name = name;
-        this.retArg = retArg;
-        this.varId = varId;
-        if (definition === undefined) {
-            this.definition = false;
-            this.argNames = undefined;
-            this.outerBlockId = undefined;
-            this.innerBlockId = undefined;
-        }
-        else {
-            this.definition = true;
-            this.argNames = definition.argNames;
-            this.outerBlockId = definition.outerBlockId;
-            this.innerBlockId = definition.innerBlockId;
-        }
-    }
-    validate(other) {
-        if (this.varId !== other.varId || this.name !== other.name) {
-            log.error("this", this);
-            log.error("other", other);
-            throw new Error("BUG: unmatch varId or name");
-        }
-        if (this.definition === other.definition) {
-            log.error("this", this);
-            log.error("other", other);
-            throw new Error("BUG: require this.definition !== other.definition");
-        }
-        const def = this.definition ? this : other; // 定義側
-        const cal = this.definition ? other : this; // 呼び出し側
-        return cal.retArg.checkConsistencyWith(def.retArg);
-    }
-    toString() {
-        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
 class Env {
@@ -406,7 +313,7 @@ class Env {
             if (name !== "main") {
                 return syntaxError(`ユーザ関数名に予約語は使用できません. "${name}"`, src);
             }
-            else if (retArg.checkConsistencyWith(new FuncRetArg(C.Vtype.VOID, [])).isErr) {
+            else if (retArg.checkConsistencyWith(new C.FuncRetArg(C.Vtype.VOID, [])).isErr) {
                 if (definition) {
                     return syntaxError("main関数は`sub main()`で定義される必要があります.", src);
                 }
@@ -480,7 +387,7 @@ class Env {
                 innerBlockId: innerBlockId
             };
         }
-        const funcInfo = new FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
+        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
         const funcList = this.#userFuncMap.get(name);
         if (funcList) {
             let defined = false;
@@ -774,7 +681,7 @@ export class Parser {
         if (eolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字です.", eolToken);
         }
-        const retArg = new FuncRetArg(C.Vtype.VOID, argTypes);
+        const retArg = new C.FuncRetArg(C.Vtype.VOID, argTypes);
         const res = this.#env.addUserFunc(src, subName, retArg, true, argNames);
         if (res.isErr) {
             return Result.err(res.error);

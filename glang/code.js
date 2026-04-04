@@ -1,6 +1,10 @@
 //
 // Code
 // 
+import Logger, { LogLevel } from "logger";
+const log = new Logger("code", LogLevel.ALL);
+import { Token } from "scanner";
+import { Result } from "utils";
 export var Vtype;
 (function (Vtype) {
     Vtype[Vtype["NONE"] = 0] = "NONE";
@@ -48,6 +52,100 @@ export class NameInfo {
         this.varId = varId;
         this.blockId = blockId;
         this.blockVarId = blockVarId;
+    }
+}
+export class FuncRetArg {
+    ret;
+    args;
+    constructor(ret, args) {
+        this.ret = ret;
+        this.args = args;
+    }
+    /**
+     * ユーザ定義関数(func/sub)の整合性チェック
+     * 関数呼び出し側(this側)の戻り値の型や引数の数と型を定義(def側)どおりか確認する
+     * 呼び出し側は標準関数との関係であいまいさ(INFER)で型が未決定を含む場合がある
+     *
+     * @param def: 関数定義のほう
+     * @returns ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
+     */
+    checkConsistencyWith(def) {
+        let hasInfer = false;
+        if (this.ret & Vtype.INFER) {
+            hasInfer = true;
+            if ((this.ret & def.ret) !== def.ret) {
+                return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+            }
+        }
+        else if (this.ret !== def.ret) {
+            return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+        }
+        if (this.args.length !== def.args.length) {
+            return Result.err(`引数の数が不一致 (this: ${this.args.length}, def: ${def.args.length})`);
+        }
+        for (let i = 0; i < this.args.length; i++) {
+            const ta = this.args[i];
+            const da = def.args[i];
+            if (ta & Vtype.INFER) {
+                hasInfer = true;
+                if ((ta & da) !== da) {
+                    return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+                }
+            }
+            else if (ta !== da) {
+                return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+            }
+        }
+        return Result.ok(hasInfer);
+    }
+    toString() {
+        return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [${this.args.map(t => Vtype[t])}] }`;
+    }
+}
+export class FuncInfo {
+    src;
+    name;
+    retArg;
+    varId;
+    definition;
+    argNames;
+    outerBlockId;
+    innerBlockId;
+    constructor(src, name, retArg, varId, definition) {
+        this.src = src;
+        this.name = name;
+        this.retArg = retArg;
+        this.varId = varId;
+        if (definition === undefined) {
+            this.definition = false;
+            this.argNames = undefined;
+            this.outerBlockId = undefined;
+            this.innerBlockId = undefined;
+        }
+        else {
+            this.definition = true;
+            this.argNames = definition.argNames;
+            this.outerBlockId = definition.outerBlockId;
+            this.innerBlockId = definition.innerBlockId;
+        }
+    }
+    validate(other) {
+        if (this.varId !== other.varId || this.name !== other.name) {
+            log.error("this", this);
+            log.error("other", other);
+            throw new Error("BUG: unmatch varId or name");
+        }
+        if (this.definition === other.definition) {
+            log.error("this", this);
+            log.error("other", other);
+            throw new Error("BUG: require this.definition !== other.definition");
+        }
+        const def = this.definition ? this : other; // 定義側
+        const cal = this.definition ? other : this; // 呼び出し側
+        return cal.retArg.checkConsistencyWith(def.retArg);
+    }
+    toString() {
+        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
 export var CodeKind;
