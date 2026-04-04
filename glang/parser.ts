@@ -665,6 +665,9 @@ export class Parser {
         if (varInfo.isErr) {
             return Result.err(varInfo.error);
         }
+
+        log.dump("varInfo", varInfo.result);
+
         const code = new C.Dim(src, varInfo.result, dims);
         this.#env.addCode(code);
 

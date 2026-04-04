@@ -55,6 +55,10 @@ export class NameInfo {
         this.blockId = blockId;
         this.blockVarId = blockVarId;
     }
+
+    toString(): string {
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}  }`;
+    }
 }
 
 
