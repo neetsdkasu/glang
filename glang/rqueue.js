@@ -79,11 +79,11 @@ export class RQueue {
         let c = 0;
         while (c < n) {
             if (!this.recover()) {
-                return { ok: false, recoverd: c };
+                return { ok: false, recovered: c };
             }
             c++;
         }
-        return { ok: true, recoverd: c };
+        return { ok: true, recovered: c };
     }
     get len() {
         return this.#len;

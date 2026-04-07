@@ -84,15 +84,15 @@ export class RQueue<T> {
         return true;
     }
 
-    recoverN(n: number): { ok: boolean, recoverd: number } {
+    recoverN(n: number): { ok: boolean, recovered: number } {
         let c = 0;
         while (c < n) {
             if (!this.recover()) {
-                return { ok: false, recoverd: c };
+                return { ok: false, recovered: c };
             }
             c++
         }
-        return { ok: true, recoverd: c };  
+        return { ok: true, recovered: c };  
     }
 
     get len(): number {
