@@ -105,6 +105,51 @@ const StdFuncWordMap = Object.freeze(new Map([
     ["floor", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
     ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])]
 ]));
+const UnaryOpMap = Object.freeze(new Map([
+    ["+", C.Vtype.NUMBER_TYPE],
+    ["-", C.Vtype.NUMBER_TYPE],
+    ["~", C.Vtype.INTEGER],
+    ["!", C.Vtype.BOOLEAN]
+]));
+const BinaryOpMap = Object.freeze(new Map([
+    ["*", { priority: 100, vtype: C.Vtype.INFER_NUMBER }],
+    ["/", { priority: 100, vtype: C.Vtype.FLOATING_POINT }],
+    ["\\", { priority: 100, vtype: C.Vtype.INTEGER }],
+    ["%", { priority: 100, vtype: C.Vtype.INTEGER }],
+    ["+", { priority: 90, vtype: C.Vtype.INFER_CONCAT }],
+    ["-", { priority: 90, vtype: C.Vtype.INFER_NUMBER }],
+    [">>", { priority: 80, vtype: C.Vtype.INTEGER }],
+    ["<<", { priority: 80, vtype: C.Vtype.INTEGER }],
+    [">>>", { priority: 80, vtype: C.Vtype.INTEGER }],
+    ["<<<", { priority: 80, vtype: C.Vtype.INTEGER }],
+    ["&", { priority: 70, vtype: C.Vtype.INFER_LOGICAL }],
+    ["|", { priority: 60, vtype: C.Vtype.INFER_LOGICAL }],
+    ["^", { priority: 50, vtype: C.Vtype.INFER_LOGICAL }],
+    ["==", { priority: 40, vtype: C.Vtype.INFER_PRIMITIVE }],
+    ["!=", { priority: 40, vtype: C.Vtype.INFER_PRIMITIVE }],
+    [">", { priority: 40, vtype: C.Vtype.INFER_COMPARE }],
+    [">=", { priority: 40, vtype: C.Vtype.INFER_COMPARE }],
+    ["<", { priority: 40, vtype: C.Vtype.INFER_COMPARE }],
+    ["<=", { priority: 40, vtype: C.Vtype.INFER_COMPARE }],
+    ["&&", { priority: 30, vtype: C.Vtype.BOOLEAN }],
+    ["||", { priority: 20, vtype: C.Vtype.BOOLEAN }]
+]));
+const AssignOpMap = Object.freeze(new Map([
+    ["=", C.Vtype.INFER_PRIMITIVE],
+    ["+=", C.Vtype.INFER_CONCAT],
+    ["-=", C.Vtype.INFER_NUMBER],
+    ["*=", C.Vtype.INFER_NUMBER],
+    ["/=", C.Vtype.FLOATING_POINT],
+    ["\\=", C.Vtype.INTEGER],
+    ["%=", C.Vtype.INTEGER],
+    [">>=", C.Vtype.INTEGER],
+    ["<<=", C.Vtype.INTEGER],
+    [">>>=", C.Vtype.INTEGER],
+    ["<<<=", C.Vtype.INTEGER],
+    ["&=", C.Vtype.INFER_LOGICAL],
+    ["|=", C.Vtype.INFER_LOGICAL],
+    ["^=", C.Vtype.INFER_LOGICAL]
+]));
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
 const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
 log.dump("POSITIVE_INTEGER_BOUND", POSITIVE_INTEGER_BOUND);
