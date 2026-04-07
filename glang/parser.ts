@@ -811,7 +811,7 @@ export class Parser {
         }
 
 
-        const exprRes = this.#parseExpr(line, src);
+        const exprRes = this.#parseExprTokens(line, src);
         if (exprRes.isErr) {
             return Result.err(exprRes.error);
         }
@@ -843,10 +843,10 @@ export class Parser {
         return Result.ok(undefined);
     }
 
-    #parseExpr(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
+    #parseExprTokens(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
         const beforeSize = line.len;
 
-        const res = this.#parseExpToken(line);
+        const res = this.#parseExpr(line);
 
         const afterSize = line.len;
         if (!line.recoverN(beforeSize - afterSize).ok) {
@@ -861,7 +861,47 @@ export class Parser {
         return res;
     }
 
-    #parseExpToken(line: RQueue<Token>): Result<C.Expr,string> {
+    #parseExpr(line: RQueue<Token>): Result<C.Expr,string> {
+        /*
+            ops = []
+            terms = []
+            loop {
+                term = parseTerm()
+                if term == null {
+                    throw SyntaxError
+                }
+                op = read()
+                if isOp(op) {
+                    terms.push(term)
+                    while op.priority < ops.peek.priority {
+                        termR = terms.pop()
+                        termL = terms.pop()
+                        term = expr(termL, ops.pop(), termR)
+                    }
+                    ops.push(op)
+                } else if isExprEnd(op) {
+                    unread(op)
+                    break
+                } else {
+                    throw SyntaxError
+                }
+            }
+            while ops.len > 0 {
+                op = ops.pop()
+                termR = terms.pop()
+                termL = terms.pop()
+                term = expr(termL, op, termR)
+                terms.push(term)
+            }
+            return terms.pop()
+
+        */
+        
+        throw new Unimplemented(line.front);
+
+    }
+
+    #parseExprTerm(line: RQueue<Token>): Result<C.Expr,string> {
 
         const token = line.dequeue()!;
         switch (token.tokenType) {
