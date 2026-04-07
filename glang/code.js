@@ -151,10 +151,40 @@ export class FuncInfo {
         return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
+export var ExprKind;
+(function (ExprKind) {
+    ExprKind[ExprKind["LITERAL"] = 0] = "LITERAL";
+    ExprKind[ExprKind["VARIABLE"] = 1] = "VARIABLE";
+    ExprKind[ExprKind["UNARY_OP"] = 2] = "UNARY_OP";
+    ExprKind[ExprKind["BINARY_OP"] = 3] = "BINARY_OP";
+    ExprKind[ExprKind["STD_FUNC"] = 4] = "STD_FUNC";
+    ExprKind[ExprKind["USER_FUNC"] = 5] = "USER_FUNC";
+})(ExprKind || (ExprKind = {}));
+export class Expr {
+    kind;
+    vtype;
+    src;
+    constructor(kind, vtype, src) {
+        this.kind = kind;
+        this.vtype = vtype;
+        this.src = src;
+    }
+}
+export class ExprLitNum extends Expr {
+    value;
+    constructor(src, value) {
+        super(ExprKind.LITERAL, Vtype.INFER_NUMBER, src);
+        this.value = value;
+    }
+    toString() {
+        return `LitNum{ value: ${this.value} }`;
+    }
+}
 export var CodeKind;
 (function (CodeKind) {
     CodeKind[CodeKind["BLOCK"] = 0] = "BLOCK";
     CodeKind[CodeKind["DIM"] = 1] = "DIM";
+    CodeKind[CodeKind["LET"] = 2] = "LET";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -180,6 +210,15 @@ export class Dim extends Code {
         super(CodeKind.DIM, src);
         this.nameInfo = nameInfo;
         this.dims = dims;
+    }
+}
+export class Let extends Code {
+    nameInfo;
+    expr;
+    constructor(src, nameInfo, expr) {
+        super(CodeKind.LET, src);
+        this.nameInfo = nameInfo;
+        this.expr = expr;
     }
 }
 export default {};

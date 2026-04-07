@@ -141,7 +141,6 @@ function parseNumber(token: Token, negative?: boolean): Result<number,string> {
     }
 }
 
-
 class NameMap {
     readonly blockId: number;
     readonly blockSrc: Token[] | null;
@@ -511,7 +510,7 @@ export class Parser {
                     res = this.#parseSub(line);
                     break;
                 default:
-                    throw new Unimplemented(line);
+                    throw new Unimplemented(line.front);
             }
 
             if (res.isErr) {
@@ -789,9 +788,94 @@ export class Parser {
     }
 
     #parseLet(line: RQueue<Token>): Result<undefined,string> {
+        const letToken = line.dequeue()!;
+        const src: Token[] = [letToken];
+
         log.info("parse let...");
 
-        throw new Unimplemented(this.#scanner);
+        const nameToken = line.dequeue()!;
+        src.push(nameToken);
+
+        if (nameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("変数名が必要です.", nameToken);
+        }
+        const name = nameToken.value.toLowerCase();
+
+        log.dump("name", name);
+
+        const eqToken = line.dequeue()!;
+        src.push(eqToken);
+
+        if (eqToken.value !== "=") {
+            return syntaxError("記号`=`が必要です.", eqToken);
+        }
+
+
+        const exprRes = this.#parseExpr(line, src);
+        if (exprRes.isErr) {
+            return Result.err(exprRes.error);
+        }
+        const expr = exprRes.result;
+
+        log.dump("expr", expr);
+        log.dump("exprType", C.Vtype[expr.vtype]);
+
+        if (line.len > 1) {
+            return syntaxError("不正な文字です.", line.front);
+        }
+
+        const nameInfoRes = this.#env.addName(src, name, expr.vtype);
+        if (nameInfoRes.isErr) {
+            return Result.err(nameInfoRes.error);
+        }
+
+        const nameInfo = nameInfoRes.result;
+
+        log.dump("nameInfo", nameInfo);
+
+        const code = new C.Let(src, nameInfo, expr);
+
+        this.#env.addCode(code);
+
+        log.dump("src", Token.lineToString, src);
+        log.info("parsed let.");
+
+        return Result.ok(undefined);
+    }
+
+    #parseExpr(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
+        const beforeSize = line.len;
+
+        const res = this.#parseExpToken(line);
+
+        const afterSize = line.len;
+        if (!line.recoverN(beforeSize - afterSize).ok) {
+            throw new Error("BUG");
+        }
+        const tokens = line.dequeueN(beforeSize - afterSize);
+        if (!tokens.ok) {
+            throw new Error("BUG");
+        }
+        src.push(...tokens.items);
+
+        return res;
+    }
+
+    #parseExpToken(line: RQueue<Token>): Result<C.Expr,string> {
+
+        const token = line.dequeue()!;
+        switch (token.tokenType) {
+            case TokenType.INTEGER:
+                const numRes = parseNumber(token);
+                if (numRes.isErr) {
+                    return Result.err(numRes.error);
+                }
+                return Result.ok(new C.ExprLitNum(token, numRes.result));
+            default:
+                break;
+        }
+
+        throw new Unimplemented(token);
     }
 }
 

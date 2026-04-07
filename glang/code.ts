@@ -161,9 +161,47 @@ export class FuncInfo {
     }
 }
 
+export enum ExprKind {
+    LITERAL,
+    VARIABLE,
+    UNARY_OP,
+    BINARY_OP,
+    STD_FUNC,
+    USER_FUNC
+}
+
+export class Expr {
+    readonly kind: ExprKind;
+    readonly vtype: Vtype;
+    readonly src: Token;
+
+    constructor(kind: ExprKind, vtype: Vtype, src: Token) {
+        this.kind = kind;
+        this.vtype = vtype;
+        this.src = src;
+    }
+}
+
+export class ExprLitNum extends Expr {
+    readonly value: number;
+    constructor(src: Token, value: number) {
+        super(ExprKind.LITERAL, Vtype.INFER_NUMBER, src);
+        this.value = value;
+    }
+
+    toString(): string {
+        return `LitNum{ value: ${this.value} }`;
+    }
+}
+
+
+
+
+
 export enum CodeKind {
     BLOCK,
     DIM,
+    LET,
 }
 
 export class Code {
@@ -195,6 +233,17 @@ export class Dim extends Code {
         super(CodeKind.DIM, src);
         this.nameInfo = nameInfo;
         this.dims = dims;
+    }
+}
+
+export class Let extends Code {
+    readonly nameInfo: NameInfo;
+    readonly expr: Expr;
+
+    constructor(src: Token[], nameInfo: NameInfo, expr: Expr) {
+        super(CodeKind.LET, src);
+        this.nameInfo = nameInfo;
+        this.expr = expr;
     }
 }
 

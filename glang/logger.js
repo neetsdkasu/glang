@@ -36,6 +36,11 @@ export class Logger {
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
     }
+    debug(msg) {
+        if (this.#level & LogLevel.DEBUG) {
+            console.log(`[${this.name}]d: ${msg}`);
+        }
+    }
     info(msg) {
         if (this.#level & LogLevel.INFO) {
             console.log(`[${this.name}]i: ${msg}`);

@@ -49,6 +49,17 @@ export class RQueue {
         this.#len--;
         return item;
     }
+    dequeueN(n) {
+        const items = [];
+        for (let i = 0; i < n; i++) {
+            const item = this.dequeue();
+            if (item === undefined) {
+                return { ok: false, items: items };
+            }
+            items.push(item);
+        }
+        return { ok: true, items: items };
+    }
     recover() {
         const prevIndex = (this.#front + this.#items.length - 1) % this.#items.length;
         const prevVersion = this.#items[prevIndex].version;
@@ -63,6 +74,16 @@ export class RQueue {
         this.#front = prevIndex;
         this.#len++;
         return true;
+    }
+    recoverN(n) {
+        let c = 0;
+        while (c < n) {
+            if (!this.recover()) {
+                return { ok: false, recoverd: c };
+            }
+            c++;
+        }
+        return { ok: true, recoverd: c };
     }
     get len() {
         return this.#len;

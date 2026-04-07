@@ -57,6 +57,18 @@ export class RQueue<T> {
         return item;
     }
 
+    dequeueN(n: number): { ok: boolean, items: T[] } {
+        const items: T[] = [];
+        for (let i = 0; i < n; i++) {
+            const item = this.dequeue();
+            if (item === undefined) {
+                return { ok: false, items: items };
+            }
+            items.push(item);
+        }
+        return { ok: true, items: items };
+    }
+
     recover(): boolean {
         const prevIndex = (this.#front + this.#items.length - 1) % this.#items.length;
         const prevVersion = this.#items[prevIndex].version;
@@ -70,6 +82,17 @@ export class RQueue<T> {
         this.#front = prevIndex;
         this.#len++;
         return true;
+    }
+
+    recoverN(n: number): { ok: boolean, recoverd: number } {
+        let c = 0;
+        while (c < n) {
+            if (!this.recover()) {
+                return { ok: false, recoverd: c };
+            }
+            c++
+        }
+        return { ok: true, recoverd: c };  
     }
 
     get len(): number {
