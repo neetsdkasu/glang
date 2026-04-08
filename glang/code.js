@@ -44,6 +44,19 @@ export var Vtype;
     Vtype[Vtype["INFER_COMPARE"] = 1052] = "INFER_COMPARE";
     Vtype[Vtype["INFER_CONCAT"] = 1052] = "INFER_CONCAT";
 })(Vtype || (Vtype = {}));
+/**
+ * 引数のいずれかにINFERが含まれる場合は引数間で整合性のとれるVtypeを返す.
+ * 整合性のとれる型が1つに限定される場合はその型を表すVtypeを返し、2つ以上の可能性があるならそれらを組み合わせた上でINFERをつけて返す.
+ * 引数にいずれにもINFERが含まれていない場合はすべての引数が完全一致する場合においてのみその型のVtypeを返す.
+ * 上記以外の場合はエラー値を返す.
+ * INFERは標準関数か演算子にのみ存在する.
+ * @param t1
+ * @param t2
+ * @param t3
+ */
+export function inferVtype(t1, t2, t3) {
+    throw new Error("unimplemented");
+}
 export class NameInfo {
     src;
     name;
@@ -157,6 +170,16 @@ export class FuncInfo {
         return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
+export class BinaryOpInfo {
+    op;
+    priority;
+    vtype;
+    constructor(op, priority, vtype) {
+        this.op = op;
+        this.priority = priority;
+        this.vtype = vtype;
+    }
+}
 export var ExprKind;
 (function (ExprKind) {
     ExprKind[ExprKind["LITERAL"] = 0] = "LITERAL";
@@ -176,14 +199,28 @@ export class Expr {
         this.src = src;
     }
 }
-export class ExprLitNum extends Expr {
+export class ExprLitInt extends Expr {
     value;
     constructor(src, value) {
-        super(ExprKind.LITERAL, Vtype.INFER_NUMBER, src);
+        super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
     }
     toString() {
-        return `LitNum{ value: ${this.value} }`;
+        return `LitInt{ value: ${this.value} }`;
+    }
+}
+export class ExprBinOp extends Expr {
+    op;
+    termL;
+    termR;
+    constructor(src, vtype, op, termL, termR) {
+        super(ExprKind.BINARY_OP, vtype, src);
+        this.op = op;
+        this.termL = termL;
+        this.termR = termR;
+    }
+    toString() {
+        return `BinOp{ op: ${this.op}, termL: (${this.termL}), termR: (${this.termR}) }`;
     }
 }
 export var CodeKind;

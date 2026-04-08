@@ -7,6 +7,7 @@ const log = new Logger("parser", LogLevel.ALL);
 import RQueue from "rqueue";
 import Scanner, { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
+import * as U from "utils";
 import * as C from "code";
 
 /*
@@ -120,30 +121,28 @@ const UnaryOpMap: Readonly<Map<string,C.Vtype>> = Object.freeze(new Map([
     ["!", C.Vtype.BOOLEAN]
 ]));
 
-type BinaryOpRetArg = Readonly<{ priority: number, vtype: C.Vtype }>;
-
-const BinaryOpMap: Readonly<Map<string,BinaryOpRetArg>> = Object.freeze(new Map([
-    ["*", { priority: 100, vtype: C.Vtype.INFER_NUMBER}],
-    ["/", { priority: 100, vtype: C.Vtype.FLOATING_POINT}],
-    ["\\", { priority: 100, vtype: C.Vtype.INTEGER}],
-    ["%", { priority: 100, vtype: C.Vtype.INTEGER}],
-    ["+", { priority: 90, vtype: C.Vtype.INFER_CONCAT}],
-    ["-", { priority: 90, vtype: C.Vtype.INFER_NUMBER}],
-    [">>", { priority: 80, vtype: C.Vtype.INTEGER}],
-    ["<<", { priority: 80, vtype: C.Vtype.INTEGER}],
-    [">>>", { priority: 80, vtype: C.Vtype.INTEGER}],
-    ["<<<", { priority: 80,vtype: C.Vtype.INTEGER}],
-    ["&", { priority: 70, vtype: C.Vtype.INFER_LOGICAL}],
-    ["|", { priority: 60, vtype: C.Vtype.INFER_LOGICAL}],
-    ["^", { priority: 50, vtype: C.Vtype.INFER_LOGICAL}],
-    ["==", { priority: 40, vtype: C.Vtype.INFER_PRIMITIVE}],
-    ["!=", { priority: 40, vtype: C.Vtype.INFER_PRIMITIVE}],
-    [">", { priority: 40, vtype: C.Vtype.INFER_COMPARE}],
-    [">=", { priority: 40, vtype: C.Vtype.INFER_COMPARE}],
-    ["<", { priority: 40, vtype: C.Vtype.INFER_COMPARE}],
-    ["<=", { priority: 40, vtype: C.Vtype.INFER_COMPARE}],
-    ["&&", { priority: 30, vtype: C.Vtype.BOOLEAN}],
-    ["||", { priority: 20, vtype: C.Vtype.BOOLEAN}]
+const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
+    ["*", new C.BinaryOpInfo("*", 100, C.Vtype.INFER_NUMBER)],
+    ["/", new C.BinaryOpInfo("/", 100, C.Vtype.FLOATING_POINT)],
+    ["\\", new C.BinaryOpInfo("\\", 100, C.Vtype.INTEGER)],
+    ["%", new C.BinaryOpInfo("%", 100, C.Vtype.INTEGER)],
+    ["+", new C.BinaryOpInfo("+", 90, C.Vtype.INFER_CONCAT)],
+    ["-", new C.BinaryOpInfo("-", 90, C.Vtype.INFER_NUMBER)],
+    [">>", new C.BinaryOpInfo(">>", 80, C.Vtype.INTEGER)],
+    ["<<", new C.BinaryOpInfo("<<", 80, C.Vtype.INTEGER)],
+    [">>>", new C.BinaryOpInfo(">>>", 80, C.Vtype.INTEGER)],
+    ["<<<", new C.BinaryOpInfo("<<<", 80, C.Vtype.INTEGER)],
+    ["&", new C.BinaryOpInfo("&", 70, C.Vtype.INFER_LOGICAL)],
+    ["|", new C.BinaryOpInfo("|", 60, C.Vtype.INFER_LOGICAL)],
+    ["^", new C.BinaryOpInfo("^", 50, C.Vtype.INFER_LOGICAL)],
+    ["==", new C.BinaryOpInfo("==", 40, C.Vtype.INFER_PRIMITIVE)],
+    ["!=", new C.BinaryOpInfo("!=", 40, C.Vtype.INFER_PRIMITIVE)],
+    [">", new C.BinaryOpInfo(">", 40, C.Vtype.INFER_COMPARE)],
+    [">=", new C.BinaryOpInfo(">=", 40, C.Vtype.INFER_COMPARE)],
+    ["<", new C.BinaryOpInfo("<", 40, C.Vtype.INFER_COMPARE)],
+    ["<=", new C.BinaryOpInfo("<=", 40, C.Vtype.INFER_COMPARE)],
+    ["&&", new C.BinaryOpInfo("&&", 30, C.Vtype.BOOLEAN)],
+    ["||", new C.BinaryOpInfo("||", 20, C.Vtype.BOOLEAN)]
 ]));
 
 const AssignOpMap: Readonly<Map<string,C.Vtype>> = Object.freeze(new Map([
@@ -508,7 +507,7 @@ export class Parser {
      */
     #scanLine(): Result<RQueue<Token>,string> {
         const line: Token[] = [];
-        while (true)  {
+        for (;;)  {
             const res = this.#scanner.scan();
             if (res.isErr) {
                 return Result.err(res.error);
@@ -526,7 +525,7 @@ export class Parser {
         this.#env.reset();
         this.#env.push(null);
 
-        while (true) {
+        for (;;) {
             const lineRes = this.#scanLine();
             if (lineRes.isErr) {
                 return Result.err(lineRes.error);
@@ -894,61 +893,88 @@ export class Parser {
     }
 
     #parseExprTokens(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
+        log.info("parse expression...");
+
         const beforeSize = line.len;
 
         const res = this.#parseExpr(line);
 
         const afterSize = line.len;
-        if (!line.recoverN(beforeSize - afterSize).ok) {
+
+        const count = beforeSize - afterSize;
+
+        log.dump("number of expression token", count);
+
+        if (!line.recoverN(count).ok) {
             throw new Error("BUG");
         }
-        const tokens = line.dequeueN(beforeSize - afterSize);
+        const tokens = line.dequeueN(count);
         if (!tokens.ok) {
             throw new Error("BUG");
         }
         src.push(...tokens.items);
 
+        log.info("parsed expression.");
+
         return res;
     }
 
     #parseExpr(line: RQueue<Token>): Result<C.Expr,string> {
-        /*
-            ops = []
-            terms = []
-            loop {
-                term = parseTerm()
-                if term == null {
-                    throw SyntaxError
-                }
-                op = read()
-                if isOp(op) {
-                    terms.push(term)
-                    while op.priority < ops.peek.priority {
-                        termR = terms.pop()
-                        termL = terms.pop()
-                        term = expr(termL, ops.pop(), termR)
-                    }
-                    ops.push(op)
-                } else if isExprEnd(op) {
-                    unread(op)
-                    break
-                } else {
-                    throw SyntaxError
-                }
-            }
-            while ops.len > 0 {
-                op = ops.pop()
-                termR = terms.pop()
-                termL = terms.pop()
-                term = expr(termL, op, termR)
-                terms.push(term)
-            }
-            return terms.pop()
-
-        */
+        const ops: { src: Token, op: C.BinaryOpInfo }[] = [];
+        const terms: C.Expr[] = [];
         
-        throw new Unimplemented(line.front);
+        while (line.len) {
+            const termRes = this.#parseExprTerm(line);
+            if (termRes.isErr) {
+                return termRes;
+            }
+            const term = termRes.result;
+            terms.push(term);
 
+            const opToken = line.dequeue()!;
+            log.dump("opToken", opToken.value);
+
+            const op = opToken.value.toLowerCase();
+            
+            if (!BinaryOpMap.has(op)) {
+                line.recover();
+                break;
+            }
+
+            const opInfo = BinaryOpMap.get(op)!;
+
+            while (ops.length > 0 && ops.at(-1)!.op.priority >= opInfo.priority) {
+                const opX = ops.pop()!;
+                const termR = terms.pop()!;
+                const termL = terms.pop()!;
+                const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
+                if (vtypeXRes.isErr) {
+                    return Result.err(vtypeXRes.error);
+                }
+                const vtypeX = vtypeXRes.result;
+                const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
+                terms.push(termX);
+            }
+
+            ops.push({ src: opToken, op: opInfo });
+        }
+
+        while (ops.length > 0) {
+            const opX = ops.pop()!;
+            const termR = terms.pop()!;
+            const termL = terms.pop()!;
+            const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
+            if (vtypeXRes.isErr) {
+                return Result.err(vtypeXRes.error);
+            }
+            const vtypeX = vtypeXRes.result;
+            const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
+            terms.push(termX);
+        }
+
+        U.assertEq(terms.length, 1);
+       
+        return Result.ok(terms[0]);
     }
 
     #parseExprTerm(line: RQueue<Token>): Result<C.Expr,string> {
@@ -956,11 +982,13 @@ export class Parser {
         const token = line.dequeue()!;
         switch (token.tokenType) {
             case TokenType.INTEGER:
+            case TokenType.BIN_INETGER:
+            case TokenType.HEX_INTEGER:
                 const numRes = parseNumber(token);
                 if (numRes.isErr) {
                     return Result.err(numRes.error);
                 }
-                return Result.ok(new C.ExprLitNum(token, numRes.result));
+                return Result.ok(new C.ExprLitInt(token, numRes.result));
             default:
                 break;
         }

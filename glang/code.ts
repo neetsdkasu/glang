@@ -46,6 +46,20 @@ export enum Vtype {
     INFER_CONCAT    = INFER | CONCAT_TYPE
 }
 
+/**
+ * 引数のいずれかにINFERが含まれる場合は引数間で整合性のとれるVtypeを返す.
+ * 整合性のとれる型が1つに限定される場合はその型を表すVtypeを返し、2つ以上の可能性があるならそれらを組み合わせた上でINFERをつけて返す.
+ * 引数にいずれにもINFERが含まれていない場合はすべての引数が完全一致する場合においてのみその型のVtypeを返す.
+ * 上記以外の場合はエラー値を返す.
+ * INFERは標準関数か演算子にのみ存在する.
+ * @param t1 
+ * @param t2 
+ * @param t3 
+ */
+export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,string> {
+    throw new Error("unimplemented");
+}
+
 export class NameInfo {
     readonly src: Token[];
     readonly name: string;
@@ -167,6 +181,18 @@ export class FuncInfo {
     }
 }
 
+export class BinaryOpInfo {
+    readonly op: string;
+    readonly priority: number;
+    readonly vtype: Vtype;
+
+    constructor(op: string, priority: number, vtype: Vtype) {
+        this.op = op;
+        this.priority = priority;
+        this.vtype = vtype;
+    }
+}
+
 export enum ExprKind {
     LITERAL,
     VARIABLE,
@@ -188,19 +214,34 @@ export class Expr {
     }
 }
 
-export class ExprLitNum extends Expr {
+export class ExprLitInt extends Expr {
     readonly value: number;
     constructor(src: Token, value: number) {
-        super(ExprKind.LITERAL, Vtype.INFER_NUMBER, src);
+        super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
     }
 
     toString(): string {
-        return `LitNum{ value: ${this.value} }`;
+        return `LitInt{ value: ${this.value} }`;
     }
 }
 
+export class ExprBinOp extends Expr {
+    readonly op: BinaryOpInfo;
+    readonly termL: Expr;
+    readonly termR: Expr;
 
+    constructor(src: Token, vtype: Vtype, op: BinaryOpInfo, termL: Expr, termR: Expr) {
+        super(ExprKind.BINARY_OP, vtype, src);
+        this.op = op;
+        this.termL = termL;
+        this.termR = termR;
+    }
+
+    toString(): string {
+        return `BinOp{ op: ${this.op}, termL: (${this.termL}), termR: (${this.termR}) }`;
+    }
+}
 
 
 
