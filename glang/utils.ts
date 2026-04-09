@@ -14,7 +14,7 @@ export function assert(test: boolean, msg?: string): void {
 
 export function assertEq<T>(a: T, b: T, msg?: string): void {
     if (a !== b) {
-        throw new Error(`assertEq error: msg="${msg}", (a=${a}) !== (b=${b})`);
+        throw new Error(`assertEq error: msg="${msg}", not (a=${a}) !== (b=${b})`);
     }
 }
 
@@ -24,10 +24,42 @@ export function assertNe<T>(a: T, b: T, msg?: string): void {
     }
 }
 
+export function assertLT<T>(a: T, b: T, msg?: string): void {
+    if (a >= b) {
+        throw new Error(`assertLT error: msg="${msg}", (a=${a}) >= (b=${b})`);
+    }
+}
+
+export function assertLE<T>(a: T, b: T, msg?: string): void {
+    if (a > b) {
+        throw new Error(`assertLE error: msg="${msg}", (a=${a}) > (b=${b})`);
+    }
+}
+
+export function assertGT<T>(a: T, b: T, msg?: string): void {
+    if (a <= b) {
+        throw new Error(`assertGT error: msg="${msg}", (a=${a}) <= (b=${b})`);
+    }
+}
+
+export function assertGE<T>(a: T, b: T, msg?: string): void {
+    if (a < b) {
+        throw new Error(`assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
+    }
+}
+
 export class Unimplemented extends Error {
     constructor(obj?: any) {
         super(`未実装なのでエラー. ( ${obj} )`);
     }
+}
+
+export function popCount(n: number): number {
+    n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);
+    n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
+    n = (n & 0x0F0F0F0F) + ((n >>> 4) & 0x0F0F0F0F);
+    n = (n & 0x00FF00FF) + ((n >>> 8) & 0x00FF00FF);
+    return (n & 0x0000FFFF) + ((n >>> 16) & 0x0000FFFF);
 }
 
 export class Result<R,E> {

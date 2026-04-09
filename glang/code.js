@@ -5,6 +5,7 @@ import Logger, { LogLevel } from "logger";
 const log = new Logger("code", LogLevel.ALL);
 import { Token } from "scanner";
 import { Result } from "utils";
+import * as U from "utils";
 export var Vtype;
 (function (Vtype) {
     Vtype[Vtype["NONE"] = 0] = "NONE";
@@ -55,7 +56,29 @@ export var Vtype;
  * @param t3
  */
 export function inferVtype(t1, t2, t3) {
-    throw new Error("unimplemented");
+    if (t3 === undefined) {
+        if (t1 === t2) {
+            return Result.ok(t1);
+        }
+        const t1t2 = ((t1 & t2) | Vtype.INFER) ^ Vtype.INFER;
+        const cnt = U.popCount(t1t2);
+        if (cnt === 0) {
+            return Result.err("型の整合性がとれません.");
+        }
+        else if (cnt === 1) {
+            return Result.ok(t1t2);
+        }
+        else {
+            return Result.ok(t1t2 | Vtype.INFER);
+        }
+    }
+    const res = inferVtype(t1, t2);
+    if (res.isErr) {
+        return res;
+    }
+    else {
+        return inferVtype(res.result, t3);
+    }
 }
 export class NameInfo {
     src;
@@ -179,6 +202,9 @@ export class BinaryOpInfo {
         this.priority = priority;
         this.vtype = vtype;
     }
+    toString() {
+        return `BinOpInfo{ op: ${this.op}, priority: ${this.priority} }`;
+    }
 }
 export var ExprKind;
 (function (ExprKind) {
@@ -188,6 +214,7 @@ export var ExprKind;
     ExprKind[ExprKind["BINARY_OP"] = 3] = "BINARY_OP";
     ExprKind[ExprKind["STD_FUNC"] = 4] = "STD_FUNC";
     ExprKind[ExprKind["USER_FUNC"] = 5] = "USER_FUNC";
+    ExprKind[ExprKind["BRACKET"] = 6] = "BRACKET";
 })(ExprKind || (ExprKind = {}));
 export class Expr {
     kind;
@@ -201,12 +228,65 @@ export class Expr {
 }
 export class ExprLitInt extends Expr {
     value;
-    constructor(src, value) {
+    unaryOp;
+    constructor(src, value, unaryOp) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
+        this.unaryOp = unaryOp;
     }
     toString() {
-        return `LitInt{ value: ${this.value} }`;
+        if (this.unaryOp) {
+            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        }
+        else {
+            return `LitInt{ value: ${this.value} }`;
+        }
+    }
+}
+export class ExprLitFloat extends Expr {
+    value;
+    unaryOp;
+    constructor(src, value, unaryOp) {
+        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        this.value = value;
+        this.unaryOp = unaryOp;
+    }
+    toString() {
+        if (this.unaryOp) {
+            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        }
+        else {
+            return `LitFloat{ value: ${this.value} }`;
+        }
+    }
+}
+export class ExprLitBoolean extends Expr {
+    value;
+    unaryOp;
+    constructor(src, value, unaryOp) {
+        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        this.value = value;
+        this.unaryOp = unaryOp;
+    }
+    toString() {
+        if (this.unaryOp) {
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        }
+        else {
+            return `LitBoolean{ value: ${this.value} }`;
+        }
+    }
+}
+export class ExprUnaryOp extends Expr {
+    op;
+    term;
+    constructor(src, vtype, op, term) {
+        super(ExprKind.UNARY_OP, vtype, src);
+        this.op = op;
+        this.term = term;
+    }
+    toString() {
+        return `UnaryOp{ op: ${this.op}, term: [[ ${this.term} ]] }`;
     }
 }
 export class ExprBinOp extends Expr {
@@ -220,7 +300,19 @@ export class ExprBinOp extends Expr {
         this.termR = termR;
     }
     toString() {
-        return `BinOp{ op: ${this.op}, termL: (${this.termL}), termR: (${this.termR}) }`;
+        return `BinanyOp{ op: ${this.op}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
+    }
+}
+export class ExprBracket extends Expr {
+    expr;
+    rightBracket;
+    constructor(src, expr, rightBracket) {
+        super(ExprKind.BRACKET, expr.vtype, src);
+        this.expr = expr;
+        this.rightBracket = rightBracket;
+    }
+    toString() {
+        return `Bracket{ expr: ( ${this.expr} ) }`;
     }
 }
 export var CodeKind;

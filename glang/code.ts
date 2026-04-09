@@ -6,6 +6,7 @@ const log = new Logger("code", LogLevel.ALL);
 
 import { Token } from "scanner";
 import { Result } from "utils";
+import * as U from "utils";
 
 export enum Vtype {
     NONE            = 0,
@@ -57,7 +58,26 @@ export enum Vtype {
  * @param t3 
  */
 export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,string> {
-    throw new Error("unimplemented");
+    if (t3 === undefined) {
+        if (t1 === t2) {
+            return Result.ok(t1);
+        }
+        const t1t2 = ((t1 & t2) | Vtype.INFER) ^ Vtype.INFER;
+        const cnt = U.popCount(t1t2);
+        if (cnt === 0) {
+            return Result.err("型の整合性がとれません.");
+        } else if (cnt === 1) {
+            return Result.ok(t1t2);
+        } else {
+            return Result.ok(t1t2 | Vtype.INFER);
+        }
+    }
+    const res = inferVtype(t1, t2);
+    if (res.isErr) {
+        return res;
+    } else {
+        return inferVtype(res.result, t3);
+    }
 }
 
 export class NameInfo {
@@ -191,6 +211,10 @@ export class BinaryOpInfo {
         this.priority = priority;
         this.vtype = vtype;
     }
+
+    toString(): string {
+        return `BinOpInfo{ op: ${this.op}, priority: ${this.priority} }`;
+    }
 }
 
 export enum ExprKind {
@@ -199,7 +223,8 @@ export enum ExprKind {
     UNARY_OP,
     BINARY_OP,
     STD_FUNC,
-    USER_FUNC
+    USER_FUNC,
+    BRACKET
 }
 
 export class Expr {
@@ -216,13 +241,73 @@ export class Expr {
 
 export class ExprLitInt extends Expr {
     readonly value: number;
-    constructor(src: Token, value: number) {
+    readonly unaryOp: string | undefined;
+
+    constructor(src: Token, value: number, unaryOp?: string) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
+        this.unaryOp = unaryOp;
     }
 
     toString(): string {
-        return `LitInt{ value: ${this.value} }`;
+        if (this.unaryOp) {
+            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        } else {
+            return `LitInt{ value: ${this.value} }`;
+        }
+    }
+}
+
+export class ExprLitFloat extends Expr {
+    readonly value: number;
+    readonly unaryOp: string | undefined;
+
+    constructor(src: Token, value: number, unaryOp?: string) {
+        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        this.value = value;
+        this.unaryOp = unaryOp;
+    }
+
+    toString(): string {
+        if (this.unaryOp) {
+            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        } else {
+            return `LitFloat{ value: ${this.value} }`;
+        }
+    }
+}
+
+export class ExprLitBoolean extends Expr {
+    readonly value: boolean;
+    readonly unaryOp: string | undefined;
+
+    constructor(src: Token, value: boolean, unaryOp?: string) {
+        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        this.value = value;
+        this.unaryOp = unaryOp;
+    }
+
+    toString(): string {
+        if (this.unaryOp) {
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+        } else {
+            return `LitBoolean{ value: ${this.value} }`;
+        }
+    }
+}
+
+export class ExprUnaryOp extends Expr {
+    readonly op: string;
+    readonly term: Expr;
+
+    constructor(src: Token, vtype: Vtype, op: string, term: Expr) {
+        super(ExprKind.UNARY_OP, vtype, src);
+        this.op = op;
+        this.term = term;
+    }
+
+    toString(): string {
+        return `UnaryOp{ op: ${this.op}, term: [[ ${this.term} ]] }`;
     }
 }
 
@@ -239,11 +324,24 @@ export class ExprBinOp extends Expr {
     }
 
     toString(): string {
-        return `BinOp{ op: ${this.op}, termL: (${this.termL}), termR: (${this.termR}) }`;
+        return `BinanyOp{ op: ${this.op}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
     }
 }
 
+export class ExprBracket extends Expr {
+    readonly expr: Expr;
+    readonly rightBracket: Token;
 
+    constructor(src: Token, expr: Expr, rightBracket: Token) {
+        super(ExprKind.BRACKET, expr.vtype, src);
+        this.expr = expr;
+        this.rightBracket = rightBracket;
+    }
+
+    toString(): string {
+        return `Bracket{ expr: ( ${this.expr} ) }`;
+    }
+}
 
 export enum CodeKind {
     BLOCK,

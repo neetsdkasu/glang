@@ -114,11 +114,13 @@ const StdFuncWordMap: Readonly<Map<string,C.FuncRetArg>> = Object.freeze(new Map
     ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
 ]));
 
-const UnaryOpMap: Readonly<Map<string,C.Vtype>> = Object.freeze(new Map([
-    ["+", C.Vtype.NUMBER_TYPE],
-    ["-", C.Vtype.NUMBER_TYPE],
-    ["~", C.Vtype.INTEGER],
-    ["!", C.Vtype.BOOLEAN]
+type UnaryOpInfo = Readonly<{ op: string, vtype: C.Vtype }>;
+
+const UnaryOpMap: Readonly<Map<string,UnaryOpInfo>> = Object.freeze(new Map([
+    ["+", { op: "+", vtype: C.Vtype.NUMBER_TYPE }],
+    ["-", { op: "-", vtype: C.Vtype.NUMBER_TYPE }],
+    ["~", { op: "~", vtype: C.Vtype.INTEGER }],
+    ["!", { op: "!", vtype: C.Vtype.BOOLEAN }]
 ]));
 
 const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
@@ -168,25 +170,37 @@ const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
 log.dump("POSITIVE_INTEGER_BOUND", POSITIVE_INTEGER_BOUND);
 log.dump("NEGATIVE_INTEGER_BOUND", NEGATIVE_INTEGER_BOUND);
 
-function parseNumber(token: Token, negative?: boolean): Result<number,string> {
+function parseNumber(token: Token, unaryOp?: string): Result<number,string> {
     switch (token.tokenType) {
         case TokenType.INTEGER:
         case TokenType.BIN_INETGER:
         case TokenType.HEX_INTEGER:
             const bi = BigInt(token.value);
-            if (negative) {
+            if (unaryOp === "-") {
                 if (bi > NEGATIVE_INTEGER_BOUND) {
-                    return boundaryError("unexpedted number.", token);
+                    return boundaryError("32bit符号付整数(2の補数表現)の下限を超えています.", token);
                 }
+                return Result.ok(Number(-bi));
             } else if (bi > POSITIVE_INTEGER_BOUND) {
-                return boundaryError("unexpedted number.", token);
+                return boundaryError("32bit符号付整数(2の補数表現)の上限を超えています.", token);
+            } else if (unaryOp === "~") {
+                return Result.ok(Number(bi) ^ 0xFFFFFFFF);
+            } else if (unaryOp === "+" || unaryOp === undefined) {
+                return Result.ok(Number(bi));
+            } else {
+                throw new Error(`BUG: 整数に適用できない単項演算子. ( ${unaryOp} )`);
             }
-            return Result.ok(Number(bi));
         case TokenType.FLOATING_POINT:
             const fp = parseFloat(token.value);
-            return Result.ok(fp);
+            if (unaryOp === "-") {
+                return Result.ok(-fp);
+            } else if (unaryOp === "+" || unaryOp === undefined) {
+                return Result.ok(fp);
+            } else {
+                throw new Error(`BUG: 浮動小数点数に適用できない単項演算子. ( ${unaryOp} )`);
+            }
         default:
-            return Result.err(`BUG: wrong param token of parseNumber. ( ${token.toString()} )`);
+            throw new Error(`BUG: 数値ではないトークン. ( ${token} )`);
     }
 }
 
@@ -944,12 +958,13 @@ export class Parser {
             const opInfo = BinaryOpMap.get(op)!;
 
             while (ops.length > 0 && ops.at(-1)!.op.priority >= opInfo.priority) {
+                U.assertGE(terms.length, 2);
                 const opX = ops.pop()!;
                 const termR = terms.pop()!;
                 const termL = terms.pop()!;
                 const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
                 if (vtypeXRes.isErr) {
-                    return Result.err(vtypeXRes.error);
+                    return syntaxError("オペランドの型と演算子が対応してません.", opX.src);
                 }
                 const vtypeX = vtypeXRes.result;
                 const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
@@ -960,12 +975,13 @@ export class Parser {
         }
 
         while (ops.length > 0) {
+            U.assertGE(terms.length, 2);
             const opX = ops.pop()!;
             const termR = terms.pop()!;
             const termL = terms.pop()!;
             const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
             if (vtypeXRes.isErr) {
-                return Result.err(vtypeXRes.error);
+                return syntaxError("オペランドの型と演算子が対応してません.", opX.src);
             }
             const vtypeX = vtypeXRes.result;
             const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
@@ -980,15 +996,97 @@ export class Parser {
     #parseExprTerm(line: RQueue<Token>): Result<C.Expr,string> {
 
         const token = line.dequeue()!;
+
+        log.dump("term", token.value);
+
         switch (token.tokenType) {
             case TokenType.INTEGER:
             case TokenType.BIN_INETGER:
             case TokenType.HEX_INTEGER:
-                const numRes = parseNumber(token);
-                if (numRes.isErr) {
-                    return Result.err(numRes.error);
+                const intRes = parseNumber(token);
+                if (intRes.isErr) {
+                    return Result.err(intRes.error);
                 }
-                return Result.ok(new C.ExprLitInt(token, numRes.result));
+                return Result.ok(new C.ExprLitInt(token, intRes.result));
+            case TokenType.FLOATING_POINT:
+                const floatRes = parseNumber(token);
+                if (floatRes.isErr) {
+                    return Result.err(floatRes.error);
+                }
+                return Result.ok(new C.ExprLitFloat(token, floatRes.result));
+            case TokenType.OPERATOR:
+                if (!UnaryOpMap.has(token.value.toLowerCase())) {
+                    return syntaxError("不正な文字です.", token);
+                } else {
+                    const unaryOpInfo = UnaryOpMap.get(token.value.toLowerCase())!;
+                    switch (line.front!.tokenType) {
+                        case TokenType.INTEGER:
+                        case TokenType.BIN_INETGER:
+                        case TokenType.HEX_INTEGER:
+                            if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.INTEGER).isOk) {
+                                const litIntToken = line.dequeue()!;
+                                const litIntRes = parseNumber(litIntToken, unaryOpInfo.op);
+                                if (litIntRes.isErr) {
+                                    return Result.err(litIntRes.error);
+                                }
+                                const litInt = litIntRes.result;
+                                log.dump("litInt", litInt);
+                                return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo.op));
+                            } else {
+                                return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                            }
+                        case TokenType.FLOATING_POINT:
+                            if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
+                                const litFloatToken = line.dequeue()!;
+                                const litFloatRes = parseNumber(litFloatToken, unaryOpInfo.op);
+                                if (litFloatRes.isErr) {
+                                    return Result.err(litFloatRes.error);
+                                }
+                                const litFloat = litFloatRes.result;
+                                log.dump("litFloat", litFloat);
+                                return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo.op));
+                            } else {
+                                return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                            }
+                        case TokenType.WORD:
+                            if (unaryOpInfo.op === "!") {
+                                switch (line.front!.value.toLowerCase()) {
+                                    case "true":
+                                        const trueToken = line.dequeue()!;
+                                        return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo.op));
+                                    case "false":
+                                        const falseToken = line.dequeue()!;
+                                        return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo.op));
+                                    default:
+                                        break;
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    const termURes = this.#parseExprTerm(line);
+                    if (termURes.isErr) {
+                        return termURes;
+                    }
+                    const termU = termURes.result;
+                    const unaryVtypeRes = C.inferVtype(unaryOpInfo.vtype, termU.vtype);
+                    if (unaryVtypeRes.isErr) {
+                        return syntaxError(`単項演算子(${unaryOpInfo.op})を適用でない型です.`, token);
+                    }
+                    return Result.ok(new C.ExprUnaryOp(token, unaryVtypeRes.result, unaryOpInfo.op, termU));
+                }
+            case TokenType.LEFT_ROUND_BRACKET:
+                const exprRes = this.#parseExpr(line);
+                if (exprRes.isErr) {
+                    return exprRes;
+                }
+                const expr = exprRes.result;
+                const rrbToken = line.dequeue()!;
+                if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                    return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+                }
+                return Result.ok(new C.ExprBracket(token, expr, rrbToken));
             default:
                 break;
         }
