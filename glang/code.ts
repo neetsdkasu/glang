@@ -81,7 +81,7 @@ export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,strin
 }
 
 export class NameInfo {
-    readonly src: Token[];
+    readonly src: Readonly<Token[]>;
     readonly name: string;
     readonly vtype: Vtype;
     readonly varId: number;
@@ -104,7 +104,7 @@ export class NameInfo {
 
 export class FuncRetArg {
     readonly ret: Vtype;
-    readonly args: Vtype[];
+    readonly args: Readonly<Vtype[]>;
 
     constructor(ret: Vtype, args: Vtype[]) {
         this.ret = ret;
@@ -153,12 +153,12 @@ export class FuncRetArg {
 }
 
 export class FuncInfo {
-    readonly src: Token[];
+    readonly src: Readonly<Token[]>;
     readonly name: string;
     readonly retArg: FuncRetArg;
     readonly varId: number;
     readonly definition: boolean;
-    readonly argNames: NameInfo[] | undefined;
+    readonly argNames: Readonly<NameInfo[]> | undefined;
     readonly outerBlockId: number | undefined;
     readonly innerBlockId: number | undefined;
 
@@ -320,6 +320,19 @@ export class ExprLitBoolean extends Expr {
     }
 }
 
+export class ExprLitString extends Expr {
+    readonly value: string;
+
+    constructor(src: Token, value: string) {
+        super(ExprKind.LITERAL, Vtype.STRING, src);
+        this.value = value;
+    }
+
+    toString(): string {
+        return `LitString{ value: "${this.value.replaceAll('"', '""')}" }`;
+    }
+}
+
 export enum UnaryOpKind {
     POSITIVE_SIGN,  // "+"
     NEGATIVE_SIGN,  // "-"
@@ -374,6 +387,36 @@ export class ExprBracket extends Expr {
     }
 }
 
+export class ExprStdFunc extends Expr {
+    readonly name: string;
+    readonly retArg: Readonly<FuncRetArg>;
+    readonly args: Readonly<Expr[]>;
+
+    constructor(src: Token, vtype: Vtype, name: string, retArg: FuncRetArg, args: Expr[]) {
+        super(ExprKind.STD_FUNC, vtype, src);
+        this.name = name;
+        this.retArg = retArg;
+        this.args = args;
+    }
+
+    toString(): string {
+        return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+
+export class ExprVar extends Expr {
+    readonly nameInfo: NameInfo;
+
+    constructor(src: Token, nameInfo: NameInfo) {
+        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+        this.nameInfo = nameInfo;
+    }
+
+    toString(): string {
+        return `Var{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
+    }
+}
+
 export enum CodeKind {
     BLOCK,
     DIM,
@@ -382,7 +425,7 @@ export enum CodeKind {
 
 export class Code {
     readonly kind: CodeKind;
-    readonly src: readonly Token[];
+    readonly src: Readonly<Token[]>;
 
     constructor(kind: CodeKind, src: Token[]) {
         this.kind = kind;
@@ -392,7 +435,7 @@ export class Code {
 
 export class Block extends Code {
     readonly id: number;
-    readonly body: Code[];
+    readonly body: Readonly<Code[]>;
 
     constructor(src: Token[], id: number, body: Code[]) {
         super(CodeKind.BLOCK, src);
@@ -403,7 +446,7 @@ export class Block extends Code {
 
 export class Dim extends Code {
     readonly nameInfo: NameInfo;
-    readonly dims: readonly number[];
+    readonly dims: Readonly<number[]>;
 
     constructor(src: Token[], nameInfo: NameInfo, dims: number[]) {
         super(CodeKind.DIM, src);

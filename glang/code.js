@@ -301,6 +301,16 @@ export class ExprLitBoolean extends Expr {
         }
     }
 }
+export class ExprLitString extends Expr {
+    value;
+    constructor(src, value) {
+        super(ExprKind.LITERAL, Vtype.STRING, src);
+        this.value = value;
+    }
+    toString() {
+        return `LitString{ value: "${this.value.replaceAll('"', '""')}" }`;
+    }
+}
 export var UnaryOpKind;
 (function (UnaryOpKind) {
     UnaryOpKind[UnaryOpKind["POSITIVE_SIGN"] = 0] = "POSITIVE_SIGN";
@@ -344,6 +354,30 @@ export class ExprBracket extends Expr {
     }
     toString() {
         return `Bracket{ expr: ( ${this.expr} ) }`;
+    }
+}
+export class ExprStdFunc extends Expr {
+    name;
+    retArg;
+    args;
+    constructor(src, vtype, name, retArg, args) {
+        super(ExprKind.STD_FUNC, vtype, src);
+        this.name = name;
+        this.retArg = retArg;
+        this.args = args;
+    }
+    toString() {
+        return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class ExprVar extends Expr {
+    nameInfo;
+    constructor(src, nameInfo) {
+        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+        this.nameInfo = nameInfo;
+    }
+    toString() {
+        return `Var{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
 export var CodeKind;

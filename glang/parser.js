@@ -177,7 +177,7 @@ function parseNumber(token, unaryOp) {
                 return Result.ok(Number(bi));
             }
             else {
-                throw new Error(`BUG: 整数に適用できない単項演算子. ( ${unaryOp} )`);
+                throw new Error(`BUG: 整数に適用できない単項演算子. ( ${C.UnaryOpKind[unaryOp]} )`);
             }
         case TokenType.FLOATING_POINT:
             const fp = parseFloat(token.value);
@@ -188,7 +188,7 @@ function parseNumber(token, unaryOp) {
                 return Result.ok(fp);
             }
             else {
-                throw new Error(`BUG: 浮動小数点数に適用できない単項演算子. ( ${unaryOp} )`);
+                throw new Error(`BUG: 浮動小数点数に適用できない単項演算子. ( ${C.UnaryOpKind[unaryOp]} )`);
             }
         default:
             throw new Error(`BUG: 数値ではないトークン. ( ${token} )`);
@@ -878,70 +878,15 @@ export class Parser {
                     return Result.err(floatRes.error);
                 }
                 return Result.ok(new C.ExprLitFloat(token, floatRes.result));
+            case TokenType.STRING:
+                return Result.ok(new C.ExprLitString(token, token.value));
             case TokenType.OPERATOR:
-                if (!UnaryOpMap.has(token.value.toLowerCase())) {
-                    return syntaxError("不正な文字です.", token);
+                if (UnaryOpMap.has(token.value.toLowerCase())) {
+                    line.recover();
+                    return this.#parseExprUnaryOp(line);
                 }
                 else {
-                    const unaryOpInfo = UnaryOpMap.get(token.value.toLowerCase());
-                    switch (line.front.tokenType) {
-                        case TokenType.INTEGER:
-                        case TokenType.BIN_INETGER:
-                        case TokenType.HEX_INTEGER:
-                            if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.INTEGER).isOk) {
-                                const litIntToken = line.dequeue();
-                                const litIntRes = parseNumber(litIntToken, unaryOpInfo.op);
-                                if (litIntRes.isErr) {
-                                    return Result.err(litIntRes.error);
-                                }
-                                const litInt = litIntRes.result;
-                                log.dump("litInt", litInt);
-                                return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo.op));
-                            }
-                            else {
-                                return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
-                            }
-                        case TokenType.FLOATING_POINT:
-                            if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
-                                const litFloatToken = line.dequeue();
-                                const litFloatRes = parseNumber(litFloatToken, unaryOpInfo.op);
-                                if (litFloatRes.isErr) {
-                                    return Result.err(litFloatRes.error);
-                                }
-                                const litFloat = litFloatRes.result;
-                                log.dump("litFloat", litFloat);
-                                return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo.op));
-                            }
-                            else {
-                                return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
-                            }
-                        case TokenType.WORD:
-                            if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
-                                switch (line.front.value.toLowerCase()) {
-                                    case "true":
-                                        const trueToken = line.dequeue();
-                                        return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo.op));
-                                    case "false":
-                                        const falseToken = line.dequeue();
-                                        return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo.op));
-                                    default:
-                                        break;
-                                }
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                    const termURes = this.#parseExprTerm(line);
-                    if (termURes.isErr) {
-                        return termURes;
-                    }
-                    const termU = termURes.result;
-                    const unaryVtypeRes = C.inferVtype(unaryOpInfo.vtype, termU.vtype);
-                    if (unaryVtypeRes.isErr) {
-                        return syntaxError(`単項演算子(${unaryOpInfo.op})を適用でない型です.`, token);
-                    }
-                    return Result.ok(new C.ExprUnaryOp(token, unaryVtypeRes.result, unaryOpInfo.op, termU));
+                    return syntaxError("不正な文字です.", token);
                 }
             case TokenType.LEFT_ROUND_BRACKET:
                 const exprRes = this.#parseExpr(line);
@@ -954,10 +899,167 @@ export class Parser {
                     return syntaxError("閉じ丸括弧が必要です.", rrbToken);
                 }
                 return Result.ok(new C.ExprBracket(token, expr, rrbToken));
+            case TokenType.WORD:
+                const word = token.value.toLowerCase();
+                if (ReservedWordSet.has(word)) {
+                    switch (word) {
+                        case "true":
+                            return Result.ok(new C.ExprLitBoolean(token, true));
+                        case "false":
+                            return Result.ok(new C.ExprLitBoolean(token, false));
+                        default:
+                            return syntaxError(`この予約語"${token.value}"は式に使用できません.`, token);
+                    }
+                }
+                if (StdFuncWordMap.has(word)) {
+                    line.recover();
+                    return this.#parseExprStdFunc(line);
+                }
+                const nameInfo = this.#env.findName(word);
+                if (nameInfo === undefined) {
+                    line.recover();
+                    return this.#parseExprUnknownUserFunc(line);
+                }
+                else if (nameInfo.vtype & C.Vtype.SUB) {
+                    return syntaxError("ここで戻り値のない`sub`定義のユーザ関数は呼べません.", token);
+                }
+                else if (nameInfo.vtype & C.Vtype.FUNC) {
+                    line.recover();
+                    return this.#parseExprUserFunc(line);
+                }
+                else if (nameInfo.vtype & C.Vtype.ARRAY_TYPE) {
+                    line.recover();
+                    return this.#parseExprArrayVar(line);
+                }
+                else {
+                    return Result.ok(new C.ExprVar(token, nameInfo));
+                }
             default:
                 break;
         }
         throw new Unimplemented(token);
+    }
+    #parseExprUnaryOp(line) {
+        const opToken = line.dequeue();
+        const unaryOpInfo = UnaryOpMap.get(opToken.value.toLowerCase());
+        switch (line.front.tokenType) {
+            case TokenType.INTEGER:
+            case TokenType.BIN_INETGER:
+            case TokenType.HEX_INTEGER:
+                if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.INTEGER).isOk) {
+                    const litIntToken = line.dequeue();
+                    const litIntRes = parseNumber(litIntToken, unaryOpInfo.op);
+                    if (litIntRes.isErr) {
+                        return Result.err(litIntRes.error);
+                    }
+                    const litInt = litIntRes.result;
+                    log.dump("litInt", litInt);
+                    return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo.op));
+                }
+                else {
+                    return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                }
+            case TokenType.FLOATING_POINT:
+                if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
+                    const litFloatToken = line.dequeue();
+                    const litFloatRes = parseNumber(litFloatToken, unaryOpInfo.op);
+                    if (litFloatRes.isErr) {
+                        return Result.err(litFloatRes.error);
+                    }
+                    const litFloat = litFloatRes.result;
+                    log.dump("litFloat", litFloat);
+                    return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo.op));
+                }
+                else {
+                    return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                }
+            case TokenType.WORD:
+                if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
+                    switch (line.front.value.toLowerCase()) {
+                        case "true":
+                            const trueToken = line.dequeue();
+                            return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo.op));
+                        case "false":
+                            const falseToken = line.dequeue();
+                            return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo.op));
+                        default:
+                            break;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        const termURes = this.#parseExprTerm(line);
+        if (termURes.isErr) {
+            return termURes;
+        }
+        const termU = termURes.result;
+        const unaryVtypeRes = C.inferVtype(unaryOpInfo.vtype, termU.vtype);
+        if (unaryVtypeRes.isErr) {
+            return syntaxError(`単項演算子(${unaryOpInfo.op})を適用でない型です.`, opToken);
+        }
+        return Result.ok(new C.ExprUnaryOp(opToken, unaryVtypeRes.result, unaryOpInfo.op, termU));
+    }
+    #parseExprStdFunc(line) {
+        const nameToken = line.dequeue();
+        const name = nameToken.value.toLowerCase();
+        const retArg = StdFuncWordMap.get(name);
+        const lrbToken = line.dequeue();
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            // 関数型とかあれば参照返すのかなあ…？
+            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        }
+        if (retArg.args.length === 0) {
+            // 引数なし関数
+            const rrbToken = line.dequeue();
+            if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+            }
+            return Result.ok(new C.ExprStdFunc(nameToken, retArg.ret, name, retArg, []));
+        }
+        const args = [];
+        for (let i = 0; i < retArg.args.length; i++) {
+            const argRes = this.#parseExpr(line);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            const arg = argRes.result;
+            const argVtypeRes = C.inferVtype(retArg.args[i], arg.vtype);
+            if (argVtypeRes.isErr) {
+                return syntaxError(`標準関数${name}の${i + 1}番目の引数の型が不一致です.`, nameToken);
+            }
+            args.push(arg);
+            const symToken = line.dequeue();
+            if (i + 1 < retArg.args.length) {
+                if (symToken.tokenType !== TokenType.COMMA) {
+                    return syntaxError("引数を区切るカンマが必要です.", symToken);
+                }
+            }
+            else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", symToken);
+            }
+        }
+        let ret = retArg.ret;
+        if (ret & C.Vtype.INFER) {
+            for (const arg of args) {
+                const retVtypeRes = C.inferVtype(ret, arg.vtype);
+                if (retVtypeRes.isErr) {
+                    return syntaxError(`標準関数${name}の引数の型は揃える必要があります.`, nameToken);
+                }
+                ret = retVtypeRes.result;
+            }
+        }
+        return Result.ok(new C.ExprStdFunc(nameToken, ret, name, retArg, args));
+    }
+    #parseExprUnknownUserFunc(line) {
+        throw new Unimplemented(line.front);
+    }
+    #parseExprUserFunc(line) {
+        throw new Unimplemented(line.front);
+    }
+    #parseExprArrayVar(line) {
+        throw new Unimplemented(line.front);
     }
 }
 export default Parser;

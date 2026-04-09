@@ -44,7 +44,7 @@ export class Token {
         return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row} }`;
     }
 
-    static lineToString(tokens: Token[]): string {
+    static lineToString(tokens: Readonly<Token[]>): string {
         return tokens.map( (token) => {
             if (token.tokenType === TokenType.STRING) {
                 return `"${token.value.replaceAll('"', '""')}"`;
