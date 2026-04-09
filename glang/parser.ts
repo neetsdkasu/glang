@@ -114,37 +114,37 @@ const StdFuncWordMap: Readonly<Map<string,C.FuncRetArg>> = Object.freeze(new Map
     ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
 ]));
 
-type UnaryOpInfo = Readonly<{ op: string, vtype: C.Vtype }>;
+type UnaryOpInfo = Readonly<{ op: C.UnaryOpKind, vtype: C.Vtype }>;
 
 const UnaryOpMap: Readonly<Map<string,UnaryOpInfo>> = Object.freeze(new Map([
-    ["+", { op: "+", vtype: C.Vtype.NUMBER_TYPE }],
-    ["-", { op: "-", vtype: C.Vtype.NUMBER_TYPE }],
-    ["~", { op: "~", vtype: C.Vtype.INTEGER }],
-    ["!", { op: "!", vtype: C.Vtype.BOOLEAN }]
+    ["+", { op: C.UnaryOpKind.POSITIVE_SIGN, vtype: C.Vtype.NUMBER_TYPE }],
+    ["-", { op: C.UnaryOpKind.NEGATIVE_SIGN, vtype: C.Vtype.NUMBER_TYPE }],
+    ["~", { op: C.UnaryOpKind.BITWISE_NOT, vtype: C.Vtype.INTEGER }],
+    ["!", { op: C.UnaryOpKind.LOGICAL_NOT, vtype: C.Vtype.BOOLEAN }]
 ]));
 
 const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
-    ["*", new C.BinaryOpInfo("*", 100, C.Vtype.INFER_NUMBER)],
-    ["/", new C.BinaryOpInfo("/", 100, C.Vtype.FLOATING_POINT)],
-    ["\\", new C.BinaryOpInfo("\\", 100, C.Vtype.INTEGER)],
-    ["%", new C.BinaryOpInfo("%", 100, C.Vtype.INTEGER)],
-    ["+", new C.BinaryOpInfo("+", 90, C.Vtype.INFER_CONCAT)],
-    ["-", new C.BinaryOpInfo("-", 90, C.Vtype.INFER_NUMBER)],
-    [">>", new C.BinaryOpInfo(">>", 80, C.Vtype.INTEGER)],
-    ["<<", new C.BinaryOpInfo("<<", 80, C.Vtype.INTEGER)],
-    [">>>", new C.BinaryOpInfo(">>>", 80, C.Vtype.INTEGER)],
-    ["<<<", new C.BinaryOpInfo("<<<", 80, C.Vtype.INTEGER)],
-    ["&", new C.BinaryOpInfo("&", 70, C.Vtype.INFER_LOGICAL)],
-    ["|", new C.BinaryOpInfo("|", 60, C.Vtype.INFER_LOGICAL)],
-    ["^", new C.BinaryOpInfo("^", 50, C.Vtype.INFER_LOGICAL)],
-    ["==", new C.BinaryOpInfo("==", 40, C.Vtype.INFER_PRIMITIVE)],
-    ["!=", new C.BinaryOpInfo("!=", 40, C.Vtype.INFER_PRIMITIVE)],
-    [">", new C.BinaryOpInfo(">", 40, C.Vtype.INFER_COMPARE)],
-    [">=", new C.BinaryOpInfo(">=", 40, C.Vtype.INFER_COMPARE)],
-    ["<", new C.BinaryOpInfo("<", 40, C.Vtype.INFER_COMPARE)],
-    ["<=", new C.BinaryOpInfo("<=", 40, C.Vtype.INFER_COMPARE)],
-    ["&&", new C.BinaryOpInfo("&&", 30, C.Vtype.BOOLEAN)],
-    ["||", new C.BinaryOpInfo("||", 20, C.Vtype.BOOLEAN)]
+    ["*", new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, 100, C.Vtype.INFER_NUMBER)],
+    ["/", new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE, 100, C.Vtype.FLOATING_POINT)],
+    ["\\", new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE, 100, C.Vtype.INTEGER)],
+    ["%", new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER, 100, C.Vtype.INTEGER)],
+    ["+", new C.BinaryOpInfo(C.BinaryOpKind.ADD, 90, C.Vtype.INFER_CONCAT)],
+    ["-", new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT, 90, C.Vtype.INFER_NUMBER)],
+    [">>", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, 80, C.Vtype.INTEGER)],
+    ["<<", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, 80, C.Vtype.INTEGER)],
+    [">>>", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, 80, C.Vtype.INTEGER)],
+    ["<<<", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, 80, C.Vtype.INTEGER)],
+    ["&", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND, 70, C.Vtype.INFER_LOGICAL)],
+    ["|", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR, 60, C.Vtype.INFER_LOGICAL)],
+    ["^", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR, 50, C.Vtype.INTEGER)],
+    ["==", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ, 40, C.Vtype.INFER_PRIMITIVE)],
+    ["!=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE, 40, C.Vtype.INFER_PRIMITIVE)],
+    [">", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT, 40, C.Vtype.INFER_COMPARE)],
+    [">=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE, 40, C.Vtype.INFER_COMPARE)],
+    ["<", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT, 40, C.Vtype.INFER_COMPARE)],
+    ["<=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE, 40, C.Vtype.INFER_COMPARE)],
+    ["&&", new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, 30, C.Vtype.BOOLEAN)],
+    ["||", new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR, 20, C.Vtype.BOOLEAN)]
 ]));
 
 const AssignOpMap: Readonly<Map<string,C.Vtype>> = Object.freeze(new Map([
@@ -170,31 +170,31 @@ const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
 log.dump("POSITIVE_INTEGER_BOUND", POSITIVE_INTEGER_BOUND);
 log.dump("NEGATIVE_INTEGER_BOUND", NEGATIVE_INTEGER_BOUND);
 
-function parseNumber(token: Token, unaryOp?: string): Result<number,string> {
+function parseNumber(token: Token, unaryOp?: C.UnaryOpKind): Result<number,string> {
     switch (token.tokenType) {
         case TokenType.INTEGER:
         case TokenType.BIN_INETGER:
         case TokenType.HEX_INTEGER:
             const bi = BigInt(token.value);
-            if (unaryOp === "-") {
+            if (unaryOp === C.UnaryOpKind.NEGATIVE_SIGN) {
                 if (bi > NEGATIVE_INTEGER_BOUND) {
                     return boundaryError("32bit符号付整数(2の補数表現)の下限を超えています.", token);
                 }
                 return Result.ok(Number(-bi));
             } else if (bi > POSITIVE_INTEGER_BOUND) {
                 return boundaryError("32bit符号付整数(2の補数表現)の上限を超えています.", token);
-            } else if (unaryOp === "~") {
+            } else if (unaryOp === C.UnaryOpKind.BITWISE_NOT) {
                 return Result.ok(Number(bi) ^ 0xFFFFFFFF);
-            } else if (unaryOp === "+" || unaryOp === undefined) {
+            } else if (unaryOp === C.UnaryOpKind.POSITIVE_SIGN || unaryOp === undefined) {
                 return Result.ok(Number(bi));
             } else {
                 throw new Error(`BUG: 整数に適用できない単項演算子. ( ${unaryOp} )`);
             }
         case TokenType.FLOATING_POINT:
             const fp = parseFloat(token.value);
-            if (unaryOp === "-") {
+            if (unaryOp === C.UnaryOpKind.NEGATIVE_SIGN) {
                 return Result.ok(-fp);
-            } else if (unaryOp === "+" || unaryOp === undefined) {
+            } else if (unaryOp === C.UnaryOpKind.POSITIVE_SIGN || unaryOp === undefined) {
                 return Result.ok(fp);
             } else {
                 throw new Error(`BUG: 浮動小数点数に適用できない単項演算子. ( ${unaryOp} )`);
@@ -1049,7 +1049,7 @@ export class Parser {
                                 return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
                             }
                         case TokenType.WORD:
-                            if (unaryOpInfo.op === "!") {
+                            if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
                                 switch (line.front!.value.toLowerCase()) {
                                     case "true":
                                         const trueToken = line.dequeue()!;

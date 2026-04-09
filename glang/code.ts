@@ -201,19 +201,43 @@ export class FuncInfo {
     }
 }
 
+export enum BinaryOpKind {
+    ADD,                // "+"
+    SUBTRACT,           // "-"
+    MULTIPLY,           // "*"
+    DIVIDE,             // "/"
+    INT_DIVIDE,         // "\\"
+    INT_REMINDER,       // "%"
+    BITWISE_AND,        // "&"
+    BITWISE_OR,         // "|"
+    BITWISE_XOR,        // "^"
+    BITWISE_ASHIFT_L,   // "<<"
+    BITWISE_ASHIFT_R,   // ">>"
+    BITWISE_LSHIFT_L,   // "<<<"
+    BITWISE_LSHIFT_R,   // ">>>"
+    SHORTCIRCUIT_AND,   // "&&"
+    SHORTCIRGUIT_OR,    // "||"
+    COMPARE_EQ,         // "=="
+    COMPARE_NE,         // "!="
+    COMPARE_LT,         // "<"
+    COMPARE_LE,         // "<="
+    COMPARE_GT,         // ">"
+    COMPARE_GE          // ">="
+}
+
 export class BinaryOpInfo {
-    readonly op: string;
+    readonly op: BinaryOpKind;
     readonly priority: number;
     readonly vtype: Vtype;
 
-    constructor(op: string, priority: number, vtype: Vtype) {
+    constructor(op: BinaryOpKind, priority: number, vtype: Vtype) {
         this.op = op;
         this.priority = priority;
         this.vtype = vtype;
     }
 
     toString(): string {
-        return `BinOpInfo{ op: ${this.op}, priority: ${this.priority} }`;
+        return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
     }
 }
 
@@ -241,9 +265,9 @@ export class Expr {
 
 export class ExprLitInt extends Expr {
     readonly value: number;
-    readonly unaryOp: string | undefined;
+    readonly unaryOp: UnaryOpKind | undefined;
 
-    constructor(src: Token, value: number, unaryOp?: string) {
+    constructor(src: Token, value: number, unaryOp?: UnaryOpKind) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -251,7 +275,7 @@ export class ExprLitInt extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitInt{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         } else {
             return `LitInt{ value: ${this.value} }`;
         }
@@ -260,9 +284,9 @@ export class ExprLitInt extends Expr {
 
 export class ExprLitFloat extends Expr {
     readonly value: number;
-    readonly unaryOp: string | undefined;
+    readonly unaryOp: UnaryOpKind | undefined;
 
-    constructor(src: Token, value: number, unaryOp?: string) {
+    constructor(src: Token, value: number, unaryOp?: UnaryOpKind) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -270,7 +294,7 @@ export class ExprLitFloat extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitFloat{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         } else {
             return `LitFloat{ value: ${this.value} }`;
         }
@@ -279,9 +303,9 @@ export class ExprLitFloat extends Expr {
 
 export class ExprLitBoolean extends Expr {
     readonly value: boolean;
-    readonly unaryOp: string | undefined;
+    readonly unaryOp: UnaryOpKind | undefined;
 
-    constructor(src: Token, value: boolean, unaryOp?: string) {
+    constructor(src: Token, value: boolean, unaryOp?: UnaryOpKind) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -289,25 +313,32 @@ export class ExprLitBoolean extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         } else {
             return `LitBoolean{ value: ${this.value} }`;
         }
     }
 }
 
+export enum UnaryOpKind {
+    POSITIVE_SIGN,  // "+"
+    NEGATIVE_SIGN,  // "-"
+    BITWISE_NOT,    // "~"
+    LOGICAL_NOT     // "!"
+}
+
 export class ExprUnaryOp extends Expr {
-    readonly op: string;
+    readonly op: UnaryOpKind;
     readonly term: Expr;
 
-    constructor(src: Token, vtype: Vtype, op: string, term: Expr) {
+    constructor(src: Token, vtype: Vtype, op: UnaryOpKind, term: Expr) {
         super(ExprKind.UNARY_OP, vtype, src);
         this.op = op;
         this.term = term;
     }
 
     toString(): string {
-        return `UnaryOp{ op: ${this.op}, term: [[ ${this.term} ]] }`;
+        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, term: [[ ${this.term} ]] }`;
     }
 }
 

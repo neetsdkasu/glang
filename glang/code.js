@@ -193,6 +193,30 @@ export class FuncInfo {
         return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
+export var BinaryOpKind;
+(function (BinaryOpKind) {
+    BinaryOpKind[BinaryOpKind["ADD"] = 0] = "ADD";
+    BinaryOpKind[BinaryOpKind["SUBTRACT"] = 1] = "SUBTRACT";
+    BinaryOpKind[BinaryOpKind["MULTIPLY"] = 2] = "MULTIPLY";
+    BinaryOpKind[BinaryOpKind["DIVIDE"] = 3] = "DIVIDE";
+    BinaryOpKind[BinaryOpKind["INT_DIVIDE"] = 4] = "INT_DIVIDE";
+    BinaryOpKind[BinaryOpKind["INT_REMINDER"] = 5] = "INT_REMINDER";
+    BinaryOpKind[BinaryOpKind["BITWISE_AND"] = 6] = "BITWISE_AND";
+    BinaryOpKind[BinaryOpKind["BITWISE_OR"] = 7] = "BITWISE_OR";
+    BinaryOpKind[BinaryOpKind["BITWISE_XOR"] = 8] = "BITWISE_XOR";
+    BinaryOpKind[BinaryOpKind["BITWISE_ASHIFT_L"] = 9] = "BITWISE_ASHIFT_L";
+    BinaryOpKind[BinaryOpKind["BITWISE_ASHIFT_R"] = 10] = "BITWISE_ASHIFT_R";
+    BinaryOpKind[BinaryOpKind["BITWISE_LSHIFT_L"] = 11] = "BITWISE_LSHIFT_L";
+    BinaryOpKind[BinaryOpKind["BITWISE_LSHIFT_R"] = 12] = "BITWISE_LSHIFT_R";
+    BinaryOpKind[BinaryOpKind["SHORTCIRCUIT_AND"] = 13] = "SHORTCIRCUIT_AND";
+    BinaryOpKind[BinaryOpKind["SHORTCIRGUIT_OR"] = 14] = "SHORTCIRGUIT_OR";
+    BinaryOpKind[BinaryOpKind["COMPARE_EQ"] = 15] = "COMPARE_EQ";
+    BinaryOpKind[BinaryOpKind["COMPARE_NE"] = 16] = "COMPARE_NE";
+    BinaryOpKind[BinaryOpKind["COMPARE_LT"] = 17] = "COMPARE_LT";
+    BinaryOpKind[BinaryOpKind["COMPARE_LE"] = 18] = "COMPARE_LE";
+    BinaryOpKind[BinaryOpKind["COMPARE_GT"] = 19] = "COMPARE_GT";
+    BinaryOpKind[BinaryOpKind["COMPARE_GE"] = 20] = "COMPARE_GE"; // ">="
+})(BinaryOpKind || (BinaryOpKind = {}));
 export class BinaryOpInfo {
     op;
     priority;
@@ -203,7 +227,7 @@ export class BinaryOpInfo {
         this.vtype = vtype;
     }
     toString() {
-        return `BinOpInfo{ op: ${this.op}, priority: ${this.priority} }`;
+        return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
     }
 }
 export var ExprKind;
@@ -236,7 +260,7 @@ export class ExprLitInt extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitInt{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         }
         else {
             return `LitInt{ value: ${this.value} }`;
@@ -253,7 +277,7 @@ export class ExprLitFloat extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitFloat{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         }
         else {
             return `LitFloat{ value: ${this.value} }`;
@@ -270,13 +294,20 @@ export class ExprLitBoolean extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
         }
         else {
             return `LitBoolean{ value: ${this.value} }`;
         }
     }
 }
+export var UnaryOpKind;
+(function (UnaryOpKind) {
+    UnaryOpKind[UnaryOpKind["POSITIVE_SIGN"] = 0] = "POSITIVE_SIGN";
+    UnaryOpKind[UnaryOpKind["NEGATIVE_SIGN"] = 1] = "NEGATIVE_SIGN";
+    UnaryOpKind[UnaryOpKind["BITWISE_NOT"] = 2] = "BITWISE_NOT";
+    UnaryOpKind[UnaryOpKind["LOGICAL_NOT"] = 3] = "LOGICAL_NOT"; // "!"
+})(UnaryOpKind || (UnaryOpKind = {}));
 export class ExprUnaryOp extends Expr {
     op;
     term;
@@ -286,7 +317,7 @@ export class ExprUnaryOp extends Expr {
         this.term = term;
     }
     toString() {
-        return `UnaryOp{ op: ${this.op}, term: [[ ${this.term} ]] }`;
+        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, term: [[ ${this.term} ]] }`;
     }
 }
 export class ExprBinOp extends Expr {
