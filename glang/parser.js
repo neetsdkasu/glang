@@ -25,66 +25,200 @@ function boundaryError(msg, obj) {
     return Result.err(`Boundary Error: ${msg} ( ${obj} )`);
 }
 const ReservedWordSet = Object.freeze(new Set([
+    "abstract",
+    "alloc",
+    "allocation",
+    "allocator",
+    "and",
+    "array",
     "as",
+    "asm",
+    "assemble",
+    "async",
+    "await",
+    "base",
+    "bool",
+    "boolean",
     "break",
+    "byref",
+    "byval",
     "case",
     "call",
+    "cast",
     "catch",
+    "char",
+    "character",
     "class",
+    "close",
+    "cmp",
+    "comp",
+    "compare",
+    "console",
     "const",
+    "constant",
+    "constructor",
     "continue",
+    "control",
+    "debug",
+    "decimal",
+    "declare",
+    "def",
     "default",
     "defer",
+    "define",
+    "defined",
+    "del",
+    "delete",
+    "dequeue",
+    "destructor",
+    "dict",
     "dim",
     "do",
+    "double",
+    "dump",
     "each",
     "else",
+    "elseif",
+    "elsif",
     "end",
+    "enqueue",
+    "error",
+    "exception",
+    "exclude",
     "exit",
     "export",
+    "extend",
     "extends",
+    "external",
+    "false",
+    "field",
+    "final",
     "finally",
+    "float",
     "for",
     "foreach",
+    "free",
+    "friend",
+    "from",
+    "fun",
     "func",
+    "function",
+    "get",
+    "global",
+    "go",
+    "goto",
+    "gosub",
     "if",
+    "implement",
+    "implements",
     "import",
     "in",
+    "incude",
+    "inf",
+    "infer",
+    "inferred",
+    "infinity",
+    "inherit",
+    "init",
+    "initialize",
+    "initialized",
+    "input",
+    "int",
+    "integer",
     "interface",
+    "internal",
+    "lambda",
     "let",
+    "local",
+    "lock",
+    "log",
+    "long",
     "loop",
+    "main",
+    "map",
+    "mapped",
+    "match",
+    "member",
+    "method",
+    "namespace",
+    "nan",
     "new",
     "next",
+    "never",
+    "nothing",
+    "nil",
+    "null",
+    "number",
+    "object",
+    "of",
+    "ok",
+    "on",
+    "open",
+    "option",
+    "or",
     "out",
+    "output",
+    "override",
+    "overwrite",
+    "peek",
+    "pop",
+    "print",
+    "private",
+    "proc",
+    "process",
+    "property",
+    "public",
+    "push",
+    "queue",
+    "range",
+    "read",
     "readonly",
     "ref",
+    "refer",
+    "result",
     "return",
+    "sealed",
     "select",
+    "self",
+    "set",
+    "short",
+    "single",
+    "some",
+    "sort",
+    "stack",
     "step",
+    "string",
     "sturct",
     "sub",
+    "super",
     "switch",
+    "sync",
+    "synchronized",
     "template",
     "then",
+    "this",
     "throw",
+    "throws",
     "to",
-    "type",
-    "until",
-    "while",
     "true",
-    "false",
-    "null",
-    "nil",
-    "private",
-    "public",
-    "byval",
-    "byref",
-    "boolean",
-    "float",
-    "integer",
-    "string",
-    "object",
-    "main"
+    "try",
+    "type",
+    "undefined",
+    "unknown",
+    "unlock",
+    "until",
+    "use",
+    "using",
+    "val",
+    "var",
+    "void",
+    "volatile",
+    "wend",
+    "where",
+    "while",
+    "write",
+    "xor",
+    "yield"
 ]));
 /**
  * 標準関数
@@ -1020,6 +1154,7 @@ export class Parser {
         }
         const args = [];
         for (let i = 0; i < retArg.args.length; i++) {
+            const token = line.front;
             const argRes = this.#parseExpr(line);
             if (argRes.isErr) {
                 return argRes;
@@ -1027,7 +1162,7 @@ export class Parser {
             const arg = argRes.result;
             const argVtypeRes = C.inferVtype(retArg.args[i], arg.vtype);
             if (argVtypeRes.isErr) {
-                return syntaxError(`標準関数${name}の${i + 1}番目の引数の型が不一致です.`, nameToken);
+                return syntaxError(`標準関数${name}の${i + 1}番目の引数の型が不一致です.`, token);
             }
             args.push(arg);
             const symToken = line.dequeue();
@@ -1059,7 +1194,38 @@ export class Parser {
         throw new Unimplemented(line.front);
     }
     #parseExprArrayVar(line) {
-        throw new Unimplemented(line.front);
+        const nameToken = line.dequeue();
+        const name = nameToken.value.toLowerCase();
+        const nameInfo = this.#env.findName(name);
+        const dim = C.arrayDimension(nameInfo.vtype);
+        log.dump("dim", dim);
+        const lrbToken = line.dequeue();
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        }
+        const indexes = [];
+        for (let i = 0; i < dim; i++) {
+            const token = line.front;
+            const indexTermRes = this.#parseExpr(line);
+            if (indexTermRes.isErr) {
+                return indexTermRes;
+            }
+            const indexTerm = indexTermRes.result;
+            if (C.inferVtype(C.Vtype.INTEGER, indexTerm.vtype).isErr) {
+                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(integer)ではありません.`, token);
+            }
+            indexes.push(indexTerm);
+            const symToken = line.dequeue();
+            if (i + 1 < dim) {
+                if (symToken.tokenType !== TokenType.COMMA) {
+                    return syntaxError("添え字を区切るカンマが必要です.", symToken);
+                }
+            }
+            else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", symToken);
+            }
+        }
+        return Result.ok(new C.ExprArrayVar(nameToken, nameInfo, indexes));
     }
 }
 export default Parser;

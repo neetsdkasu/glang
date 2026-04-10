@@ -47,12 +47,16 @@ export enum Vtype {
     INFER_CONCAT    = INFER | CONCAT_TYPE
 }
 
+export function arrayDimension(vtype: Vtype): number {
+    return Math.floor((vtype & Vtype.ARRAY_TYPE) / Vtype.ARRAY);
+}
+
 /**
  * 引数のいずれかにINFERが含まれる場合は引数間で整合性のとれるVtypeを返す.
  * 整合性のとれる型が1つに限定される場合はその型を表すVtypeを返し、2つ以上の可能性があるならそれらを組み合わせた上でINFERをつけて返す.
  * 引数にいずれにもINFERが含まれていない場合はすべての引数が完全一致する場合においてのみその型のVtypeを返す.
  * 上記以外の場合はエラー値を返す.
- * INFERは標準関数か演算子にのみ存在する.
+ * INFERは標準関数か演算子か不明ユーザ関数に存在する.式や項の型として伝搬する.
  * @param t1 
  * @param t2 
  * @param t3 
@@ -148,7 +152,7 @@ export class FuncRetArg {
     }
 
     toString(): string {
-        return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [${this.args.map(t => Vtype[t])}] }`;
+        return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
     }
 }
 
@@ -415,6 +419,22 @@ export class ExprVar extends Expr {
     toString(): string {
         return `Var{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
     }
+}
+
+export class ExprArrayVar extends Expr {
+    readonly nameInfo: NameInfo;
+    readonly indexes: Readonly<Expr[]>;
+
+    constructor(src: Token, nameInfo: NameInfo, indexes: Expr[]) {
+        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+        this.nameInfo = nameInfo;
+        this.indexes = indexes;
+    }
+
+    toString(): string {
+        return `ArrayVar{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ") } )) }`;
+    }
+
 }
 
 export enum CodeKind {

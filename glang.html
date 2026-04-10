@@ -39,12 +39,12 @@
                 <details>
                     <summary>code</summary>
                     <textarea id="code" cols="100" rows="40">
-dim field(10,10) as integer
+dim field_XY(10,10) as integer
 sub main()
     let x = -1 + 2 * 3 \ 4 - (5 + 6) * 7 % 8
-    let y = x + abs(x) * min(x, 10) 
+    let y = x + floor(cfloat(x) * 3.5) * min(x*10, 10-x) + field_XY(3, x+10)
     let z = 1.0 - 0.5 / 1.25 * 3.14
-    let s = "abcd" + cstr(123 * 34 - 55) + cstr(3.5 + 4.3) + cstr(true)
+    let s = "abcd" + fizzbuzz(abs(y * x - 55)+1) + cstr(3.5 + z) + cstr(true)
     for let i = 0 to 5 step 1
         if i % 2 = 0 then
             x += 1
@@ -54,10 +54,10 @@ sub main()
         call add(x, y, 1)
     end for
     let s = fizzbuzz(18)
-    print "abcd", x+y, field(2,2), s
+    print "abcd", x+y, field_XY(2,2), s
 end sub
 sub add(x as integer, y as integer, v as integer)
-    field(x, y) += v
+    field_XY(x, y) += v
 end sub
 func fizzbuzz(n as integer) as string
     if n % 15 = 0 then
