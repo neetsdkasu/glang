@@ -14,39 +14,43 @@ export var Vtype;
     Vtype[Vtype["INTEGER"] = 4] = "INTEGER";
     Vtype[Vtype["FLOATING_POINT"] = 8] = "FLOATING_POINT";
     Vtype[Vtype["STRING"] = 16] = "STRING";
-    Vtype[Vtype["ARRAY"] = 32] = "ARRAY";
-    Vtype[Vtype["ARRAY_2D"] = 64] = "ARRAY_2D";
-    Vtype[Vtype["ARRAY_3D"] = 96] = "ARRAY_3D";
-    Vtype[Vtype["SUB"] = 128] = "SUB";
-    Vtype[Vtype["FUNC"] = 256] = "FUNC";
-    Vtype[Vtype["REFERENCE"] = 512] = "REFERENCE";
-    Vtype[Vtype["INFER"] = 1024] = "INFER";
+    Vtype[Vtype["ARRAY_TYPE"] = 32] = "ARRAY_TYPE";
+    Vtype[Vtype["ARRAY_SIZE_1"] = 64] = "ARRAY_SIZE_1";
+    Vtype[Vtype["ARRAY_1D"] = 96] = "ARRAY_1D";
+    Vtype[Vtype["ARRAY_2D"] = 160] = "ARRAY_2D";
+    Vtype[Vtype["ARRAY_3D"] = 224] = "ARRAY_3D";
+    Vtype[Vtype["ARRAY_SIZE"] = 192] = "ARRAY_SIZE";
+    Vtype[Vtype["SUB"] = 256] = "SUB";
+    Vtype[Vtype["FUNC"] = 512] = "FUNC";
+    Vtype[Vtype["REFERENCE_VAR"] = 1024] = "REFERENCE_VAR";
+    Vtype[Vtype["INFER"] = 2048] = "INFER";
     Vtype[Vtype["PRIMITIVE_TYPE"] = 30] = "PRIMITIVE_TYPE";
     Vtype[Vtype["NUMBER_TYPE"] = 12] = "NUMBER_TYPE";
     Vtype[Vtype["LOGICAL_TYPE"] = 6] = "LOGICAL_TYPE";
     Vtype[Vtype["COMPARE_TYPE"] = 28] = "COMPARE_TYPE";
     Vtype[Vtype["CONCAT_TYPE"] = 28] = "CONCAT_TYPE";
-    Vtype[Vtype["ARRAY_TYPE"] = 96] = "ARRAY_TYPE";
-    Vtype[Vtype["BOOL_ARRAY"] = 34] = "BOOL_ARRAY";
-    Vtype[Vtype["BOOL_ARRAY_2D"] = 66] = "BOOL_ARRAY_2D";
-    Vtype[Vtype["BOOL_ARRAY_3D"] = 98] = "BOOL_ARRAY_3D";
-    Vtype[Vtype["INT_ARRAY"] = 36] = "INT_ARRAY";
-    Vtype[Vtype["INT_ARRAY_2D"] = 68] = "INT_ARRAY_2D";
-    Vtype[Vtype["INT_ARRAY_3D"] = 100] = "INT_ARRAY_3D";
-    Vtype[Vtype["FLOAT_ARRAY"] = 40] = "FLOAT_ARRAY";
-    Vtype[Vtype["FLOAT_ARRAY_2D"] = 72] = "FLOAT_ARRAY_2D";
-    Vtype[Vtype["FLOAT_ARRAY_3D"] = 104] = "FLOAT_ARRAY_3D";
-    Vtype[Vtype["STR_ARRAY"] = 48] = "STR_ARRAY";
-    Vtype[Vtype["STR_ARRAY_2D"] = 80] = "STR_ARRAY_2D";
-    Vtype[Vtype["STR_ARRAY_3D"] = 112] = "STR_ARRAY_3D";
-    Vtype[Vtype["INFER_PRIMITIVE"] = 1054] = "INFER_PRIMITIVE";
-    Vtype[Vtype["INFER_NUMBER"] = 1036] = "INFER_NUMBER";
-    Vtype[Vtype["INFER_LOGICAL"] = 1030] = "INFER_LOGICAL";
-    Vtype[Vtype["INFER_COMPARE"] = 1052] = "INFER_COMPARE";
-    Vtype[Vtype["INFER_CONCAT"] = 1052] = "INFER_CONCAT";
+    Vtype[Vtype["NON_PRIMITIVE"] = 1824] = "NON_PRIMITIVE";
+    Vtype[Vtype["BOOL_ARRAY"] = 98] = "BOOL_ARRAY";
+    Vtype[Vtype["BOOL_ARRAY_2D"] = 162] = "BOOL_ARRAY_2D";
+    Vtype[Vtype["BOOL_ARRAY_3D"] = 226] = "BOOL_ARRAY_3D";
+    Vtype[Vtype["INT_ARRAY"] = 100] = "INT_ARRAY";
+    Vtype[Vtype["INT_ARRAY_2D"] = 164] = "INT_ARRAY_2D";
+    Vtype[Vtype["INT_ARRAY_3D"] = 228] = "INT_ARRAY_3D";
+    Vtype[Vtype["FLOAT_ARRAY"] = 104] = "FLOAT_ARRAY";
+    Vtype[Vtype["FLOAT_ARRAY_2D"] = 168] = "FLOAT_ARRAY_2D";
+    Vtype[Vtype["FLOAT_ARRAY_3D"] = 232] = "FLOAT_ARRAY_3D";
+    Vtype[Vtype["STR_ARRAY"] = 112] = "STR_ARRAY";
+    Vtype[Vtype["STR_ARRAY_2D"] = 176] = "STR_ARRAY_2D";
+    Vtype[Vtype["STR_ARRAY_3D"] = 240] = "STR_ARRAY_3D";
+    Vtype[Vtype["INFER_PRIMITIVE"] = 2078] = "INFER_PRIMITIVE";
+    Vtype[Vtype["INFER_NUMBER"] = 2060] = "INFER_NUMBER";
+    Vtype[Vtype["INFER_LOGICAL"] = 2054] = "INFER_LOGICAL";
+    Vtype[Vtype["INFER_COMPARE"] = 2076] = "INFER_COMPARE";
+    Vtype[Vtype["INFER_CONCAT"] = 2076] = "INFER_CONCAT";
+    Vtype[Vtype["INFER_ALL"] = 3902] = "INFER_ALL";
 })(Vtype || (Vtype = {}));
 export function arrayDimension(vtype) {
-    return Math.floor((vtype & Vtype.ARRAY_TYPE) / Vtype.ARRAY);
+    return Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
 }
 /**
  * 引数のいずれかにINFERが含まれる場合は引数間で整合性のとれるVtypeを返す.
@@ -63,17 +67,59 @@ export function inferVtype(t1, t2, t3) {
         if (t1 === t2) {
             return Result.ok(t1);
         }
-        const t1t2 = ((t1 & t2) | Vtype.INFER) ^ Vtype.INFER;
-        const cnt = U.popCount(t1t2);
-        if (cnt === 0) {
+        if (((t1 | t2) & Vtype.INFER) !== Vtype.INFER) {
+            // どちらもINFERを含まない場合は完全一致のみの判定でおわり.
             return Result.err("型の整合性がとれません.");
         }
-        else if (cnt === 1) {
-            return Result.ok(t1t2);
+        if ((t1 & t2) & Vtype.INFER) {
+            // どちらもINFERを含む場合は、どうしよう.
+            let infPrim = (t1 & t2) & Vtype.PRIMITIVE_TYPE;
+            const infPrimCnt = U.popCount(infPrim);
+            let infNonp = (t1 & t2) & Vtype.NON_PRIMITIVE;
+            if (infPrimCnt === 0) {
+                // Primitiveの指定がない => SUB/FUNCだけがOK
+                infNonp &= Vtype.SUB | Vtype.FUNC;
+                if (infNonp) {
+                    if (infNonp === (Vtype.SUB | Vtype.FUNC)) {
+                        infNonp |= Vtype.INFER;
+                    }
+                    return Result.ok(infNonp);
+                }
+                else {
+                    return Result.err("型の整合性がとれません.");
+                }
+            }
+            if (infPrimCnt > 1) {
+                infPrim |= Vtype.INFER;
+            }
+            const infNonpCnt = U.popCount(infNonp);
+            if (infNonpCnt === 0) {
+                // NonPrimitive指定がない、つまりPrimitiveの型.
+                return Result.ok(infPrim);
+            }
+            if (infNonpCnt > 1) {
+                infNonp |= Vtype.INFER;
+            }
+            return Result.ok(infPrim | infNonp);
         }
-        else {
-            return Result.ok(t1t2 | Vtype.INFER);
+        // t1かt2のどちらかにのみINFERがある、他方は確定の型.INFER側が確定の型に決定できるか判定する.
+        if (t1 & Vtype.INFER) {
+            if ((t1 & t2) === (t2 & Vtype.INFER_ALL)) {
+                return Result.ok(t2);
+            }
+            else {
+                return Result.err("型の整合性がとれません.");
+            }
         }
+        if (t2 & Vtype.INFER) {
+            if ((t1 & t2) === (t1 & Vtype.INFER_ALL)) {
+                return Result.ok(t1);
+            }
+            else {
+                return Result.err("型の整合性がとれません.");
+            }
+        }
+        throw new Error(`BUG: 正しく実装できていればここに到達する入力は存在しない. ( t1: ${t1}, t2: ${t2} )`);
     }
     const res = inferVtype(t1, t2);
     if (res.isErr) {
@@ -371,6 +417,18 @@ export class ExprStdFunc extends Expr {
     }
     toString() {
         return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class ExprUserFunc extends Expr {
+    funcInfo;
+    args;
+    constructor(src, vtype, funcInfo, args) {
+        super(ExprKind.USER_FUNC, vtype, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+    toString() {
+        return `UserFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 export class ExprVar extends Expr {

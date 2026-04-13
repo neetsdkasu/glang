@@ -15,40 +15,44 @@ export enum Vtype {
     INTEGER         = 1 << 2,
     FLOATING_POINT  = 1 << 3,
     STRING          = 1 << 4,
-    ARRAY           = 1 << 5,
-    ARRAY_2D        = 2 << 5,  // === (1 << 6)
-    ARRAY_3D        = 3 << 5,  // === (1 << 5) | (1 << 6)
-    SUB             = 1 << 7,
-    FUNC            = 1 << 8,
-    REFERENCE       = 1 << 9,
-    INFER           = 1 << 10,
+    ARRAY_TYPE      = 1 << 5,
+    ARRAY_SIZE_1    = 1 << 6,
+    ARRAY_1D        = ARRAY_TYPE | (1 * ARRAY_SIZE_1),  // (1 << 6)
+    ARRAY_2D        = ARRAY_TYPE | (2 * ARRAY_SIZE_1),  // (2 << 6) === (1 << 7)
+    ARRAY_3D        = ARRAY_TYPE | (3 * ARRAY_SIZE_1),  // (3 << 6) === (1 << 6) | (1 << 7)
+    ARRAY_SIZE      = 3 * ARRAY_SIZE_1,
+    SUB             = 1 << 8,
+    FUNC            = 1 << 9,
+    REFERENCE_VAR   = 1 << 10,
+    INFER           = 1 << 11,
     PRIMITIVE_TYPE  = BOOLEAN | INTEGER | FLOATING_POINT | STRING,
     NUMBER_TYPE     = INTEGER | FLOATING_POINT,
     LOGICAL_TYPE    = BOOLEAN | INTEGER,
     COMPARE_TYPE     = NUMBER_TYPE | STRING,
     CONCAT_TYPE     = NUMBER_TYPE | STRING,
-    ARRAY_TYPE      = ARRAY | ARRAY_2D | ARRAY_3D,
-    BOOL_ARRAY      = BOOLEAN | ARRAY,
+    NON_PRIMITIVE   = ARRAY_TYPE | SUB | FUNC | REFERENCE_VAR,
+    BOOL_ARRAY      = BOOLEAN | ARRAY_1D,
     BOOL_ARRAY_2D   = BOOLEAN | ARRAY_2D,
     BOOL_ARRAY_3D   = BOOLEAN | ARRAY_3D,
-    INT_ARRAY       = INTEGER | ARRAY,
+    INT_ARRAY       = INTEGER | ARRAY_1D,
     INT_ARRAY_2D    = INTEGER | ARRAY_2D,
     INT_ARRAY_3D    = INTEGER | ARRAY_3D,
-    FLOAT_ARRAY     = FLOATING_POINT | ARRAY,
+    FLOAT_ARRAY     = FLOATING_POINT | ARRAY_1D,
     FLOAT_ARRAY_2D  = FLOATING_POINT | ARRAY_2D,
     FLOAT_ARRAY_3D  = FLOATING_POINT | ARRAY_3D,
-    STR_ARRAY       = STRING | ARRAY,
+    STR_ARRAY       = STRING | ARRAY_1D,
     STR_ARRAY_2D    = STRING | ARRAY_2D,
     STR_ARRAY_3D    = STRING | ARRAY_3D,
     INFER_PRIMITIVE = INFER | PRIMITIVE_TYPE,
     INFER_NUMBER    = INFER | NUMBER_TYPE,
     INFER_LOGICAL   = INFER | LOGICAL_TYPE,
     INFER_COMPARE   = INFER | COMPARE_TYPE,
-    INFER_CONCAT    = INFER | CONCAT_TYPE
+    INFER_CONCAT    = INFER | CONCAT_TYPE,
+    INFER_ALL       = INFER | PRIMITIVE_TYPE | NON_PRIMITIVE
 }
 
 export function arrayDimension(vtype: Vtype): number {
-    return Math.floor((vtype & Vtype.ARRAY_TYPE) / Vtype.ARRAY);
+    return Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
 }
 
 /**
@@ -66,15 +70,56 @@ export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,strin
         if (t1 === t2) {
             return Result.ok(t1);
         }
-        const t1t2 = ((t1 & t2) | Vtype.INFER) ^ Vtype.INFER;
-        const cnt = U.popCount(t1t2);
-        if (cnt === 0) {
+        if (((t1 | t2) & Vtype.INFER) !== Vtype.INFER) {
+            // どちらもINFERを含まない場合は完全一致のみの判定でおわり.
             return Result.err("型の整合性がとれません.");
-        } else if (cnt === 1) {
-            return Result.ok(t1t2);
-        } else {
-            return Result.ok(t1t2 | Vtype.INFER);
         }
+        if ((t1 & t2) & Vtype.INFER) {
+            // どちらもINFERを含む場合は、どうしよう.
+            let infPrim = (t1 & t2) & Vtype.PRIMITIVE_TYPE;
+            const infPrimCnt = U.popCount(infPrim);
+            let infNonp = (t1 & t2) & Vtype.NON_PRIMITIVE;
+            if (infPrimCnt === 0) {
+                // Primitiveの指定がない => SUB/FUNCだけがOK
+                infNonp &= Vtype.SUB | Vtype.FUNC;
+                if (infNonp) {
+                    if (infNonp === (Vtype.SUB | Vtype.FUNC)) {
+                        infNonp |= Vtype.INFER;
+                    }
+                    return Result.ok(infNonp);
+                } else {
+                    return Result.err("型の整合性がとれません.");
+                }
+            }
+            if (infPrimCnt > 1) {
+                infPrim |= Vtype.INFER;
+            }
+            const infNonpCnt = U.popCount(infNonp);
+            if (infNonpCnt === 0) {
+                // NonPrimitive指定がない、つまりPrimitiveの型.
+                return Result.ok(infPrim);
+            }
+            if (infNonpCnt > 1) {
+                infNonp |= Vtype.INFER;
+            }
+            return Result.ok(infPrim | infNonp);
+        }
+        // t1かt2のどちらかにのみINFERがある、他方は確定の型.INFER側が確定の型に決定できるか判定する.
+        if (t1 & Vtype.INFER) {
+            if ((t1 & t2) === (t2 & Vtype.INFER_ALL)) {
+                return Result.ok(t2);
+            } else {
+                return Result.err("型の整合性がとれません.");    
+            }
+        }
+        if (t2 & Vtype.INFER) {
+            if ((t1 & t2) === (t1 & Vtype.INFER_ALL)) {
+                return Result.ok(t1);
+            } else {
+                return Result.err("型の整合性がとれません.");    
+            }
+        }
+        throw new Error(`BUG: 正しく実装できていればここに到達する入力は存在しない. ( t1: ${t1}, t2: ${t2} )`);
     }
     const res = inferVtype(t1, t2);
     if (res.isErr) {
@@ -405,6 +450,22 @@ export class ExprStdFunc extends Expr {
 
     toString(): string {
         return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+
+
+export class ExprUserFunc extends Expr {
+    readonly funcInfo: FuncInfo;
+    readonly args: Readonly<Expr[]>;
+
+    constructor(src: Token, vtype: Vtype, funcInfo: FuncInfo, args: Expr[]) {
+        super(ExprKind.USER_FUNC, vtype, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+
+    toString(): string {
+        return `UserFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 

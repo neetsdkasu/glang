@@ -78,6 +78,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "destructor",
     "dict",
     "dim",
+    "div",
     "do",
     "double",
     "dump",
@@ -128,6 +129,8 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "initialize",
     "initialized",
     "input",
+    "instance",
+    "instanceof",
     "int",
     "integer",
     "interface",
@@ -139,23 +142,28 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "log",
     "long",
     "loop",
+    "macro",
     "main",
     "map",
     "mapped",
     "match",
     "member",
     "method",
+    "mod",
+    "module",
     "namespace",
     "nan",
     "new",
     "next",
     "never",
-    "nothing",
     "nil",
+    "not",
+    "nothing",
     "null",
     "number",
     "object",
     "of",
+    "off",
     "ok",
     "on",
     "open",
@@ -180,6 +188,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "readonly",
     "ref",
     "refer",
+    "rem",
     "result",
     "return",
     "sealed",
@@ -208,6 +217,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "true",
     "try",
     "type",
+    "typeof",
     "undefined",
     "unknown",
     "unlock",
@@ -752,11 +762,11 @@ export class Parser {
             return syntaxError("配列名が必要です.", arrNameToken);
         }
 
-        const lbrToken = line.dequeue()!;
-        src.push(lbrToken);
+        const lrbToken = line.dequeue()!;
+        src.push(lrbToken);
 
-        if (lbrToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("配列の次元サイズ指定を開始するための開き丸括弧が必要です.",lbrToken);
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("配列の次元サイズ指定を開始するための開き丸括弧が必要です.",lrbToken);
         }
 
         let dims: number[] = [];
@@ -841,7 +851,7 @@ export class Parser {
 
         switch (dims.length) {
             case 1:
-                vtype |= C.Vtype.ARRAY;
+                vtype |= C.Vtype.ARRAY_1D;
                 break;
             case 2:
                 vtype |= C.Vtype.ARRAY_2D;
@@ -1327,6 +1337,45 @@ export class Parser {
     }
 
     #parseExprUnknownUserFunc(line: RQueue<Token>): Result<C.Expr,string> {
+        const nameToken = line.dequeue()!;
+        const name = nameToken.value.toLowerCase();
+
+        const lrbToken = line.dequeue()!;
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError(`${nameToken.value}はユーザ関数と判定されたため開き丸括弧が必要です.`, lrbToken);
+        }
+
+        if (line.front!.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            line.dequeue();
+            const noArgFuncInfoRes = this.#env.addUserFunc([nameToken], name, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, []), false);
+            if (noArgFuncInfoRes.isErr) {
+                return Result.err(noArgFuncInfoRes.error);
+            }
+            // TODO
+
+        }
+
+        const argTypes: C.Vtype[] = [];
+        const argTerms: C.Expr[] = [];
+
+        while (line.len) {
+            const token = line.front;
+            const argRes = this.#parseExpr(line);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            const arg = argRes.result;
+            argTypes.push(arg.vtype);
+            argTerms.push(arg);
+
+            const symToken = line.dequeue()!;
+            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+                break;
+            }
+        }
+
+
+
         throw new Unimplemented(line.front);
     }
 
@@ -1344,6 +1393,7 @@ export class Parser {
 
         const lrbToken = line.dequeue()!;
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            // TODO 配列参照を返す.
             return syntaxError("開き丸括弧が必要です.", lrbToken);
         }
 
