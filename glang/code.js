@@ -47,6 +47,8 @@ export var Vtype;
     Vtype[Vtype["INFER_LOGICAL"] = 2054] = "INFER_LOGICAL";
     Vtype[Vtype["INFER_COMPARE"] = 2076] = "INFER_COMPARE";
     Vtype[Vtype["INFER_CONCAT"] = 2076] = "INFER_CONCAT";
+    Vtype[Vtype["INFER_ARRAY"] = 2080] = "INFER_ARRAY";
+    Vtype[Vtype["INFER_REFERENCE"] = 3072] = "INFER_REFERENCE";
     Vtype[Vtype["INFER_ALL"] = 3902] = "INFER_ALL";
 })(Vtype || (Vtype = {}));
 export function arrayDimension(vtype) {
@@ -77,13 +79,11 @@ export function inferVtype(t1, t2, t3) {
             const infPrimCnt = U.popCount(infPrim);
             let infNonp = (t1 & t2) & Vtype.NON_PRIMITIVE;
             if (infPrimCnt === 0) {
-                // Primitiveの指定がない => SUB/FUNCだけがOK
-                infNonp &= Vtype.SUB | Vtype.FUNC;
-                if (infNonp) {
-                    if (infNonp === (Vtype.SUB | Vtype.FUNC)) {
-                        infNonp |= Vtype.INFER;
-                    }
+                if (infNonp === Vtype.SUB || infNonp === Vtype.FUNC) {
                     return Result.ok(infNonp);
+                }
+                else if (infNonp) {
+                    return Result.ok(infNonp | Vtype.INFER);
                 }
                 else {
                     return Result.err("型の整合性がとれません.");
@@ -97,29 +97,42 @@ export function inferVtype(t1, t2, t3) {
                 // NonPrimitive指定がない、つまりPrimitiveの型.
                 return Result.ok(infPrim);
             }
-            if (infNonpCnt > 1) {
-                infNonp |= Vtype.INFER;
+            else {
+                return Result.ok(infPrim | infNonp | Vtype.INFER);
             }
-            return Result.ok(infPrim | infNonp);
         }
         // t1かt2のどちらかにのみINFERがある、他方は確定の型.INFER側が確定の型に決定できるか判定する.
         if (t1 & Vtype.INFER) {
-            if ((t1 & t2) === (t2 & Vtype.INFER_ALL)) {
+            if (t1 === Vtype.INFER_ARRAY) {
+                if (t2 & Vtype.ARRAY_TYPE) {
+                    return Result.ok(t2);
+                }
+            }
+            else if (t1 === Vtype.INFER_REFERENCE) {
+                if (t2 & Vtype.REFERENCE_VAR) {
+                    return Result.ok(t2);
+                }
+            }
+            else if ((t1 & t2) === (t2 & Vtype.INFER_ALL)) {
                 return Result.ok(t2);
             }
-            else {
-                return Result.err("型の整合性がとれません.");
-            }
         }
-        if (t2 & Vtype.INFER) {
-            if ((t1 & t2) === (t1 & Vtype.INFER_ALL)) {
+        else if (t2 & Vtype.INFER) {
+            if (t2 === Vtype.INFER_ARRAY) {
+                if (t1 & Vtype.ARRAY_TYPE) {
+                    return Result.ok(t1);
+                }
+            }
+            else if (t2 === Vtype.INFER_REFERENCE) {
+                if (t1 & Vtype.REFERENCE_VAR) {
+                    return Result.ok(t1);
+                }
+            }
+            else if ((t1 & t2) === (t1 & Vtype.INFER_ALL)) {
                 return Result.ok(t1);
             }
-            else {
-                return Result.err("型の整合性がとれません.");
-            }
         }
-        throw new Error(`BUG: 正しく実装できていればここに到達する入力は存在しない. ( t1: ${t1}, t2: ${t2} )`);
+        return Result.err("型の整合性がとれません.");
     }
     const res = inferVtype(t1, t2);
     if (res.isErr) {
@@ -167,12 +180,12 @@ export class FuncRetArg {
         let hasInfer = false;
         if (this.ret & Vtype.INFER) {
             hasInfer = true;
-            if ((this.ret & def.ret) !== def.ret) {
-                return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+            if (inferVtype(this.ret, def.ret).isErr) {
+                return Result.err(`戻り値の型が不一致 (this: ${Vtype[this.ret]}, def: ${Vtype[def.ret]})`);
             }
         }
         else if (this.ret !== def.ret) {
-            return Result.err(`戻り値の型が不一致 (this: ${this.ret}, def: ${def.ret})`);
+            return Result.err(`戻り値の型が不一致 (this: ${Vtype[this.ret]}, def: ${Vtype[def.ret]})`);
         }
         if (this.args.length !== def.args.length) {
             return Result.err(`引数の数が不一致 (this: ${this.args.length}, def: ${def.args.length})`);
@@ -182,15 +195,18 @@ export class FuncRetArg {
             const da = def.args[i];
             if (ta & Vtype.INFER) {
                 hasInfer = true;
-                if ((ta & da) !== da) {
-                    return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+                if (inferVtype(ta, da).isErr) {
+                    return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${Vtype[ta]}, def: ${Vtype[da]})`);
                 }
             }
             else if (ta !== da) {
-                return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${ta}, def: ${da})`);
+                return Result.err(`${i + 1}番目の引数の型が不一致 (this: ${Vtype[ta]}, def: ${Vtype[da]})`);
             }
         }
         return Result.ok(hasInfer);
+    }
+    get isNoArg() {
+        return this.args.length === 0;
     }
     toString() {
         return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
@@ -376,7 +392,7 @@ export class ExprUnaryOp extends Expr {
         this.term = term;
     }
     toString() {
-        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, term: [[ ${this.term} ]] }`;
+        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
     }
 }
 export class ExprBinOp extends Expr {
@@ -390,7 +406,7 @@ export class ExprBinOp extends Expr {
         this.termR = termR;
     }
     toString() {
-        return `BinanyOp{ op: ${this.op}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
+        return `BinanyOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
     }
 }
 export class ExprBracket extends Expr {
@@ -402,7 +418,7 @@ export class ExprBracket extends Expr {
         this.rightBracket = rightBracket;
     }
     toString() {
-        return `Bracket{ expr: ( ${this.expr} ) }`;
+        return `Bracket{ vtype: ${Vtype[this.vtype]}, expr: ( ${this.expr} ) }`;
     }
 }
 export class ExprStdFunc extends Expr {
@@ -419,38 +435,62 @@ export class ExprStdFunc extends Expr {
         return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
+export class ExprMemberStdFunc extends Expr {
+    name;
+    retArg;
+    args;
+    constructor(src, vtype, name, retArg, args) {
+        super(ExprKind.STD_FUNC, vtype, src);
+        this.name = name;
+        this.retArg = retArg;
+        this.args = args;
+    }
+    toString() {
+        return `MemberStdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
 export class ExprUserFunc extends Expr {
     funcInfo;
     args;
-    constructor(src, vtype, funcInfo, args) {
-        super(ExprKind.USER_FUNC, vtype, src);
+    constructor(src, funcInfo, args) {
+        super(ExprKind.USER_FUNC, funcInfo.retArg.ret, src);
         this.funcInfo = funcInfo;
         this.args = args;
     }
     toString() {
-        return `UserFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `UserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
-export class ExprVar extends Expr {
+export class ExprVarVal extends Expr {
     nameInfo;
     constructor(src, nameInfo) {
         super(ExprKind.VARIABLE, nameInfo.vtype, src);
         this.nameInfo = nameInfo;
     }
     toString() {
-        return `Var{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
+        return `VarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
-export class ExprArrayVar extends Expr {
+export class ExprArrayVarVal extends Expr {
     nameInfo;
     indexes;
     constructor(src, nameInfo, indexes) {
-        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+        super(ExprKind.VARIABLE, nameInfo.vtype & Vtype.PRIMITIVE_TYPE, src);
         this.nameInfo = nameInfo;
         this.indexes = indexes;
     }
     toString() {
-        return `ArrayVar{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `ArrayVarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class ExprArrayRef extends Expr {
+    nameInfo;
+    constructor(src, nameInfo) {
+        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+        this.nameInfo = nameInfo;
+    }
+    toString() {
+        return `ArrayRef{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
 export var CodeKind;
@@ -469,10 +509,14 @@ export class Code {
 }
 export class Block extends Code {
     id;
+    parentId;
+    varList;
     body;
-    constructor(src, id, body) {
+    constructor(src, id, parentId, varList, body) {
         super(CodeKind.BLOCK, src);
         this.id = id;
+        this.parentId = parentId;
+        this.varList = varList;
         this.body = body;
     }
 }

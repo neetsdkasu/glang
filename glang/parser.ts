@@ -252,20 +252,23 @@ const StdFuncWordMap: Readonly<Map<string,C.FuncRetArg>> = Object.freeze(new Map
     ["cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["sin", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT])],
     ["sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["floor", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
-    ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])] 
+    ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
+    ["size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER])]
 ]));
 
 type UnaryOpInfo = Readonly<{ op: C.UnaryOpKind, vtype: C.Vtype }>;
 
 const UnaryOpMap: Readonly<Map<string,UnaryOpInfo>> = Object.freeze(new Map([
-    ["+", { op: C.UnaryOpKind.POSITIVE_SIGN, vtype: C.Vtype.NUMBER_TYPE }],
-    ["-", { op: C.UnaryOpKind.NEGATIVE_SIGN, vtype: C.Vtype.NUMBER_TYPE }],
+    ["+", { op: C.UnaryOpKind.POSITIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
+    ["-", { op: C.UnaryOpKind.NEGATIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
     ["~", { op: C.UnaryOpKind.BITWISE_NOT, vtype: C.Vtype.INTEGER }],
     ["!", { op: C.UnaryOpKind.LOGICAL_NOT, vtype: C.Vtype.BOOLEAN }]
 ]));
+
+const MEMBER_ACCESS_OP = ".";
 
 const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
     ["*", new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, 100, C.Vtype.INFER_NUMBER)],
@@ -375,6 +378,10 @@ class NameMap {
     get(name: string): C.NameInfo | undefined {
         return this.#map.get(name);
     }
+
+    getNameList(): Readonly<C.NameInfo[]> {
+        return [...this.#map.values()].sort( (a, b) => a.blockVarId - b.blockVarId );
+    }
 }
 
 
@@ -428,15 +435,17 @@ class Env {
      * 
      * @returns 
      */
-    pop(): Result<{blockId: number, blockSrc: Token[]|null, body: C.Code[]},string> {
+    pop(): Result<{parentBlockId: number, blockId: number, blockSrc: Token[]|null, varList: Readonly<C.NameInfo[]>, body: C.Code[]},string> {
         log.info("drop block");
         if (this.#codeBodyStack.length === 0) {
             return Result.err("no block");
         }
         const map = this.#nameMapStack.pop()!;
         const body = this.#codeBodyStack.pop()!;
+        const parentId = this.#nameMapStack.at(-1)?.blockId ?? -1;
+        const list = map.getNameList();
         log.dump("block src", Token.lineToString, map.blockSrc ?? []);
-        return Result.ok({blockId:map.blockId, blockSrc: map.blockSrc, body: body});
+        return Result.ok({parentBlockId: parentId, blockId:map.blockId, blockSrc: map.blockSrc, varList: list, body: body});
     }
 
     /**
@@ -1089,6 +1098,15 @@ export class Parser {
             const term = termRes.result;
             terms.push(term);
 
+            while (line.front!.value === MEMBER_ACCESS_OP) {
+                const obj = terms.pop()!;
+                const memberedRes = this.#parseExprMember(obj, line);
+                if (memberedRes.isErr) {
+                    return memberedRes;
+                }
+                terms.push(memberedRes.result);
+            }
+
             const opToken = line.dequeue()!;
             log.dump("opToken", opToken.value);
 
@@ -1102,7 +1120,7 @@ export class Parser {
             const opInfo = BinaryOpMap.get(op)!;
 
             while (ops.length > 0 && ops.at(-1)!.op.priority >= opInfo.priority) {
-                U.assertGE(terms.length, 2);
+                U.assert(terms.length >= 2);
                 const opX = ops.pop()!;
                 const termR = terms.pop()!;
                 const termL = terms.pop()!;
@@ -1119,7 +1137,7 @@ export class Parser {
         }
 
         while (ops.length > 0) {
-            U.assertGE(terms.length, 2);
+            U.assert(terms.length >= 2);
             const opX = ops.pop()!;
             const termR = terms.pop()!;
             const termL = terms.pop()!;
@@ -1132,7 +1150,7 @@ export class Parser {
             terms.push(termX);
         }
 
-        U.assertEq(terms.length, 1);
+        U.assert(terms.length === 1);
        
         return Result.ok(terms[0]);
     }
@@ -1207,7 +1225,7 @@ export class Parser {
                     line.recover();
                     return this.#parseExprArrayVar(line);
                 } else {
-                    return Result.ok(new C.ExprVar(token, nameInfo));
+                    return Result.ok(new C.ExprVarVal(token, nameInfo));
                 }
             default:
                 break;
@@ -1218,7 +1236,10 @@ export class Parser {
 
     #parseExprUnaryOp(line: RQueue<Token>): Result<C.Expr,string> {
         const opToken = line.dequeue()!;
+        U.assertEq(opToken.tokenType, TokenType.OPERATOR);
+
         const unaryOpInfo = UnaryOpMap.get(opToken.value.toLowerCase())!;
+        
         switch (line.front!.tokenType) {
             case TokenType.INTEGER:
             case TokenType.BIN_INETGER:
@@ -1233,7 +1254,7 @@ export class Parser {
                     log.dump("litInt", litInt);
                     return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo.op));
                 } else {
-                    return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
                 }
             case TokenType.FLOATING_POINT:
                 if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
@@ -1246,7 +1267,7 @@ export class Parser {
                     log.dump("litFloat", litFloat);
                     return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo.op));
                 } else {
-                    return syntaxError(`単項演算子(${unaryOpInfo.op})を適用できない型です.`, line.front);
+                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
                 }
             case TokenType.WORD:
                 if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
@@ -1272,7 +1293,7 @@ export class Parser {
         const termU = termURes.result;
         const unaryVtypeRes = C.inferVtype(unaryOpInfo.vtype, termU.vtype);
         if (unaryVtypeRes.isErr) {
-            return syntaxError(`単項演算子(${unaryOpInfo.op})を適用でない型です.`, opToken);
+            return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用でない型です.`, opToken);
         }
         return Result.ok(new C.ExprUnaryOp(opToken, unaryVtypeRes.result, unaryOpInfo.op, termU));
     }
@@ -1324,6 +1345,8 @@ export class Parser {
 
         let ret: C.Vtype = retArg.ret;
         if (ret & C.Vtype.INFER) {
+            // 標準関数の戻り値の型にINFERが含まれるとき、戻り値の型と引数の型はすべて一致させる.(そうでないものを標準関数にしない).
+            // 例: min, max, abs, sign など
             for (const arg of args) {
                 const retVtypeRes = C.inferVtype(ret, arg.vtype);
                 if (retVtypeRes.isErr) {
@@ -1351,8 +1374,8 @@ export class Parser {
             if (noArgFuncInfoRes.isErr) {
                 return Result.err(noArgFuncInfoRes.error);
             }
-            // TODO
-
+            const noArgFuncInfo = noArgFuncInfoRes.result;
+            return Result.ok(new C.ExprUserFunc(nameToken, noArgFuncInfo, []));
         }
 
         const argTypes: C.Vtype[] = [];
@@ -1371,16 +1394,73 @@ export class Parser {
             const symToken = line.dequeue()!;
             if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 break;
+            } else if (symToken.tokenType === TokenType.COMMA) {
+                continue;
+            } else {
+                return syntaxError("カンマまたは閉じ丸括弧が必要です.", symToken);
             }
         }
 
+        const funcInfoRes = this.#env.addUserFunc([nameToken], name, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+        if (funcInfoRes.isErr) {
+            return Result.err(funcInfoRes.error);
+        }
 
-
-        throw new Unimplemented(line.front);
+        return Result.ok(new C.ExprUserFunc(nameToken, funcInfoRes.result, argTerms));
     }
 
     #parseExprUserFunc(line: RQueue<Token>): Result<C.Expr,string> {
-        throw new Unimplemented(line.front);
+        const nameToken = line.dequeue()!;
+        const name = nameToken.value.toLowerCase();
+
+        const funcInfoList = this.#env.findUserFunc(name);
+        U.assert(funcInfoList !== undefined);
+
+        const funcInfo = funcInfoList.find( fi => fi.definition );
+
+        if (funcInfo === undefined) {
+            line.recover();
+            return this.#parseExprUnknownUserFunc(line);
+        }
+
+        const lrbToken = line.dequeue()!;
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("ユーザー関数の呼び出しは名前に続いて開き丸括弧が必要です.", lrbToken);
+        }
+
+        if (funcInfo.retArg.isNoArg) {
+            const rrbToken = line.dequeue()!;
+            if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+            }
+            return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, []));
+        }
+
+        const args: C.Expr[] = [];
+
+        for (let i = 0; i < funcInfo.retArg.args.length; i++) {
+            const token = line.front;
+            const argRes = this.#parseExpr(line);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            const arg = argRes.result;
+            if (C.inferVtype(arg.vtype, funcInfo.retArg.args[i]).isErr) {
+                return syntaxError(`ユーザ関数${nameToken.value}の呼び出しの${i+1}番目の引数の型が不一致です.`, token);
+            }
+            args.push(arg);
+
+            const symToken = line.dequeue()!;
+            if (i + 1 < funcInfo.retArg.args.length) {
+                if (symToken.tokenType !== TokenType.COMMA) {
+                    return syntaxError("カンマが必要です.", symToken);
+                }
+            } else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", symToken);
+            }
+        }
+
+        return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, args));
     }
 
     #parseExprArrayVar(line: RQueue<Token>): Result<C.Expr,string> {
@@ -1393,8 +1473,8 @@ export class Parser {
 
         const lrbToken = line.dequeue()!;
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            // TODO 配列参照を返す.
-            return syntaxError("開き丸括弧が必要です.", lrbToken);
+            line.recover();
+            return Result.ok(new C.ExprArrayRef(nameToken, nameInfo));
         }
 
         const indexes: C.Expr[] = [];
@@ -1421,7 +1501,94 @@ export class Parser {
             }
         }
 
-        return Result.ok(new C.ExprArrayVar(nameToken, nameInfo, indexes));
+        return Result.ok(new C.ExprArrayVarVal(nameToken, nameInfo, indexes));
+    }
+
+    #parseExprMember(obj: C.Expr, line: RQueue<Token>): Result<C.Expr,string> {
+        const args: C.Expr[] = [obj];
+
+        const dotToken = line.dequeue()!;
+        U.assert(dotToken.value === MEMBER_ACCESS_OP);
+
+        const memberToken = line.dequeue!();
+
+        if (memberToken?.tokenType !== TokenType.WORD) {
+            return syntaxError("メンバーの指定が必要です.", dotToken);
+        }
+
+        const member = memberToken.value.toLowerCase();
+
+        if (StdFuncWordMap.has(member)) {
+            const stdFunc = StdFuncWordMap.get(member)!;
+            if (stdFunc.isNoArg) {
+                return syntaxError(`標準関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
+            }
+            if (C.inferVtype(stdFunc.args[0], obj.vtype).isErr) {
+                return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
+            }
+            const lrbToken_sf = line.dequeue()!;
+            if (lrbToken_sf.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+                return syntaxError("開き丸括弧が必要です.", lrbToken_sf);
+            }
+            if (stdFunc.args.length === 1) {
+                const rrbToken_sf1 = line.dequeue()!;
+                if (rrbToken_sf1.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                    return syntaxError("閉じ丸括弧が必要です.", rrbToken_sf1);
+                }
+                let ret_sf1 = stdFunc.ret;
+                if (ret_sf1 & C.Vtype.INFER) {
+                    const inf_sf1Res = C.inferVtype(ret_sf1, obj.vtype);
+                    if (inf_sf1Res.isErr) {
+                        return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
+                    }
+                    ret_sf1 = inf_sf1Res.result;
+                }
+                return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf1, member, stdFunc, args));
+            }
+
+            for (let i = 1; i < stdFunc.args.length; i++) {
+                const token_sf = line.front;
+                const arg_sfRes = this.#parseExpr(line);
+                if (arg_sfRes.isErr) {
+                    return arg_sfRes;
+                }
+                const arg_sf = arg_sfRes.result;
+                if (C.inferVtype(stdFunc.args[i], arg_sf.vtype).isErr) {
+                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_sf);
+                }
+                args.push(arg_sf);
+
+                const symToken_sf = line.dequeue()!;
+                if (i + 1 < stdFunc.args.length) {
+                    if (symToken_sf.tokenType !== TokenType.COMMA) {
+                        return syntaxError("カンマが必要です.", symToken_sf);
+                    }
+                } else if (symToken_sf.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                    return syntaxError("閉じ丸括弧が必要です.", symToken_sf);
+                }
+            }
+
+            let ret_sf = stdFunc.ret;
+            if (ret_sf & C.Vtype.INFER) {
+                for (let i = 0; i < args.length; i++) {
+                    const inf_sfRes = C.inferVtype(ret_sf, args[i].vtype);
+                    if (inf_sfRes.isErr) {
+                        if (i === 0) {
+                            return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);                            
+                        } else {
+                            return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, args[i].src);
+                        }
+                    }
+                    ret_sf = inf_sfRes.result;
+                }
+            }
+
+            return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf, member, stdFunc, args));
+        }
+
+
+
+        throw new Unimplemented(line.front);
     }
 }
 

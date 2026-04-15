@@ -10,34 +10,22 @@ export function assert(test, msg) {
     }
 }
 export function assertEq(a, b, msg) {
-    if (a !== b) {
-        throw new Error(`assertEq error: msg="${msg}", not (a=${a}) !== (b=${b})`);
-    }
+    assert(a === b, `assertEq error: msg="${msg}", not (a=${a}) !== (b=${b})`);
 }
-export function assertNe(a, b, msg) {
-    if (a === b) {
-        throw new Error(`assertNe error: msg="${msg}", (a=${a}) === (b=${b})`);
-    }
+export function assertNE(a, b, msg) {
+    assert(a !== b, `assertNE error: msg="${msg}", (a=${a}) === (b=${b})`);
 }
 export function assertLT(a, b, msg) {
-    if (a >= b) {
-        throw new Error(`assertLT error: msg="${msg}", (a=${a}) >= (b=${b})`);
-    }
+    assert(a < b, `assertLT error: msg="${msg}", (a=${a}) >= (b=${b})`);
 }
 export function assertLE(a, b, msg) {
-    if (a > b) {
-        throw new Error(`assertLE error: msg="${msg}", (a=${a}) > (b=${b})`);
-    }
+    assert(a <= b, `assertLE error: msg="${msg}", (a=${a}) > (b=${b})`);
 }
 export function assertGT(a, b, msg) {
-    if (a <= b) {
-        throw new Error(`assertGT error: msg="${msg}", (a=${a}) <= (b=${b})`);
-    }
+    assert(a > b, `assertGT error: msg="${msg}", (a=${a}) <= (b=${b})`);
 }
 export function assertGE(a, b, msg) {
-    if (a < b) {
-        throw new Error(`assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
-    }
+    assert(a >= b, `assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
 }
 export class Unimplemented extends Error {
     constructor(obj) {
