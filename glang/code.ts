@@ -497,6 +497,22 @@ export class ExprUserFunc extends Expr {
     }
 }
 
+
+export class ExprMemberUserFunc extends Expr {
+    readonly funcInfo: FuncInfo;
+    readonly args: Readonly<Expr[]>;
+
+    constructor(src: Token, funcInfo: FuncInfo, args: Expr[]) {
+        super(ExprKind.USER_FUNC, funcInfo.retArg.ret, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+
+    toString(): string {
+        return `MemberUserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+
 export class ExprVarVal extends Expr {
     readonly nameInfo: NameInfo;
 
@@ -556,11 +572,11 @@ export class Code {
 
 export class Block extends Code {
     readonly id: number;
-    readonly parentId: number;
+    readonly parentId: number | undefined;
     readonly varList: Readonly<NameInfo[]>;
     readonly body: Readonly<Code[]>;
 
-    constructor(src: Token[], id: number, parentId: number, varList: Readonly<NameInfo[]>, body: Code[]) {
+    constructor(src: Token[], id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[]) {
         super(CodeKind.BLOCK, src);
         this.id = id;
         this.parentId = parentId;

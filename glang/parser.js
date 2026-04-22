@@ -416,7 +416,7 @@ class Env {
         }
         const map = this.#nameMapStack.pop();
         const body = this.#codeBodyStack.pop();
-        const parentId = this.#nameMapStack.at(-1)?.blockId ?? -1;
+        const parentId = this.#nameMapStack.at(-1)?.blockId;
         const list = map.getNameList();
         log.dump("block src", Token.lineToString, map.blockSrc ?? []);
         return Result.ok({ parentBlockId: parentId, blockId: map.blockId, blockSrc: map.blockSrc, varList: list, body: body });
@@ -1413,7 +1413,89 @@ export class Parser {
             }
             return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf, member, stdFunc, args));
         }
-        throw new Unimplemented(line.front);
+        const userFunc = this.#env.findUserFunc(member)?.find(fi => fi.definition);
+        if (userFunc !== undefined) {
+            if (userFunc.retArg.ret === C.Vtype.VOID) {
+                return syntaxError(`subで定義されているユーザ関数${member}は式中で呼び出せません.`, memberToken);
+            }
+            if (userFunc.retArg.isNoArg) {
+                return syntaxError(`ユーザ関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
+            }
+            if (C.inferVtype(userFunc.retArg.args[0], obj.vtype).isErr) {
+                return syntaxError(`ユーザ関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
+            }
+            const lrbToken_uf = line.dequeue();
+            if (lrbToken_uf.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+                return syntaxError("開き丸括弧が必要です.", lrbToken_uf);
+            }
+            if (userFunc.retArg.args.length === 1) {
+                const rrbToken_uf1 = line.dequeue();
+                if (rrbToken_uf1.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                    return syntaxError("閉じ丸括弧が必要です.", rrbToken_uf1);
+                }
+                return Result.ok(new C.ExprMemberUserFunc(memberToken, userFunc, args));
+            }
+            for (let i = 1; i < userFunc.retArg.args.length; i++) {
+                const token_uf = line.front;
+                const arg_ufRes = this.#parseExpr(line);
+                if (arg_ufRes.isErr) {
+                    return arg_ufRes;
+                }
+                const arg_uf = arg_ufRes.result;
+                if (C.inferVtype(userFunc.retArg.args[i], arg_uf.vtype).isErr) {
+                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_uf);
+                }
+                args.push(arg_uf);
+                const symToken_uf = line.dequeue();
+                if (i + 1 < userFunc.retArg.args.length) {
+                    if (symToken_uf.tokenType !== TokenType.COMMA) {
+                        return syntaxError("カンマが必要です.", symToken_uf);
+                    }
+                }
+                else if (symToken_uf.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                    return syntaxError("閉じ丸括弧が必要です.", symToken_uf);
+                }
+            }
+            return Result.ok(new C.ExprMemberUserFunc(memberToken, userFunc, args));
+        }
+        const argTypes = [obj.vtype];
+        const lrbToken = line.dequeue();
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        }
+        if (line.front.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            line.dequeue();
+            const ufi1Res = this.#env.addUserFunc([memberToken], member, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+            if (ufi1Res.isErr) {
+                return Result.err(ufi1Res.error);
+            }
+            return Result.ok(new C.ExprMemberUserFunc(memberToken, ufi1Res.result, args));
+        }
+        while (line.len) {
+            const token = line.front;
+            const argRes = this.#parseExpr(line);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            const arg = argRes.result;
+            args.push(arg);
+            argTypes.push(arg.vtype);
+            const symToken = line.dequeue();
+            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+                break;
+            }
+            else if (symToken.tokenType === TokenType.COMMA) {
+                continue;
+            }
+            else {
+                return syntaxError("カンマか閉じ丸括弧が必要です.", symToken);
+            }
+        }
+        const ufiRes = this.#env.addUserFunc([memberToken], member, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+        if (ufiRes.isErr) {
+            return Result.err(ufiRes.error);
+        }
+        return Result.ok(new C.ExprMemberUserFunc(memberToken, ufiRes.result, args));
     }
 }
 export default Parser;

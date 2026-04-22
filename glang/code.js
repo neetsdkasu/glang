@@ -461,6 +461,18 @@ export class ExprUserFunc extends Expr {
         return `UserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
+export class ExprMemberUserFunc extends Expr {
+    funcInfo;
+    args;
+    constructor(src, funcInfo, args) {
+        super(ExprKind.USER_FUNC, funcInfo.retArg.ret, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+    toString() {
+        return `MemberUserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
 export class ExprVarVal extends Expr {
     nameInfo;
     constructor(src, nameInfo) {
