@@ -140,21 +140,54 @@ export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,strin
 export class NameInfo {
     readonly src: Readonly<Token[]>;
     readonly name: string;
-    readonly vtype: Vtype;
     readonly varId: number;
     readonly blockId: number;
     readonly blockVarId: number;
+    #vtype: Vtype;
+    #count: number = 0;
+
     constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
         this.src = src;
         this.name = name;
-        this.vtype = vtype;
+        this.#vtype = vtype;
         this.varId = varId;
         this.blockId = blockId;
         this.blockVarId = blockVarId;
     }
 
+    get count(): number {
+        return this.#count;
+    }
+
+    get vtype(): Vtype {
+        return this.#vtype;
+    }
+
+    updateType(vtype: Vtype): void {
+        const res = inferVtype(vtype, this.#vtype);
+        if (res.isErr) {
+            log.dump("vtype", vtype);
+            log.dump("nameInfo:", this);
+            log.error(res.error);
+            throw new Error("BUG");
+        }
+        this.#vtype = res.result;
+    }
+
+    incrementCounter(): void {
+        this.#count++;
+    }
+
+    hasType(vtype: Vtype): boolean {
+        return (this.vtype & vtype) === vtype;
+    }
+
+    hasAnyType(vtype: Vtype): boolean {
+        return (this.vtype & vtype) !== 0;
+    }
+
     toString(): string {
-        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}  }`;
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count} }`;
     }
 }
 
@@ -299,6 +332,39 @@ export class BinaryOpInfo {
 
     toString(): string {
         return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
+    }
+}
+
+export enum AssignKind {
+    ASSIGN,             // "="
+    ADD,                // "+="
+    SUBTRACT,           // "-="
+    MULTIPLY,           // "*="
+    DIVIDE,             // "/="
+    INT_DIVIDE,         // "\\="
+    INT_REMINDER,       // "%="
+    BITWISE_AND,        // "&="
+    BITWISE_OR,         // "|="
+    BITWISE_XOR,        // "^="
+    BITWISE_ASHIFT_L,   // "<<="
+    BITWISE_ASHIFT_R,   // ">>="
+    BITWISE_LSHIFT_L,   // "<<<="
+    BITWISE_LSHIFT_R,   // ">>>="
+}
+
+export class AssignOpInfo {
+    readonly kind: AssignKind;
+    readonly op: string;
+    readonly vtype: Vtype;
+
+    constructor(kind: AssignKind, op: string, vtype: Vtype) {
+        this.kind = kind;
+        this.op = op;
+        this.vtype = vtype;
+    }
+
+    toString(): string {
+        return `AssignOpInfo{ kind: ${AssignKind[this.kind]}, op: "${this.op}", vtype: ${Vtype[this.vtype]} }`;
     }
 }
 
@@ -558,6 +624,8 @@ export enum CodeKind {
     BLOCK,
     DIM,
     LET,
+    ASSIGN_VAR,
+    ASSIGN_ARRAY,
 }
 
 export class Code {
@@ -583,6 +651,10 @@ export class Block extends Code {
         this.varList = varList;
         this.body = body;
     }
+
+    toString(): string {
+        return `Block{ id: ${this.id}, body: {{ ${this.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+    }
 }
 
 export class Dim extends Code {
@@ -594,6 +666,10 @@ export class Dim extends Code {
         this.nameInfo = nameInfo;
         this.dims = dims;
     }
+
+    toString(): string {
+        return `Dim{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.nameInfo.vtype]}, dims: [ ${this.dims} ] }`;
+    }
 }
 
 export class Let extends Code {
@@ -604,6 +680,27 @@ export class Let extends Code {
         super(CodeKind.LET, src);
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+
+    toString(): string {
+        return `Let{ name: ${this.nameInfo.name}, vtype: ${this.nameInfo.vtype}, expr: (( ${this.expr} ))`;
+    }
+}
+
+export class AssignVar extends Code {
+    readonly op: AssignOpInfo;
+    readonly nameInfo: NameInfo;
+    readonly expr: Expr;
+
+    constructor(src: Token[], op: AssignOpInfo, nameInfo: NameInfo, expr: Expr) {
+        super(CodeKind.ASSIGN_VAR, src);
+        this.op = op;
+        this.nameInfo = nameInfo;
+        this.expr = expr;
+    }
+
+    toString(): string {
+        return `AssignVar{ name: ${this.nameInfo.name}, op: "${this.op.op}", expr: (( ${this.expr} )) }`;
     }
 }
 

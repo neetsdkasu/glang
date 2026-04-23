@@ -2,7 +2,7 @@
 // Parser
 //
 import Logger, { LogLevel } from "logger";
-const log = new Logger("parser", LogLevel.ALL);
+const log = new Logger("parser", LogLevel.INFO | LogLevel.ERROR | LogLevel.WARN);
 import RQueue from "rqueue";
 import { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
@@ -247,8 +247,8 @@ const StdFuncWordMap = Object.freeze(new Map([
     ["tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT])],
     ["sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["floor", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
-    ["ceil", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])],
+    ["floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
+    ["ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER])]
 ]));
 const UnaryOpMap = Object.freeze(new Map([
@@ -282,20 +282,20 @@ const BinaryOpMap = Object.freeze(new Map([
     ["||", new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR, 20, C.Vtype.BOOLEAN)]
 ]));
 const AssignOpMap = Object.freeze(new Map([
-    ["=", C.Vtype.INFER_PRIMITIVE],
-    ["+=", C.Vtype.INFER_CONCAT],
-    ["-=", C.Vtype.INFER_NUMBER],
-    ["*=", C.Vtype.INFER_NUMBER],
-    ["/=", C.Vtype.FLOATING_POINT],
-    ["\\=", C.Vtype.INTEGER],
-    ["%=", C.Vtype.INTEGER],
-    [">>=", C.Vtype.INTEGER],
-    ["<<=", C.Vtype.INTEGER],
-    [">>>=", C.Vtype.INTEGER],
-    ["<<<=", C.Vtype.INTEGER],
-    ["&=", C.Vtype.INFER_LOGICAL],
-    ["|=", C.Vtype.INFER_LOGICAL],
-    ["^=", C.Vtype.INFER_LOGICAL]
+    ["=", new C.AssignOpInfo(C.AssignKind.ASSIGN, "=", C.Vtype.INFER_PRIMITIVE)],
+    ["+=", new C.AssignOpInfo(C.AssignKind.ADD, "+=", C.Vtype.INFER_CONCAT)],
+    ["-=", new C.AssignOpInfo(C.AssignKind.SUBTRACT, "-=", C.Vtype.INFER_NUMBER)],
+    ["*=", new C.AssignOpInfo(C.AssignKind.MULTIPLY, "*=", C.Vtype.INFER_NUMBER)],
+    ["/=", new C.AssignOpInfo(C.AssignKind.DIVIDE, "/=", C.Vtype.FLOATING_POINT)],
+    ["\\=", new C.AssignOpInfo(C.AssignKind.INT_DIVIDE, "\\=", C.Vtype.INTEGER)],
+    ["%=", new C.AssignOpInfo(C.AssignKind.INT_REMINDER, "%=", C.Vtype.INTEGER)],
+    [">>=", new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_R, ">>=", C.Vtype.INTEGER)],
+    ["<<=", new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_L, "<<=", C.Vtype.INTEGER)],
+    [">>>=", new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_R, ">>>=", C.Vtype.INTEGER)],
+    ["<<<=", new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_L, "<<<=", C.Vtype.INTEGER)],
+    ["&=", new C.AssignOpInfo(C.AssignKind.BITWISE_AND, "&=", C.Vtype.INFER_LOGICAL)],
+    ["|=", new C.AssignOpInfo(C.AssignKind.BITWISE_OR, "|=", C.Vtype.INFER_LOGICAL)],
+    ["^=", new C.AssignOpInfo(C.AssignKind.BITWISE_XOR, "^=", C.Vtype.INFER_LOGICAL)]
 ]));
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
 const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
@@ -679,9 +679,13 @@ export class Parser {
                 return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
             }
             let res;
-            switch (cmdToken.value.toLowerCase()) {
+            const cmd = cmdToken.value.toLowerCase();
+            switch (cmd) {
                 case "dim":
                     res = this.#parseDim(line);
+                    break;
+                case "for":
+                    res = this.#parseFor(line);
                     break;
                 case "let":
                     res = this.#parseLet(line);
@@ -689,8 +693,28 @@ export class Parser {
                 case "sub":
                     res = this.#parseSub(line);
                     break;
-                default:
+                case "call":
+                case "else":
+                case "end":
+                case "func":
+                case "if":
                     throw new Unimplemented(line.front);
+                default:
+                    const nameInfo = this.#env.findName(cmd);
+                    if (nameInfo !== undefined) {
+                        if (nameInfo.vtype & C.Vtype.REFERENCE_VAR) {
+                            throw new Unimplemented(line.front);
+                        }
+                        else if (nameInfo.vtype & C.Vtype.ARRAY_TYPE) {
+                            res = this.#parseAssignArray(line);
+                            break;
+                        }
+                        else if (nameInfo.vtype & C.Vtype.PRIMITIVE_TYPE) {
+                            res = this.#parseAssign(line);
+                            break;
+                        }
+                    }
+                    return syntaxError(`"${cmdToken.value}"から行頭の開始はできません.`, cmdToken);
             }
             if (res.isErr) {
                 return Result.err(res.error);
@@ -1091,12 +1115,13 @@ export class Parser {
                     return this.#parseExprArrayVar(line);
                 }
                 else {
+                    nameInfo.incrementCounter();
                     return Result.ok(new C.ExprVarVal(token, nameInfo));
                 }
             default:
                 break;
         }
-        throw new Unimplemented(token);
+        return syntaxError("不正な文字です.", token);
     }
     #parseExprUnaryOp(line) {
         const opToken = line.dequeue();
@@ -1218,6 +1243,9 @@ export class Parser {
     #parseExprUnknownUserFunc(line) {
         const nameToken = line.dequeue();
         const name = nameToken.value.toLowerCase();
+        if (this.#env.isToplevel) {
+            return syntaxError("トップレベルの式でユーザー関数を呼び出すことはできません.", nameToken);
+        }
         const lrbToken = line.dequeue();
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
             return syntaxError(`${nameToken.value}はユーザ関数と判定されたため開き丸括弧が必要です.`, lrbToken);
@@ -1229,6 +1257,7 @@ export class Parser {
                 return Result.err(noArgFuncInfoRes.error);
             }
             const noArgFuncInfo = noArgFuncInfoRes.result;
+            this.#env.findName(name).incrementCounter();
             return Result.ok(new C.ExprUserFunc(nameToken, noArgFuncInfo, []));
         }
         const argTypes = [];
@@ -1257,11 +1286,15 @@ export class Parser {
         if (funcInfoRes.isErr) {
             return Result.err(funcInfoRes.error);
         }
+        this.#env.findName(name).incrementCounter();
         return Result.ok(new C.ExprUserFunc(nameToken, funcInfoRes.result, argTerms));
     }
     #parseExprUserFunc(line) {
         const nameToken = line.dequeue();
         const name = nameToken.value.toLowerCase();
+        if (this.#env.isToplevel) {
+            return syntaxError("トップレベルの式でユーザー関数を呼び出すことはできません.", nameToken);
+        }
         const funcInfoList = this.#env.findUserFunc(name);
         U.assert(funcInfoList !== undefined);
         const funcInfo = funcInfoList.find(fi => fi.definition);
@@ -1278,6 +1311,7 @@ export class Parser {
             if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
                 return syntaxError("閉じ丸括弧が必要です.", rrbToken);
             }
+            this.#env.findName("name").incrementCounter();
             return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, []));
         }
         const args = [];
@@ -1302,6 +1336,7 @@ export class Parser {
                 return syntaxError("閉じ丸括弧が必要です.", symToken);
             }
         }
+        this.#env.findName(name).incrementCounter();
         return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, args));
     }
     #parseExprArrayVar(line) {
@@ -1310,6 +1345,7 @@ export class Parser {
         const nameInfo = this.#env.findName(name);
         const dim = C.arrayDimension(nameInfo.vtype);
         log.dump("dim", dim);
+        nameInfo.incrementCounter();
         const lrbToken = line.dequeue();
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
             line.recover();
@@ -1413,6 +1449,9 @@ export class Parser {
             }
             return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf, member, stdFunc, args));
         }
+        if (this.#env.isToplevel) {
+            return syntaxError("トップレベルの式でユーザー関数を呼び出すことはできません.", memberToken);
+        }
         const userFunc = this.#env.findUserFunc(member)?.find(fi => fi.definition);
         if (userFunc !== undefined) {
             if (userFunc.retArg.ret === C.Vtype.VOID) {
@@ -1456,6 +1495,7 @@ export class Parser {
                     return syntaxError("閉じ丸括弧が必要です.", symToken_uf);
                 }
             }
+            this.#env.findName(member).incrementCounter();
             return Result.ok(new C.ExprMemberUserFunc(memberToken, userFunc, args));
         }
         const argTypes = [obj.vtype];
@@ -1495,7 +1535,72 @@ export class Parser {
         if (ufiRes.isErr) {
             return Result.err(ufiRes.error);
         }
+        this.#env.findName(member).incrementCounter();
         return Result.ok(new C.ExprMemberUserFunc(memberToken, ufiRes.result, args));
+    }
+    #parseAssign(line) {
+        const nameToken = line.dequeue();
+        const src = [nameToken];
+        log.info("parse assign...");
+        if (this.#env.isToplevel) {
+            return syntaxError("代入はトップレベルでは使用できません.", nameToken);
+        }
+        const name = nameToken.value.toLowerCase();
+        const nameInfo = this.#env.findName(name);
+        log.dump("name", name);
+        U.assert(nameInfo !== undefined);
+        U.assert(nameInfo.hasAnyType(C.Vtype.PRIMITIVE_TYPE));
+        U.assert(!nameInfo.hasAnyType(C.Vtype.NON_PRIMITIVE));
+        const assignOpToken = line.dequeue();
+        src.push(assignOpToken);
+        const op = AssignOpMap.get(assignOpToken.value);
+        if (op === undefined) {
+            return syntaxError("代入演算子が必要です.", assignOpToken);
+        }
+        log.dump("op", op.op);
+        const ivtRes = C.inferVtype(nameInfo.vtype, op.vtype);
+        if (ivtRes.isErr) {
+            return syntaxError("型と代入演算子の対応が不一致です.", assignOpToken);
+        }
+        const exprRes = this.#parseExprTokens(line, src);
+        if (exprRes.isErr) {
+            return Result.err(exprRes.error);
+        }
+        const expr = exprRes.result;
+        log.dump("expr", expr);
+        const ivt2Res = C.inferVtype(expr.vtype, ivtRes.result);
+        if (ivt2Res.isErr) {
+            return syntaxError("式の型と代入先の変数の型が不一致です.", assignOpToken);
+        }
+        const vtype = ivt2Res.result;
+        if (nameInfo.hasType(C.Vtype.INFER)) {
+            nameInfo.updateType(vtype);
+        }
+        if (line.len > 1) {
+            return syntaxError("不正な文字です.", line.front);
+        }
+        const code = new C.AssignVar(src, op, nameInfo, expr);
+        this.#env.addCode(code);
+        log.dump("src", Token.lineToString, src);
+        log.info("parsed assign.");
+        return Result.ok(undefined);
+    }
+    #parseAssignArray(line) {
+        const nameToken = line.dequeue();
+        const src = [nameToken];
+        log.info("parse assign array...");
+        const name = nameToken.value.toLowerCase();
+        const nameInfo = this.#env.findName(name);
+        U.assert(nameInfo !== undefined);
+        // TODO: 
+        throw new Unimplemented(line.front);
+    }
+    #parseFor(line) {
+        const forToken = line.dequeue();
+        const src = [forToken];
+        log.info("parse for...");
+        // TODO: 
+        throw new Unimplemented(line.front);
     }
 }
 export default Parser;

@@ -145,20 +145,46 @@ export function inferVtype(t1, t2, t3) {
 export class NameInfo {
     src;
     name;
-    vtype;
     varId;
     blockId;
     blockVarId;
+    #vtype;
+    #count = 0;
     constructor(src, name, vtype, varId, blockId, blockVarId) {
         this.src = src;
         this.name = name;
-        this.vtype = vtype;
+        this.#vtype = vtype;
         this.varId = varId;
         this.blockId = blockId;
         this.blockVarId = blockVarId;
     }
+    get count() {
+        return this.#count;
+    }
+    get vtype() {
+        return this.#vtype;
+    }
+    updateType(vtype) {
+        const res = inferVtype(vtype, this.#vtype);
+        if (res.isErr) {
+            log.dump("vtype", vtype);
+            log.dump("nameInfo:", this);
+            log.error(res.error);
+            throw new Error("BUG");
+        }
+        this.#vtype = res.result;
+    }
+    incrementCounter() {
+        this.#count++;
+    }
+    hasType(vtype) {
+        return (this.vtype & vtype) === vtype;
+    }
+    hasAnyType(vtype) {
+        return (this.vtype & vtype) !== 0;
+    }
     toString() {
-        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}  }`;
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count} }`;
     }
 }
 export class FuncRetArg {
@@ -293,6 +319,36 @@ export class BinaryOpInfo {
     }
     toString() {
         return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
+    }
+}
+export var AssignKind;
+(function (AssignKind) {
+    AssignKind[AssignKind["ASSIGN"] = 0] = "ASSIGN";
+    AssignKind[AssignKind["ADD"] = 1] = "ADD";
+    AssignKind[AssignKind["SUBTRACT"] = 2] = "SUBTRACT";
+    AssignKind[AssignKind["MULTIPLY"] = 3] = "MULTIPLY";
+    AssignKind[AssignKind["DIVIDE"] = 4] = "DIVIDE";
+    AssignKind[AssignKind["INT_DIVIDE"] = 5] = "INT_DIVIDE";
+    AssignKind[AssignKind["INT_REMINDER"] = 6] = "INT_REMINDER";
+    AssignKind[AssignKind["BITWISE_AND"] = 7] = "BITWISE_AND";
+    AssignKind[AssignKind["BITWISE_OR"] = 8] = "BITWISE_OR";
+    AssignKind[AssignKind["BITWISE_XOR"] = 9] = "BITWISE_XOR";
+    AssignKind[AssignKind["BITWISE_ASHIFT_L"] = 10] = "BITWISE_ASHIFT_L";
+    AssignKind[AssignKind["BITWISE_ASHIFT_R"] = 11] = "BITWISE_ASHIFT_R";
+    AssignKind[AssignKind["BITWISE_LSHIFT_L"] = 12] = "BITWISE_LSHIFT_L";
+    AssignKind[AssignKind["BITWISE_LSHIFT_R"] = 13] = "BITWISE_LSHIFT_R";
+})(AssignKind || (AssignKind = {}));
+export class AssignOpInfo {
+    kind;
+    op;
+    vtype;
+    constructor(kind, op, vtype) {
+        this.kind = kind;
+        this.op = op;
+        this.vtype = vtype;
+    }
+    toString() {
+        return `AssignOpInfo{ kind: ${AssignKind[this.kind]}, op: "${this.op}", vtype: ${Vtype[this.vtype]} }`;
     }
 }
 export var ExprKind;
@@ -510,6 +566,8 @@ export var CodeKind;
     CodeKind[CodeKind["BLOCK"] = 0] = "BLOCK";
     CodeKind[CodeKind["DIM"] = 1] = "DIM";
     CodeKind[CodeKind["LET"] = 2] = "LET";
+    CodeKind[CodeKind["ASSIGN_VAR"] = 3] = "ASSIGN_VAR";
+    CodeKind[CodeKind["ASSIGN_ARRAY"] = 4] = "ASSIGN_ARRAY";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -531,6 +589,9 @@ export class Block extends Code {
         this.varList = varList;
         this.body = body;
     }
+    toString() {
+        return `Block{ id: ${this.id}, body: {{ ${this.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+    }
 }
 export class Dim extends Code {
     nameInfo;
@@ -540,6 +601,9 @@ export class Dim extends Code {
         this.nameInfo = nameInfo;
         this.dims = dims;
     }
+    toString() {
+        return `Dim{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.nameInfo.vtype]}, dims: [ ${this.dims} ] }`;
+    }
 }
 export class Let extends Code {
     nameInfo;
@@ -548,6 +612,23 @@ export class Let extends Code {
         super(CodeKind.LET, src);
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+    toString() {
+        return `Let{ name: ${this.nameInfo.name}, vtype: ${this.nameInfo.vtype}, expr: (( ${this.expr} ))`;
+    }
+}
+export class AssignVar extends Code {
+    op;
+    nameInfo;
+    expr;
+    constructor(src, op, nameInfo, expr) {
+        super(CodeKind.ASSIGN_VAR, src);
+        this.op = op;
+        this.nameInfo = nameInfo;
+        this.expr = expr;
+    }
+    toString() {
+        return `AssignVar{ name: ${this.nameInfo.name}, op: "${this.op.op}", expr: (( ${this.expr} )) }`;
     }
 }
 export default {};
