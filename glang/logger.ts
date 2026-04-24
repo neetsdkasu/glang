@@ -28,6 +28,12 @@ export class Logger {
         }
     }
 
+    dump(msg: string, obj: any): void;
+    dump<T1>(msg: string, func: (a1: T1) => any, a1: T1): void;
+    dump<T1,T2>(msg: string, func: (a1: T1, a2: T2) => any, a1: T1, a2: T2): void;
+    dump<T1,T2,T3>(msg: string, func: (a1: T1, a2: T2, a3: T3) => any, a1: T1, a2: T2, a3: T3): void;
+    dump<T1,T2,T3,T4>(msg: string, func: (a1: T1, a2: T2, a3: T3, a4: T4, ...a5: any) => any, a1: T1, a2: T2, a3: T3, a4: T4, ...a5: any): void;
+    
     dump(msg: string, obj: any, ...args: any): void {
         if (this.#level & LogLevel.DEBUG) {
             if (typeof obj === "function") {

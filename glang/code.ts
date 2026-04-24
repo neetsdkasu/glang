@@ -54,7 +54,14 @@ export enum Vtype {
 }
 
 export function arrayDimension(vtype: Vtype): number {
-    return Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
+    const size = Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
+    if (1 <= size && size <= 3) {
+        return size;
+    } else {
+        log.dump("vtype", vtype);
+        log.dump("Vtype[vtype]", Vtype[vtype]);
+        throw new Error("BUG");
+    }
 }
 
 /**
@@ -701,6 +708,25 @@ export class AssignVar extends Code {
 
     toString(): string {
         return `AssignVar{ name: ${this.nameInfo.name}, op: "${this.op.op}", expr: (( ${this.expr} )) }`;
+    }
+}
+
+export class AssignArray extends Code {
+    readonly op: AssignOpInfo;
+    readonly nameInfo: NameInfo;
+    readonly indexes: Readonly<Expr[]>;
+    readonly expr: Expr;
+
+    constructor(src: Token[], op: AssignOpInfo, nameInfo: NameInfo, indexes: Expr[], expr: Expr) {
+        super(CodeKind.ASSIGN_ARRAY, src);
+        this.op = op;
+        this.nameInfo = nameInfo;
+        this.indexes = indexes;
+        this.expr = expr;
+    }
+
+    toString(): string {
+        return `AssignArray{ name: ${this.nameInfo.name}, op: "${this.op.op}", indexes: (( ${this.indexes.map(e => `[[ ${e} ]]`).join(", ")} )) expr: (( ${this.expr} )) }`;
     }
 }
 

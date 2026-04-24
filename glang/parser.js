@@ -2,7 +2,7 @@
 // Parser
 //
 import Logger, { LogLevel } from "logger";
-const log = new Logger("parser", LogLevel.INFO | LogLevel.ERROR | LogLevel.WARN);
+const log = new Logger("parser", LogLevel.ALL);
 import RQueue from "rqueue";
 import { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
@@ -1363,6 +1363,7 @@ export class Parser {
                 return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(integer)ではありません.`, token);
             }
             indexes.push(indexTerm);
+            // log.dump("index", indexTerm);
             const symToken = line.dequeue();
             if (i + 1 < dim) {
                 if (symToken.tokenType !== TokenType.COMMA) {
@@ -1422,6 +1423,7 @@ export class Parser {
                     return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_sf);
                 }
                 args.push(arg_sf);
+                // log.dump("arg_sf", arg_sf);
                 const symToken_sf = line.dequeue();
                 if (i + 1 < stdFunc.args.length) {
                     if (symToken_sf.tokenType !== TokenType.COMMA) {
@@ -1485,6 +1487,7 @@ export class Parser {
                     return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_uf);
                 }
                 args.push(arg_uf);
+                // log.dump("arg_uf", arg_uf);
                 const symToken_uf = line.dequeue();
                 if (i + 1 < userFunc.retArg.args.length) {
                     if (symToken_uf.tokenType !== TokenType.COMMA) {
@@ -1520,6 +1523,7 @@ export class Parser {
             const arg = argRes.result;
             args.push(arg);
             argTypes.push(arg.vtype);
+            // log.dump("arg", arg);
             const symToken = line.dequeue();
             if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
                 break;
@@ -1590,10 +1594,69 @@ export class Parser {
         const src = [nameToken];
         log.info("parse assign array...");
         const name = nameToken.value.toLowerCase();
+        log.dump("name", name);
         const nameInfo = this.#env.findName(name);
         U.assert(nameInfo !== undefined);
-        // TODO: 
-        throw new Unimplemented(line.front);
+        log.dump("vtype", C.Vtype[nameInfo.vtype]);
+        const lrbToken = line.dequeue();
+        src.push(lrbToken);
+        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        }
+        const dimSize = C.arrayDimension(nameInfo.vtype);
+        const indexes = [];
+        for (let i = 0; i < dimSize; i++) {
+            const token = line.front;
+            const indexTermRes = this.#parseExprTokens(line, src);
+            if (indexTermRes.isErr) {
+                return Result.err(indexTermRes.error);
+            }
+            const indexTerm = indexTermRes.result;
+            log.dump("indexTerm", indexTerm);
+            if (C.inferVtype(indexTerm.vtype, C.Vtype.INTEGER).isErr) {
+                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(integer)ではありません.`, token);
+            }
+            indexes.push(indexTerm);
+            const symToken = line.dequeue();
+            src.push(symToken);
+            if (i + 1 < dimSize) {
+                if (symToken.tokenType !== TokenType.COMMA) {
+                    return syntaxError("カンマが必要です.", symToken);
+                }
+            }
+            else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+                return syntaxError("閉じ丸括弧が必要です.", symToken);
+            }
+        }
+        const assignOpToken = line.dequeue();
+        src.push(assignOpToken);
+        const op = AssignOpMap.get(assignOpToken.value);
+        if (op === undefined) {
+            return syntaxError("代入演算子が必要です.", assignOpToken);
+        }
+        log.dump("op", op.op);
+        const ivtRes = C.inferVtype(nameInfo.vtype & C.Vtype.PRIMITIVE_TYPE, op.vtype);
+        if (ivtRes.isErr) {
+            return syntaxError("型と代入演算子の対応が不一致です.", assignOpToken);
+        }
+        const exprRes = this.#parseExprTokens(line, src);
+        if (exprRes.isErr) {
+            return Result.err(exprRes.error);
+        }
+        const expr = exprRes.result;
+        log.dump("expr", expr);
+        const ivt2Res = C.inferVtype(expr.vtype, ivtRes.result);
+        if (ivt2Res.isErr) {
+            return syntaxError("式の型と代入先の配列の要素の型が不一致です.", assignOpToken);
+        }
+        if (line.len > 1) {
+            return syntaxError("不正な文字です.", line.front);
+        }
+        const code = new C.AssignArray(src, op, nameInfo, indexes, expr);
+        this.#env.addCode(code);
+        log.dump("src", Token.lineToString, src);
+        log.info("parsed assign array.");
+        return Result.ok(undefined);
     }
     #parseFor(line) {
         const forToken = line.dequeue();

@@ -52,7 +52,15 @@ export var Vtype;
     Vtype[Vtype["INFER_ALL"] = 3902] = "INFER_ALL";
 })(Vtype || (Vtype = {}));
 export function arrayDimension(vtype) {
-    return Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
+    const size = Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
+    if (1 <= size && size <= 3) {
+        return size;
+    }
+    else {
+        log.dump("vtype", vtype);
+        log.dump("Vtype[vtype]", Vtype[vtype]);
+        throw new Error("BUG");
+    }
 }
 /**
  * 引数のいずれかにINFERが含まれる場合は引数間で整合性のとれるVtypeを返す.
@@ -629,6 +637,22 @@ export class AssignVar extends Code {
     }
     toString() {
         return `AssignVar{ name: ${this.nameInfo.name}, op: "${this.op.op}", expr: (( ${this.expr} )) }`;
+    }
+}
+export class AssignArray extends Code {
+    op;
+    nameInfo;
+    indexes;
+    expr;
+    constructor(src, op, nameInfo, indexes, expr) {
+        super(CodeKind.ASSIGN_ARRAY, src);
+        this.op = op;
+        this.nameInfo = nameInfo;
+        this.indexes = indexes;
+        this.expr = expr;
+    }
+    toString() {
+        return `AssignArray{ name: ${this.nameInfo.name}, op: "${this.op.op}", indexes: (( ${this.indexes.map(e => `[[ ${e} ]]`).join(", ")} )) expr: (( ${this.expr} )) }`;
     }
 }
 export default {};
