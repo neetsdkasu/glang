@@ -1583,6 +1583,10 @@ export class Parser {
         if (line.len > 1) {
             return syntaxError("不正な文字です.", line.front);
         }
+        if (op.kind !== C.AssignKind.ASSIGN) {
+            nameInfo.incrementCounter();
+        }
+        nameInfo.markWritten();
         const code = new C.AssignVar(src, op, nameInfo, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
@@ -1652,6 +1656,10 @@ export class Parser {
         if (line.len > 1) {
             return syntaxError("不正な文字です.", line.front);
         }
+        if (op.kind !== C.AssignKind.ASSIGN) {
+            nameInfo.incrementCounter();
+        }
+        nameInfo.markWritten();
         const code = new C.AssignArray(src, op, nameInfo, indexes, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);

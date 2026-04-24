@@ -144,6 +144,9 @@ export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,strin
     }
 }
 
+/**
+ * 変数名およびユーザ関数名の簡易情報を管理する.
+ */
 export class NameInfo {
     readonly src: Readonly<Token[]>;
     readonly name: string;
@@ -152,6 +155,9 @@ export class NameInfo {
     readonly blockVarId: number;
     #vtype: Vtype;
     #count: number = 0;
+    #written: number = 0;
+    #lastWritten: number = 0;
+    #unused: number[] = [];
 
     constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
         this.src = src;
@@ -162,14 +168,48 @@ export class NameInfo {
         this.blockVarId = blockVarId;
     }
 
+    /**
+     * 変数の読み込み回数.
+     */
     get count(): number {
         return this.#count;
+    }
+
+    /**
+     * 変数の書き込み回数.
+     */
+    get written(): number {
+        return this.#written;
     }
 
     get vtype(): Vtype {
         return this.#vtype;
     }
+    
+    /**
+     * 変数への最後の書き込み後から読み込みがあったかどうか.
+     */
+    get isUnused(): boolean {
+        return this.#count <= this.#lastWritten;
+    }
 
+    /**
+     * 変数への書き込み後に読み込みがなかったその書き込みタイミングのリスト.
+     */
+    get unused(): Readonly<number[]> {
+        if (this.isUnused) {
+            const unused = [this.#written];
+            unused.push(...this.#unused);
+            return unused;
+        } else {
+            return this.#unused;
+        }
+    }
+
+    /**
+     * 変数の型にINFERが含まれている場合で型を特定できるときに呼び出す.
+     * @param vtype 特定した型.
+     */
     updateType(vtype: Vtype): void {
         const res = inferVtype(vtype, this.#vtype);
         if (res.isErr) {
@@ -181,20 +221,44 @@ export class NameInfo {
         this.#vtype = res.result;
     }
 
+    /**
+     * 変数の読み込み回数をインクリメント.
+     */
     incrementCounter(): void {
         this.#count++;
     }
 
+    /**
+     * 変数の書き込み回数をインクリメント.
+     */
+    markWritten(): void {
+        if (this.isUnused) {
+            this.#unused.push(this.#written);
+        }
+        this.#written++;
+        this.#lastWritten = this.#count;
+    }
+
+    /**
+     * 指定のVtypeを含んでいるかを判定.
+     * @param vtype 
+     * @returns 含んでいるときtrue.そうでないときfalse.
+     */
     hasType(vtype: Vtype): boolean {
         return (this.vtype & vtype) === vtype;
     }
 
+    /**
+     * 複数のVtypeのいずれかを含んでいるかを判定.
+     * @param vtype 
+     * @returns 含んでいるときtrue.そうでないときfalse.
+     */
     hasAnyType(vtype: Vtype): boolean {
         return (this.vtype & vtype) !== 0;
     }
 
     toString(): string {
-        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count} }`;
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length} }`;
     }
 }
 
