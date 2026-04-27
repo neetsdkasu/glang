@@ -24,6 +24,34 @@ function syntaxError(msg, obj) {
 function boundaryError(msg, obj) {
     return Result.err(`Boundary Error: ${msg} ( ${obj} )`);
 }
+var Keyword;
+(function (Keyword) {
+    Keyword["AS"] = "as";
+    Keyword["BOOLEAN"] = "boolean";
+    Keyword["BREAK"] = "break";
+    Keyword["CALL"] = "call";
+    Keyword["CONTINUE"] = "continue";
+    Keyword["DIM"] = "dim";
+    Keyword["DO"] = "do";
+    Keyword["ELSE"] = "else";
+    Keyword["END"] = "end";
+    Keyword["FALSE"] = "false";
+    Keyword["FLOAT"] = "float";
+    Keyword["FOR"] = "for";
+    Keyword["FUNC"] = "func";
+    Keyword["IF"] = "if";
+    Keyword["INTEGER"] = "integer";
+    Keyword["MAIN"] = "main";
+    Keyword["LET"] = "let";
+    Keyword["RETURN"] = "return";
+    Keyword["STEP"] = "step";
+    Keyword["STRING"] = "string";
+    Keyword["SUB"] = "sub";
+    Keyword["THEN"] = "then";
+    Keyword["TO"] = "to";
+    Keyword["TRUE"] = "true";
+    Keyword["WHILE"] = "while";
+})(Keyword || (Keyword = {}));
 const ReservedWordSet = Object.freeze(new Set([
     "abstract",
     "alloc",
@@ -31,19 +59,19 @@ const ReservedWordSet = Object.freeze(new Set([
     "allocator",
     "and",
     "array",
-    "as",
+    Keyword.AS,
     "asm",
     "assemble",
     "async",
     "await",
     "base",
     "bool",
-    "boolean",
-    "break",
+    Keyword.BOOLEAN,
+    Keyword.BREAK,
     "byref",
     "byval",
     "case",
-    "call",
+    Keyword.CALL,
     "cast",
     "catch",
     "char",
@@ -57,7 +85,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "const",
     "constant",
     "constructor",
-    "continue",
+    Keyword.CONTINUE,
     "control",
     "debug",
     "decimal",
@@ -72,16 +100,16 @@ const ReservedWordSet = Object.freeze(new Set([
     "dequeue",
     "destructor",
     "dict",
-    "dim",
+    Keyword.DIM,
     "div",
-    "do",
+    Keyword.DO,
     "double",
     "dump",
     "each",
-    "else",
+    Keyword.ELSE,
     "elseif",
     "elsif",
-    "end",
+    Keyword.END,
     "enqueue",
     "error",
     "exception",
@@ -91,25 +119,25 @@ const ReservedWordSet = Object.freeze(new Set([
     "extend",
     "extends",
     "external",
-    "false",
+    Keyword.FALSE,
     "field",
     "final",
     "finally",
-    "float",
-    "for",
+    Keyword.FLOAT,
+    Keyword.FOR,
     "foreach",
     "free",
     "friend",
     "from",
     "fun",
-    "func",
+    Keyword.FUNC,
     "function",
     "get",
     "global",
     "go",
     "goto",
     "gosub",
-    "if",
+    Keyword.IF,
     "implement",
     "implements",
     "import",
@@ -127,18 +155,18 @@ const ReservedWordSet = Object.freeze(new Set([
     "instance",
     "instanceof",
     "int",
-    "integer",
+    Keyword.INTEGER,
     "interface",
     "internal",
     "lambda",
-    "let",
+    Keyword.LET,
     "local",
     "lock",
     "log",
     "long",
     "loop",
     "macro",
-    "main",
+    Keyword.MAIN,
     "map",
     "mapped",
     "match",
@@ -185,7 +213,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "refer",
     "rem",
     "result",
-    "return",
+    Keyword.RETURN,
     "sealed",
     "select",
     "self",
@@ -195,21 +223,21 @@ const ReservedWordSet = Object.freeze(new Set([
     "some",
     "sort",
     "stack",
-    "step",
-    "string",
+    Keyword.STEP,
+    Keyword.STRING,
     "sturct",
-    "sub",
+    Keyword.SUB,
     "super",
     "switch",
     "sync",
     "synchronized",
     "template",
-    "then",
+    Keyword.THEN,
     "this",
     "throw",
     "throws",
-    "to",
-    "true",
+    Keyword.TO,
+    Keyword.TRUE,
     "try",
     "type",
     "typeof",
@@ -225,7 +253,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "volatile",
     "wend",
     "where",
-    "while",
+    Keyword.WHILE,
     "write",
     "xor",
     "yield"
@@ -251,13 +279,26 @@ const StdFuncWordMap = Object.freeze(new Map([
     ["ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
     ["size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER])]
 ]));
+var Symbols;
+(function (Symbols) {
+    Symbols["ASSIGN_OP"] = "=";
+    Symbols["COMMA"] = ",";
+    Symbols["LEFT_ROUND_BRACKET"] = "(";
+    Symbols["RIGHT_ROUND_BRACKET"] = ")";
+    Symbols["ARGLIST_SEPARATOR"] = ",";
+    Symbols["ARGLIST_BEGIN"] = "(";
+    Symbols["ARGLIST_END"] = ")";
+    Symbols["DIMLIST_SEPARATOR"] = ",";
+    Symbols["DIMLIST_BEGIN"] = "(";
+    Symbols["DIMLIST_END"] = ")";
+    Symbols["MEMBER_ACCESS_OP"] = ".";
+})(Symbols || (Symbols = {}));
 const UnaryOpMap = Object.freeze(new Map([
     ["+", { op: C.UnaryOpKind.POSITIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
     ["-", { op: C.UnaryOpKind.NEGATIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
     ["~", { op: C.UnaryOpKind.BITWISE_NOT, vtype: C.Vtype.INTEGER }],
     ["!", { op: C.UnaryOpKind.LOGICAL_NOT, vtype: C.Vtype.BOOLEAN }]
 ]));
-const MEMBER_ACCESS_OP = ".";
 const BinaryOpMap = Object.freeze(new Map([
     ["*", new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, 100, C.Vtype.INFER_NUMBER)],
     ["/", new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE, 100, C.Vtype.FLOATING_POINT)],
@@ -524,15 +565,15 @@ class Env {
         log.info("add func");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
-            if (name !== "main") {
+            if (name !== Keyword.MAIN) {
                 return syntaxError(`ユーザ関数名に予約語は使用できません. "${name}"`, src);
             }
             else if (retArg.checkConsistencyWith(new C.FuncRetArg(C.Vtype.VOID, [])).isErr) {
                 if (definition) {
-                    return syntaxError("main関数は`sub main()`で定義される必要があります.", src);
+                    return syntaxError(`${Keyword.MAIN}関数は"${Keyword.SUB} ${Keyword.MAIN}${Symbols.ARGLIST_BEGIN}${Symbols.ARGLIST_END}"で定義される必要があります.`, src);
                 }
                 else {
-                    return syntaxError("main関数は`call main()`で呼び出させれる必要があります.", src);
+                    return syntaxError(`${Keyword.MAIN}関数は"${Keyword.CALL} ${Keyword.MAIN}${Symbols.ARGLIST_BEGIN}${Symbols.ARGLIST_END}"で呼び出させれる必要があります.`, src);
                 }
             }
         }
@@ -681,23 +722,24 @@ export class Parser {
             let res;
             const cmd = cmdToken.value.toLowerCase();
             switch (cmd) {
-                case "dim":
+                case Keyword.DIM:
                     res = this.#parseDim(line);
                     break;
-                case "for":
+                case Keyword.FOR:
                     res = this.#parseFor(line);
                     break;
-                case "let":
+                case Keyword.LET:
                     res = this.#parseLet(line);
                     break;
-                case "sub":
+                case Keyword.SUB:
                     res = this.#parseSub(line);
                     break;
-                case "call":
-                case "else":
-                case "end":
-                case "func":
-                case "if":
+                case Keyword.CALL:
+                case Keyword.DO:
+                case Keyword.ELSE:
+                case Keyword.END:
+                case Keyword.FUNC:
+                case Keyword.IF:
                     throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -720,9 +762,9 @@ export class Parser {
                 return Result.err(res.error);
             }
         }
-        const mainSub = this.#env.findUserFunc("main");
+        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
         if (mainSub === undefined || !mainSub[0].definition) {
-            return Result.err("main関数を定義する必要があります.");
+            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`);
         }
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
@@ -749,7 +791,7 @@ export class Parser {
         const lrbToken = line.dequeue();
         src.push(lrbToken);
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("配列の次元サイズ指定を開始するための開き丸括弧が必要です.", lrbToken);
+            return syntaxError(`配列の次元サイズ指定を開始するための記号 ${Symbols.DIMLIST_BEGIN} が必要です.`, lrbToken);
         }
         let dims = [];
         let dm = 1;
@@ -785,38 +827,38 @@ export class Parser {
             }
             else if (symToken.tokenType === TokenType.COMMA) {
                 if (dims.length === 3) {
-                    return boundaryError("配列の次元は3以下までです.この位置ではカンマは不正です.", symToken);
+                    return boundaryError("配列の次元数の最大は3です.4以上にはできません.", symToken);
                 }
             }
             else {
-                return syntaxError("閉じ丸括弧またはカンマが必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.DIMLIST_END} または記号 ${Symbols.DIMLIST_SEPARATOR} が必要です.`, symToken);
             }
         }
         log.dump("dims", dims);
         const asToken = line.dequeue();
         src.push(asToken);
-        if (asToken.value.toLowerCase() !== "as") {
-            return syntaxError("キーワード`as`が必要です.", asToken);
+        if (asToken.value.toLowerCase() !== Keyword.AS) {
+            return syntaxError(`キーワード"${Keyword.AS}"が必要です.`, asToken);
         }
         const typeToken = line.dequeue();
         src.push(typeToken);
         log.dump("type", typeToken.value);
         let vtype;
         switch (typeToken.value.toLowerCase()) {
-            case "boolean":
+            case Keyword.BOOLEAN:
                 vtype = C.Vtype.BOOLEAN;
                 break;
-            case "float":
+            case Keyword.FLOAT:
                 vtype = C.Vtype.FLOATING_POINT;
                 break;
-            case "integer":
+            case Keyword.INTEGER:
                 vtype = C.Vtype.INTEGER;
                 break;
-            case "string":
+            case Keyword.STRING:
                 vtype = C.Vtype.STRING;
                 break;
             default:
-                return syntaxError("型名(boolean/float/integer/string)が必要です.", typeToken);
+                return syntaxError(`型名(${[Keyword.BOOLEAN, Keyword.FLOAT, Keyword.INTEGER, Keyword.STRING].join("/")})が必要です.`, typeToken);
         }
         switch (dims.length) {
             case 1:
@@ -850,7 +892,7 @@ export class Parser {
         const src = [subToken];
         log.info("parse sub...");
         if (!this.#env.isToplevel) {
-            return syntaxError("`sub`はトップレベルでのみ使用できます.", subToken);
+            return syntaxError(`${Keyword.SUB}はトップレベルでのみ使用できます.`, subToken);
         }
         const subNameToken = line.dequeue();
         src.push(subNameToken);
@@ -862,7 +904,7 @@ export class Parser {
         const lrbToken = line.dequeue();
         src.push(lrbToken);
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("仮引数定義のための開き丸括弧が必要です.", lrbToken);
+            return syntaxError(`仮引数定義のための記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
         let argTypes = [];
         let argNames = [];
@@ -874,34 +916,34 @@ export class Parser {
                 break;
             }
             if (argNameToken.tokenType !== TokenType.WORD) {
-                return syntaxError((argTypes.length == ~0 ? "閉じ括弧または" : "") + "仮引数定義が必要です.", argNameToken);
+                return syntaxError((argTypes.length == ~0 ? `記号 ${Symbols.ARGLIST_END} または` : "") + "仮引数定義が必要です.", argNameToken);
             }
             const argName = argNameToken.value.toLowerCase();
             argNames.push(argName);
             log.dump(`argName[${argNames.length}]`, argName);
             const asToken = line.dequeue();
             src.push(asToken);
-            if (asToken.value.toLowerCase() !== "as") {
-                return syntaxError("キーワード`as`が必要です.", asToken);
+            if (asToken.value.toLowerCase() !== Keyword.AS) {
+                return syntaxError(`キーワード"${Keyword.AS}"が必要です.`, asToken);
             }
             const argTypeToken = line.dequeue();
             src.push(argTypeToken);
             const argType = argTypeToken.value.toLowerCase();
             switch (argType) {
-                case "boolean":
+                case Keyword.BOOLEAN:
                     argTypes.push(C.Vtype.BOOLEAN);
                     break;
-                case "float":
+                case Keyword.FLOAT:
                     argTypes.push(C.Vtype.FLOATING_POINT);
                     break;
-                case "integer":
+                case Keyword.INTEGER:
                     argTypes.push(C.Vtype.INTEGER);
                     break;
-                case "string":
+                case Keyword.STRING:
                     argTypes.push(C.Vtype.STRING);
                     break;
                 default:
-                    return syntaxError("型名(boolean/float/integer/string)が必要です.", argTypeToken);
+                    return syntaxError(`型名(${[Keyword.BOOLEAN, Keyword.FLOAT, Keyword.INTEGER, Keyword.STRING].join("/")})が必要です.`, argTypeToken);
             }
             log.dump(`argType[${argTypes.length}]`, argType);
             const symToken = line.dequeue();
@@ -910,12 +952,12 @@ export class Parser {
                 break;
             }
             if (symToken.tokenType !== TokenType.COMMA) {
-                return syntaxError("カンマまたは閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_SEPARATOR} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
         const eolToken = line.dequeue();
         if (eolToken.tokenType === TokenType.EOF) {
-            return syntaxError("対となる`end sub`が必要です.", eolToken);
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.SUB}"が必要です.`, eolToken);
         }
         if (eolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字です.", eolToken);
@@ -943,8 +985,8 @@ export class Parser {
         log.dump("name", name);
         const eqToken = line.dequeue();
         src.push(eqToken);
-        if (eqToken.value !== "=") {
-            return syntaxError("記号`=`が必要です.", eqToken);
+        if (eqToken.value !== Symbols.ASSIGN_OP) {
+            return syntaxError(`記号${Symbols.ASSIGN_OP}が必要です.`, eqToken);
         }
         const exprRes = this.#parseExprTokens(line, src);
         if (exprRes.isErr) {
@@ -996,7 +1038,7 @@ export class Parser {
             }
             const term = termRes.result;
             terms.push(term);
-            while (line.front.value === MEMBER_ACCESS_OP) {
+            while (line.front.value === Symbols.MEMBER_ACCESS_OP) {
                 const obj = terms.pop();
                 const memberedRes = this.#parseExprMember(obj, line);
                 if (memberedRes.isErr) {
@@ -1086,9 +1128,9 @@ export class Parser {
                 const word = token.value.toLowerCase();
                 if (ReservedWordSet.has(word)) {
                     switch (word) {
-                        case "true":
+                        case Keyword.TRUE:
                             return Result.ok(new C.ExprLitBoolean(token, true));
-                        case "false":
+                        case Keyword.FALSE:
                             return Result.ok(new C.ExprLitBoolean(token, false));
                         default:
                             return syntaxError(`この予約語"${token.value}"は式に使用できません.`, token);
@@ -1104,7 +1146,7 @@ export class Parser {
                     return this.#parseExprUnknownUserFunc(line);
                 }
                 else if (nameInfo.vtype & C.Vtype.SUB) {
-                    return syntaxError("ここで戻り値のない`sub`定義のユーザ関数は呼べません.", token);
+                    return syntaxError(`ここで戻り値のない${Keyword.SUB}で定義されたユーザ関数は呼べません.`, token);
                 }
                 else if (nameInfo.vtype & C.Vtype.FUNC) {
                     line.recover();
@@ -1161,10 +1203,10 @@ export class Parser {
             case TokenType.WORD:
                 if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
                     switch (line.front.value.toLowerCase()) {
-                        case "true":
+                        case Keyword.TRUE:
                             const trueToken = line.dequeue();
                             return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo.op));
-                        case "false":
+                        case Keyword.FALSE:
                             const falseToken = line.dequeue();
                             return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo.op));
                         default:
@@ -1199,7 +1241,7 @@ export class Parser {
             // 引数なし関数
             const rrbToken = line.dequeue();
             if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
             return Result.ok(new C.ExprStdFunc(nameToken, retArg.ret, name, retArg, []));
         }
@@ -1219,11 +1261,11 @@ export class Parser {
             const symToken = line.dequeue();
             if (i + 1 < retArg.args.length) {
                 if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError("引数を区切るカンマが必要です.", symToken);
+                    return syntaxError(`引数を区切る記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
                 }
             }
             else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
         let ret = retArg.ret;
@@ -1248,7 +1290,7 @@ export class Parser {
         }
         const lrbToken = line.dequeue();
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError(`${nameToken.value}はユーザ関数と判定されたため開き丸括弧が必要です.`, lrbToken);
+            return syntaxError(`${nameToken.value}はユーザ関数と判定されたため記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
         if (line.front.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
             line.dequeue();
@@ -1304,12 +1346,12 @@ export class Parser {
         }
         const lrbToken = line.dequeue();
         if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("ユーザー関数の呼び出しは名前に続いて開き丸括弧が必要です.", lrbToken);
+            return syntaxError(`ユーザー関数の呼び出しは名前に続いて記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
         if (funcInfo.retArg.isNoArg) {
             const rrbToken = line.dequeue();
             if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
             this.#env.findName("name").incrementCounter();
             return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, []));
@@ -1329,11 +1371,11 @@ export class Parser {
             const symToken = line.dequeue();
             if (i + 1 < funcInfo.retArg.args.length) {
                 if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError("カンマが必要です.", symToken);
+                    return syntaxError(`記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
                 }
             }
             else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
         this.#env.findName(name).incrementCounter();
@@ -1360,18 +1402,18 @@ export class Parser {
             }
             const indexTerm = indexTermRes.result;
             if (C.inferVtype(C.Vtype.INTEGER, indexTerm.vtype).isErr) {
-                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(integer)ではありません.`, token);
+                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token);
             }
             indexes.push(indexTerm);
             // log.dump("index", indexTerm);
             const symToken = line.dequeue();
             if (i + 1 < dim) {
                 if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError("添え字を区切るカンマが必要です.", symToken);
+                    return syntaxError(`添え字を区切る記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
                 }
             }
             else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
         return Result.ok(new C.ExprArrayVarVal(nameToken, nameInfo, indexes));
@@ -1379,7 +1421,7 @@ export class Parser {
     #parseExprMember(obj, line) {
         const args = [obj];
         const dotToken = line.dequeue();
-        U.assert(dotToken.value === MEMBER_ACCESS_OP);
+        U.assert(dotToken.value === Symbols.MEMBER_ACCESS_OP);
         const memberToken = line.dequeue();
         if (memberToken?.tokenType !== TokenType.WORD) {
             return syntaxError("メンバーの指定が必要です.", dotToken);
@@ -1618,7 +1660,7 @@ export class Parser {
             const indexTerm = indexTermRes.result;
             log.dump("indexTerm", indexTerm);
             if (C.inferVtype(indexTerm.vtype, C.Vtype.INTEGER).isErr) {
-                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(integer)ではありません.`, token);
+                return syntaxError(`配列${nameToken.value}の${i + 1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token);
             }
             indexes.push(indexTerm);
             const symToken = line.dequeue();
