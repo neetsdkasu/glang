@@ -292,10 +292,10 @@ enum Symbols {
     COMMA = ",",
     LEFT_ROUND_BRACKET = "(",
     RIGHT_ROUND_BRACKET = ")",
-    ARGLIST_SEPARATOR = COMMA,
+    ARGLIST_DELIMITER = COMMA,
     ARGLIST_BEGIN = LEFT_ROUND_BRACKET,
     ARGLIST_END = RIGHT_ROUND_BRACKET,
-    DIMLIST_SEPARATOR = COMMA,
+    DIMLIST_DELIMITER = COMMA,
     DIMLIST_BEGIN = LEFT_ROUND_BRACKET,
     DIMLIST_END = RIGHT_ROUND_BRACKET,
     MEMBER_ACCESS_OP = "."
@@ -839,7 +839,7 @@ export class Parser {
         const lrbToken = line.dequeue()!;
         src.push(lrbToken);
 
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.DIMLIST_BEGIN) {
             return syntaxError(`配列の次元サイズ指定を開始するための記号 ${Symbols.DIMLIST_BEGIN} が必要です.`,lrbToken);
         }
 
@@ -879,14 +879,14 @@ export class Parser {
             const symToken = line.dequeue()!;
             src.push(symToken);
 
-            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            if (symToken.value === Symbols.DIMLIST_END) {
                 break;
-            } else if (symToken.tokenType === TokenType.COMMA) {
+            } else if (symToken.value === Symbols.DIMLIST_DELIMITER) {
                 if (dims.length === 3) {
                     return boundaryError("配列の次元数の最大は3です.4以上にはできません.", symToken);
                 }
             } else {
-                return syntaxError(`記号 ${Symbols.DIMLIST_END} または記号 ${Symbols.DIMLIST_SEPARATOR} が必要です.`, symToken);
+                return syntaxError(`記号 ${Symbols.DIMLIST_END} または記号 ${Symbols.DIMLIST_DELIMITER} が必要です.`, symToken);
             }
         }
 
@@ -982,7 +982,7 @@ export class Parser {
         const lrbToken = line.dequeue()!;
         src.push(lrbToken);
 
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             return syntaxError(`仮引数定義のための記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
@@ -1037,11 +1037,11 @@ export class Parser {
 
             const symToken = line.dequeue()!;
             src.push(symToken);
-            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            if (symToken.value === Symbols.ARGLIST_END) {
                 break;
             }
-            if (symToken.tokenType !== TokenType.COMMA) {
-                return syntaxError(`記号 ${Symbols.ARGLIST_SEPARATOR} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
+            if (symToken.value !== Symbols.ARGLIST_DELIMITER) {
+                return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
 
@@ -1088,7 +1088,7 @@ export class Parser {
         src.push(eqToken);
 
         if (eqToken.value !== Symbols.ASSIGN_OP) {
-            return syntaxError(`記号${Symbols.ASSIGN_OP}が必要です.`, eqToken);
+            return syntaxError(`記号 ${Symbols.ASSIGN_OP} が必要です.`, eqToken);
         }
 
 
@@ -1258,7 +1258,7 @@ export class Parser {
                 const expr = exprRes.result;
                 const rrbToken = line.dequeue()!;
                 if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                    return syntaxError("閉じ丸括弧が必要です.", rrbToken);
+                    return syntaxError(`記号 ${Symbols.RIGHT_ROUND_BRACKET} が必要です.`, rrbToken);
                 }
                 return Result.ok(new C.ExprBracket(token, expr, rrbToken));
             case TokenType.WORD:
@@ -1370,15 +1370,15 @@ export class Parser {
         const retArg = StdFuncWordMap.get(name)!;
 
         const lrbToken = line.dequeue()!;
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             // 関数型とかあれば参照返すのかなあ…？
-            return syntaxError("開き丸括弧が必要です.", lrbToken);
+            return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
         if (retArg.args.length === 0) {
             // 引数なし関数
             const rrbToken = line.dequeue()!;
-            if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+            if (rrbToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
             return Result.ok(new C.ExprStdFunc(nameToken, retArg.ret, name, retArg, []));
@@ -1401,10 +1401,10 @@ export class Parser {
 
             const symToken = line.dequeue()!;
             if (i + 1 < retArg.args.length) {
-                if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError(`引数を区切る記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
+                if (symToken.value !== Symbols.ARGLIST_DELIMITER) {
+                    return syntaxError(`引数を区切る記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken);
                 }
-            } else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+            } else if (symToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
@@ -1434,11 +1434,11 @@ export class Parser {
         }
 
         const lrbToken = line.dequeue()!;
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             return syntaxError(`${nameToken.value}はユーザ関数と判定されたため記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
-        if (line.front!.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+        if (line.front!.value === Symbols.ARGLIST_END) {
             line.dequeue();
             const noArgFuncInfoRes = this.#env.addUserFunc([nameToken], name, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, []), false);
             if (noArgFuncInfoRes.isErr) {
@@ -1463,12 +1463,12 @@ export class Parser {
             argTerms.push(arg);
 
             const symToken = line.dequeue()!;
-            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            if (symToken.value === Symbols.ARGLIST_END) {
                 break;
-            } else if (symToken.tokenType === TokenType.COMMA) {
+            } else if (symToken.value === Symbols.ARGLIST_DELIMITER) {
                 continue;
             } else {
-                return syntaxError("カンマまたは閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
 
@@ -1500,13 +1500,13 @@ export class Parser {
         }
 
         const lrbToken = line.dequeue()!;
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             return syntaxError(`ユーザー関数の呼び出しは名前に続いて記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
         if (funcInfo.retArg.isNoArg) {
             const rrbToken = line.dequeue()!;
-            if (rrbToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+            if (rrbToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
             this.#env.findName("name")!.incrementCounter();
@@ -1529,10 +1529,10 @@ export class Parser {
 
             const symToken = line.dequeue()!;
             if (i + 1 < funcInfo.retArg.args.length) {
-                if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError(`記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
+                if (symToken.value !== Symbols.ARGLIST_DELIMITER) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken);
                 }
-            } else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
+            } else if (symToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
@@ -1576,11 +1576,11 @@ export class Parser {
             
             const symToken = line.dequeue()!;
             if (i + 1 < dim) {
-                if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError(`添え字を区切る記号 ${Symbols.ARGLIST_SEPARATOR} が必要です.`, symToken);
+                if (symToken.value !== Symbols.DIMLIST_DELIMITER) {
+                    return syntaxError(`添え字を区切る記号 ${Symbols.DIMLIST_DELIMITER} が必要です.`, symToken);
                 }
-            } else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
+            } else if (symToken.value !== Symbols.DIMLIST_END) {
+                return syntaxError(`記号 ${Symbols.DIMLIST_END} が必要です.`, symToken);
             }
         }
 
@@ -1610,13 +1610,13 @@ export class Parser {
                 return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
             }
             const lrbToken_sf = line.dequeue()!;
-            if (lrbToken_sf.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-                return syntaxError("開き丸括弧が必要です.", lrbToken_sf);
+            if (lrbToken_sf.value !== Symbols.ARGLIST_BEGIN) {
+                return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken_sf);
             }
             if (stdFunc.args.length === 1) {
                 const rrbToken_sf1 = line.dequeue()!;
-                if (rrbToken_sf1.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                    return syntaxError("閉じ丸括弧が必要です.", rrbToken_sf1);
+                if (rrbToken_sf1.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken_sf1);
                 }
                 let ret_sf1 = stdFunc.ret;
                 if (ret_sf1 & C.Vtype.INFER) {
@@ -1645,11 +1645,11 @@ export class Parser {
 
                 const symToken_sf = line.dequeue()!;
                 if (i + 1 < stdFunc.args.length) {
-                    if (symToken_sf.tokenType !== TokenType.COMMA) {
-                        return syntaxError("カンマが必要です.", symToken_sf);
+                    if (symToken_sf.value !== Symbols.ARGLIST_DELIMITER) {
+                        return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken_sf);
                     }
-                } else if (symToken_sf.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                    return syntaxError("閉じ丸括弧が必要です.", symToken_sf);
+                } else if (symToken_sf.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken_sf);
                 }
             }
 
@@ -1679,7 +1679,7 @@ export class Parser {
 
         if (userFunc !== undefined) {
             if (userFunc.retArg.ret === C.Vtype.VOID) {
-                return syntaxError(`subで定義されているユーザ関数${member}は式中で呼び出せません.`, memberToken);
+                return syntaxError(`${Keyword.SUB}で定義されているユーザ関数${member}は式中で呼び出せません.`, memberToken);
             }
             if (userFunc.retArg.isNoArg) {
                 return syntaxError(`ユーザ関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
@@ -1688,13 +1688,13 @@ export class Parser {
                 return syntaxError(`ユーザ関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
             }
             const lrbToken_uf = line.dequeue()!;
-            if (lrbToken_uf.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-                return syntaxError("開き丸括弧が必要です.", lrbToken_uf);
+            if (lrbToken_uf.value !== Symbols.ARGLIST_BEGIN) {
+                return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken_uf);
             }
             if (userFunc.retArg.args.length === 1) {
                 const rrbToken_uf1 = line.dequeue()!;
-                if (rrbToken_uf1.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                    return syntaxError("閉じ丸括弧が必要です.", rrbToken_uf1);
+                if (rrbToken_uf1.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken_uf1);
                 }
                 return Result.ok(new C.ExprMemberUserFunc(memberToken, userFunc, args));
             }
@@ -1714,11 +1714,11 @@ export class Parser {
 
                 const symToken_uf = line.dequeue()!;
                 if (i + 1 < userFunc.retArg.args.length) {
-                    if (symToken_uf.tokenType !== TokenType.COMMA) {
-                        return syntaxError("カンマが必要です.", symToken_uf);
+                    if (symToken_uf.value !== Symbols.ARGLIST_DELIMITER) {
+                        return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken_uf);
                     }
-                } else if (symToken_uf.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                    return syntaxError("閉じ丸括弧が必要です.", symToken_uf);
+                } else if (symToken_uf.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, symToken_uf);
                 }
             }
             this.#env.findName(member)!.incrementCounter();
@@ -1728,11 +1728,11 @@ export class Parser {
         const argTypes: C.Vtype[] = [obj.vtype];
 
         const lrbToken = line.dequeue()!;
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
+            return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
-        if (line.front!.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+        if (line.front!.value === Symbols.ARGLIST_END) {
             line.dequeue();
             const ufi1Res = this.#env.addUserFunc([memberToken], member, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
             if (ufi1Res.isErr) {
@@ -1742,7 +1742,7 @@ export class Parser {
         }
 
         while (line.len) {
-            const token = line.front;
+            // const token = line.front;
             const argRes = this.#parseExpr(line);
             if (argRes.isErr) {
                 return argRes;
@@ -1754,12 +1754,12 @@ export class Parser {
             // log.dump("arg", arg);
 
             const symToken = line.dequeue()!;
-            if (symToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+            if (symToken.value === Symbols.ARGLIST_END) {
                 break;
-            } else if (symToken.tokenType === TokenType.COMMA) {
+            } else if (symToken.value === Symbols.ARGLIST_DELIMITER) {
                 continue;
             } else {
-                return syntaxError("カンマか閉じ丸括弧が必要です.", symToken);
+                return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
 
@@ -1863,8 +1863,8 @@ export class Parser {
         const lrbToken = line.dequeue()!;
         src.push(lrbToken);
 
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
-            return syntaxError("開き丸括弧が必要です.", lrbToken);
+        if (lrbToken.value !== Symbols.DIMLIST_BEGIN) {
+            return syntaxError(`記号 ${Symbols.DIMLIST_BEGIN} が必要です.`, lrbToken);
         }
 
         const dimSize = C.arrayDimension(nameInfo.vtype);
@@ -1890,11 +1890,11 @@ export class Parser {
             src.push(symToken);
 
             if (i + 1 < dimSize) {
-                if (symToken.tokenType !== TokenType.COMMA) {
-                    return syntaxError("カンマが必要です.", symToken);
+                if (symToken.value !== Symbols.DIMLIST_DELIMITER) {
+                    return syntaxError(`記号 ${Symbols.DIMLIST_DELIMITER} が必要です.`, symToken);
                 }
-            } else if (symToken.tokenType !== TokenType.RIGHT_ROUND_BRACKET) {
-                return syntaxError("閉じ丸括弧が必要です.", symToken);
+            } else if (symToken.value !== Symbols.DIMLIST_END) {
+                return syntaxError(`記号 ${Symbols.DIMLIST_END} が必要です.`, symToken);
             }
         }
 
