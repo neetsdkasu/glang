@@ -269,23 +269,23 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
  * 標準関数
  */
 const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Map([
-    ["cbool", new C.StdFuncInfo("cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false)],
-    ["cfloat", new C.StdFuncInfo("cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false)],
-    ["cint", new C.StdFuncInfo("cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false)],
-    ["cstr", new C.StdFuncInfo("cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false)],
-    ["abs", new C.StdFuncInfo("abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false)],
-    ["sign", new C.StdFuncInfo("sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false)],
-    ["max", new C.StdFuncInfo("max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false)],
-    ["min", new C.StdFuncInfo("min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false)],
-    ["cos", new C.StdFuncInfo("cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["sin",new C.StdFuncInfo("sin",  new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["tan", new C.StdFuncInfo("tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["pow", new C.StdFuncInfo("pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), false)],
-    ["sqrt", new C.StdFuncInfo("sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["floor", new C.StdFuncInfo("floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["ceil", new C.StdFuncInfo("ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
-    ["size", new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false)]
-]));
+    new C.StdFuncInfo("cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("sin",  new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false)
+].map( fi => [fi.name, fi] )));
 
 enum Symbols {
     ASSIGN_OP = "=",
@@ -301,56 +301,53 @@ enum Symbols {
     MEMBER_ACCESS_OP = "."
 }
 
-
-type UnaryOpInfo = Readonly<{ op: C.UnaryOpKind, vtype: C.Vtype }>;
-
-const UnaryOpMap: Readonly<Map<string,UnaryOpInfo>> = Object.freeze(new Map([
-    ["+", { op: C.UnaryOpKind.POSITIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
-    ["-", { op: C.UnaryOpKind.NEGATIVE_SIGN, vtype: C.Vtype.INFER_NUMBER }],
-    ["~", { op: C.UnaryOpKind.BITWISE_NOT, vtype: C.Vtype.INTEGER }],
-    ["!", { op: C.UnaryOpKind.LOGICAL_NOT, vtype: C.Vtype.BOOLEAN }]
-]));
+const UnaryOpMap: Readonly<Map<string,C.UnaryOpInfo>> = Object.freeze(new Map([
+    new C.UnaryOpInfo(C.UnaryOpKind.POSITIVE_SIGN, "+", C.Vtype.INFER_NUMBER),
+    new C.UnaryOpInfo(C.UnaryOpKind.NEGATIVE_SIGN, "-", C.Vtype.INFER_NUMBER),
+    new C.UnaryOpInfo(C.UnaryOpKind.BITWISE_NOT,   "~", C.Vtype.INTEGER),
+    new C.UnaryOpInfo(C.UnaryOpKind.LOGICAL_NOT,   "!", C.Vtype.BOOLEAN)
+].map( oi => [oi.op, oi] )));
 
 const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
-    ["*", new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, 100, C.Vtype.INFER_NUMBER)],
-    ["/", new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE, 100, C.Vtype.FLOATING_POINT)],
-    ["\\", new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE, 100, C.Vtype.INTEGER)],
-    ["%", new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER, 100, C.Vtype.INTEGER)],
-    ["+", new C.BinaryOpInfo(C.BinaryOpKind.ADD, 90, C.Vtype.INFER_CONCAT)],
-    ["-", new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT, 90, C.Vtype.INFER_NUMBER)],
-    [">>", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, 80, C.Vtype.INTEGER)],
-    ["<<", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, 80, C.Vtype.INTEGER)],
-    [">>>", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, 80, C.Vtype.INTEGER)],
-    ["<<<", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, 80, C.Vtype.INTEGER)],
-    ["&", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND, 70, C.Vtype.INFER_LOGICAL)],
-    ["|", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR, 60, C.Vtype.INFER_LOGICAL)],
-    ["^", new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR, 50, C.Vtype.INTEGER)],
-    ["==", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ, 40, C.Vtype.INFER_PRIMITIVE)],
-    ["!=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE, 40, C.Vtype.INFER_PRIMITIVE)],
-    [">", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT, 40, C.Vtype.INFER_COMPARE)],
-    [">=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE, 40, C.Vtype.INFER_COMPARE)],
-    ["<", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT, 40, C.Vtype.INFER_COMPARE)],
-    ["<=", new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE, 40, C.Vtype.INFER_COMPARE)],
-    ["&&", new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, 30, C.Vtype.BOOLEAN)],
-    ["||", new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR, 20, C.Vtype.BOOLEAN)]
-]));
+    new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY,         "*",  100, C.Vtype.INFER_NUMBER),
+    new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE,           "/",  100, C.Vtype.FLOATING_POINT),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE,       "\\", 100, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER,     "%",  100, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.ADD,              "+",   90, C.Vtype.INFER_CONCAT),
+    new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT,         "-",   90, C.Vtype.INFER_NUMBER),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, ">>",  80, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, "<<",  80, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, ">>>", 80, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, "<<<", 80, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND,      "&",   70, C.Vtype.INFER_LOGICAL),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR,       "|",   60, C.Vtype.INFER_LOGICAL),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR,      "^",   50, C.Vtype.INTEGER),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ,       "==",  40, C.Vtype.INFER_PRIMITIVE),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE,       "!=",  40, C.Vtype.INFER_PRIMITIVE),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT,       ">",   40, C.Vtype.INFER_COMPARE),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE,       ">=",  40, C.Vtype.INFER_COMPARE),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT,       "<",   40, C.Vtype.INFER_COMPARE),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE,       "<=",  40, C.Vtype.INFER_COMPARE),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, "&&",  30, C.Vtype.BOOLEAN),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR,  "||",  20, C.Vtype.BOOLEAN)
+].map( oi => [oi.op, oi] )));
 
 const AssignOpMap: Readonly<Map<string,C.AssignOpInfo>> = Object.freeze(new Map([
-    ["=", new C.AssignOpInfo(C.AssignKind.ASSIGN, "=", C.Vtype.INFER_PRIMITIVE)],
-    ["+=", new C.AssignOpInfo(C.AssignKind.ADD, "+=", C.Vtype.INFER_CONCAT)],
-    ["-=", new C.AssignOpInfo(C.AssignKind.SUBTRACT, "-=", C.Vtype.INFER_NUMBER)],
-    ["*=", new C.AssignOpInfo(C.AssignKind.MULTIPLY, "*=", C.Vtype.INFER_NUMBER)],
-    ["/=", new C.AssignOpInfo(C.AssignKind.DIVIDE, "/=", C.Vtype.FLOATING_POINT)],
-    ["\\=", new C.AssignOpInfo(C.AssignKind.INT_DIVIDE, "\\=", C.Vtype.INTEGER)],
-    ["%=", new C.AssignOpInfo(C.AssignKind.INT_REMINDER,"%=", C.Vtype.INTEGER)],
-    [">>=", new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_R, ">>=", C.Vtype.INTEGER)],
-    ["<<=", new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_L, "<<=", C.Vtype.INTEGER)],
-    [">>>=", new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_R, ">>>=", C.Vtype.INTEGER)],
-    ["<<<=", new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_L, "<<<=", C.Vtype.INTEGER)],
-    ["&=", new C.AssignOpInfo(C.AssignKind.BITWISE_AND, "&=", C.Vtype.INFER_LOGICAL)],
-    ["|=", new C.AssignOpInfo(C.AssignKind.BITWISE_OR, "|=", C.Vtype.INFER_LOGICAL)],
-    ["^=", new C.AssignOpInfo(C.AssignKind.BITWISE_XOR, "^=", C.Vtype.INFER_LOGICAL)]
-]));
+    new C.AssignOpInfo(C.AssignKind.ASSIGN,           Symbols.ASSIGN_OP, C.Vtype.INFER_PRIMITIVE),
+    new C.AssignOpInfo(C.AssignKind.ADD,              "+=",   C.Vtype.INFER_CONCAT),
+    new C.AssignOpInfo(C.AssignKind.SUBTRACT,         "-=",   C.Vtype.INFER_NUMBER),
+    new C.AssignOpInfo(C.AssignKind.MULTIPLY,         "*=",   C.Vtype.INFER_NUMBER),
+    new C.AssignOpInfo(C.AssignKind.DIVIDE,           "/=",   C.Vtype.FLOATING_POINT),
+    new C.AssignOpInfo(C.AssignKind.INT_DIVIDE,       "\\=",  C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.INT_REMINDER,     "%=",   C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_R, ">>=",  C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_ASHIFT_L, "<<=",  C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_R, ">>>=", C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_LSHIFT_L, "<<<=", C.Vtype.INTEGER),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_AND,      "&=",   C.Vtype.INFER_LOGICAL),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_OR,       "|=",   C.Vtype.INFER_LOGICAL),
+    new C.AssignOpInfo(C.AssignKind.BITWISE_XOR,      "^=",   C.Vtype.INFER_LOGICAL)
+].map( oi => [oi.op, oi] )));
 
 const POSITIVE_INTEGER_BOUND = BigInt(0x7FFFFFFF);
 const NEGATIVE_INTEGER_BOUND = BigInt(2 ** 31);
@@ -1312,38 +1309,38 @@ export class Parser {
             case TokenType.HEX_INTEGER:
                 if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.INTEGER).isOk) {
                     const litIntToken = line.dequeue()!;
-                    const litIntRes = parseNumber(litIntToken, unaryOpInfo.op);
+                    const litIntRes = parseNumber(litIntToken, unaryOpInfo.kind);
                     if (litIntRes.isErr) {
                         return Result.err(litIntRes.error);
                     }
                     const litInt = litIntRes.result;
                     log.dump("litInt", litInt);
-                    return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo.op));
+                    return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo));
                 } else {
                     return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
                 }
             case TokenType.FLOATING_POINT:
                 if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
                     const litFloatToken = line.dequeue()!;
-                    const litFloatRes = parseNumber(litFloatToken, unaryOpInfo.op);
+                    const litFloatRes = parseNumber(litFloatToken, unaryOpInfo.kind);
                     if (litFloatRes.isErr) {
                         return Result.err(litFloatRes.error);
                     }
                     const litFloat = litFloatRes.result;
                     log.dump("litFloat", litFloat);
-                    return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo.op));
+                    return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo));
                 } else {
                     return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
                 }
             case TokenType.WORD:
-                if (unaryOpInfo.op === C.UnaryOpKind.LOGICAL_NOT) {
+                if (unaryOpInfo.kind === C.UnaryOpKind.LOGICAL_NOT) {
                     switch (line.front!.value.toLowerCase()) {
                         case Keyword.TRUE:
                             const trueToken = line.dequeue()!;
-                            return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo.op));
+                            return Result.ok(new C.ExprLitBoolean(trueToken, !true, unaryOpInfo));
                         case Keyword.FALSE:
                             const falseToken = line.dequeue()!;
-                            return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo.op));
+                            return Result.ok(new C.ExprLitBoolean(falseToken, !false, unaryOpInfo));
                         default:
                             break;
                     }
@@ -1361,7 +1358,7 @@ export class Parser {
         if (unaryVtypeRes.isErr) {
             return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用でない型です.`, opToken);
         }
-        return Result.ok(new C.ExprUnaryOp(opToken, unaryVtypeRes.result, unaryOpInfo.op, termU));
+        return Result.ok(new C.ExprUnaryOp(opToken, unaryVtypeRes.result, unaryOpInfo, termU));
     }
 
     #parseExprStdFunc(line: RQueue<Token>): Result<C.Expr,string> {
@@ -1557,7 +1554,7 @@ export class Parser {
         nameInfo.incrementCounter();
 
         const lrbToken = line.dequeue()!;
-        if (lrbToken.tokenType !== TokenType.LEFT_ROUND_BRACKET) {
+        if (lrbToken.value !== Symbols.DIMLIST_BEGIN) {
             line.recover();
             return Result.ok(new C.ExprArrayRef(nameToken, nameInfo));
         }
@@ -1607,7 +1604,10 @@ export class Parser {
 
         if (StdFuncWordMap.has(member)) {
             const stdFunc = StdFuncWordMap.get(member)!;
-            if (stdFunc.retArg.hasNoArg || stdFunc.isSub) {
+            if (stdFunc.isSub) {
+                return syntaxError(`戻り値のない標準関数${member}をメンバーとして式に使用することはできません.`, memberToken);
+            }
+            if (stdFunc.retArg.hasNoArg) {
                 return syntaxError(`標準関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
             }
             if (C.inferVtype(stdFunc.retArg.args[0], obj.vtype).isErr) {

@@ -397,16 +397,38 @@ export var BinaryOpKind;
     BinaryOpKind[BinaryOpKind["COMPARE_GE"] = 20] = "COMPARE_GE"; // ">="
 })(BinaryOpKind || (BinaryOpKind = {}));
 export class BinaryOpInfo {
+    kind;
     op;
     priority;
     vtype;
-    constructor(op, priority, vtype) {
+    constructor(kind, op, priority, vtype) {
+        this.kind = kind;
         this.op = op;
         this.priority = priority;
         this.vtype = vtype;
     }
     toString() {
-        return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority} }`;
+    }
+}
+export var UnaryOpKind;
+(function (UnaryOpKind) {
+    UnaryOpKind[UnaryOpKind["POSITIVE_SIGN"] = 0] = "POSITIVE_SIGN";
+    UnaryOpKind[UnaryOpKind["NEGATIVE_SIGN"] = 1] = "NEGATIVE_SIGN";
+    UnaryOpKind[UnaryOpKind["BITWISE_NOT"] = 2] = "BITWISE_NOT";
+    UnaryOpKind[UnaryOpKind["LOGICAL_NOT"] = 3] = "LOGICAL_NOT"; // "!"
+})(UnaryOpKind || (UnaryOpKind = {}));
+export class UnaryOpInfo {
+    kind;
+    op;
+    vtype;
+    constructor(kind, op, vtype) {
+        this.kind = kind;
+        this.op = op;
+        this.vtype = vtype;
+    }
+    toString() {
+        return `UnaryOpInfo{ kind: ${UnaryOpKind[this.kind]}, op: ${this.op}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
 export var AssignKind;
@@ -469,7 +491,7 @@ export class ExprLitInt extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitInt{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         }
         else {
             return `LitInt{ value: ${this.value} }`;
@@ -486,7 +508,7 @@ export class ExprLitFloat extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitFloat{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         }
         else {
             return `LitFloat{ value: ${this.value} }`;
@@ -503,7 +525,7 @@ export class ExprLitBoolean extends Expr {
     }
     toString() {
         if (this.unaryOp) {
-            return `LitBoolean{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         }
         else {
             return `LitBoolean{ value: ${this.value} }`;
@@ -520,13 +542,6 @@ export class ExprLitString extends Expr {
         return `LitString{ value: "${this.value.replaceAll('"', '""')}" }`;
     }
 }
-export var UnaryOpKind;
-(function (UnaryOpKind) {
-    UnaryOpKind[UnaryOpKind["POSITIVE_SIGN"] = 0] = "POSITIVE_SIGN";
-    UnaryOpKind[UnaryOpKind["NEGATIVE_SIGN"] = 1] = "NEGATIVE_SIGN";
-    UnaryOpKind[UnaryOpKind["BITWISE_NOT"] = 2] = "BITWISE_NOT";
-    UnaryOpKind[UnaryOpKind["LOGICAL_NOT"] = 3] = "LOGICAL_NOT"; // "!"
-})(UnaryOpKind || (UnaryOpKind = {}));
 export class ExprUnaryOp extends Expr {
     op;
     term;
@@ -536,7 +551,7 @@ export class ExprUnaryOp extends Expr {
         this.term = term;
     }
     toString() {
-        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
+        return `UnaryOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
     }
 }
 export class ExprBinOp extends Expr {

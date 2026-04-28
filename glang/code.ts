@@ -415,18 +415,43 @@ export enum BinaryOpKind {
 }
 
 export class BinaryOpInfo {
-    readonly op: BinaryOpKind;
+    readonly kind: BinaryOpKind;
+    readonly op: string;
     readonly priority: number;
     readonly vtype: Vtype;
 
-    constructor(op: BinaryOpKind, priority: number, vtype: Vtype) {
+    constructor(kind: BinaryOpKind, op: string, priority: number, vtype: Vtype) {
+        this.kind = kind;
         this.op = op;
         this.priority = priority;
         this.vtype = vtype;
     }
 
     toString(): string {
-        return `BinOpInfo{ op: ${BinaryOpKind[this.op]}, priority: ${this.priority} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority} }`;
+    }
+}
+
+export enum UnaryOpKind {
+    POSITIVE_SIGN,  // "+"
+    NEGATIVE_SIGN,  // "-"
+    BITWISE_NOT,    // "~"
+    LOGICAL_NOT     // "!"
+}
+
+export class UnaryOpInfo {
+    readonly kind: UnaryOpKind;
+    readonly op: string;
+    readonly vtype: Vtype
+
+    constructor(kind: UnaryOpKind, op: string, vtype: Vtype) {
+        this.kind = kind;
+        this.op = op;
+        this.vtype = vtype;
+    }
+
+    toString(): string {
+        return `UnaryOpInfo{ kind: ${UnaryOpKind[this.kind]}, op: ${this.op}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
 
@@ -487,9 +512,9 @@ export class Expr {
 
 export class ExprLitInt extends Expr {
     readonly value: number;
-    readonly unaryOp: UnaryOpKind | undefined;
+    readonly unaryOp: UnaryOpInfo | undefined;
 
-    constructor(src: Token, value: number, unaryOp?: UnaryOpKind) {
+    constructor(src: Token, value: number, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -497,7 +522,7 @@ export class ExprLitInt extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitInt{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         } else {
             return `LitInt{ value: ${this.value} }`;
         }
@@ -506,9 +531,9 @@ export class ExprLitInt extends Expr {
 
 export class ExprLitFloat extends Expr {
     readonly value: number;
-    readonly unaryOp: UnaryOpKind | undefined;
+    readonly unaryOp: UnaryOpInfo | undefined;
 
-    constructor(src: Token, value: number, unaryOp?: UnaryOpKind) {
+    constructor(src: Token, value: number, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -516,7 +541,7 @@ export class ExprLitFloat extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitFloat{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         } else {
             return `LitFloat{ value: ${this.value} }`;
         }
@@ -525,9 +550,9 @@ export class ExprLitFloat extends Expr {
 
 export class ExprLitBoolean extends Expr {
     readonly value: boolean;
-    readonly unaryOp: UnaryOpKind | undefined;
+    readonly unaryOp: UnaryOpInfo| undefined;
 
-    constructor(src: Token, value: boolean, unaryOp?: UnaryOpKind) {
+    constructor(src: Token, value: boolean, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
         this.unaryOp = unaryOp;
@@ -535,7 +560,7 @@ export class ExprLitBoolean extends Expr {
 
     toString(): string {
         if (this.unaryOp) {
-            return `LitBoolean{ value: ${this.value}, unaryOp: ${UnaryOpKind[this.unaryOp]} }`;
+            return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
         } else {
             return `LitBoolean{ value: ${this.value} }`;
         }
@@ -555,25 +580,18 @@ export class ExprLitString extends Expr {
     }
 }
 
-export enum UnaryOpKind {
-    POSITIVE_SIGN,  // "+"
-    NEGATIVE_SIGN,  // "-"
-    BITWISE_NOT,    // "~"
-    LOGICAL_NOT     // "!"
-}
-
 export class ExprUnaryOp extends Expr {
-    readonly op: UnaryOpKind;
+    readonly op: UnaryOpInfo;
     readonly term: Expr;
 
-    constructor(src: Token, vtype: Vtype, op: UnaryOpKind, term: Expr) {
+    constructor(src: Token, vtype: Vtype, op: UnaryOpInfo, term: Expr) {
         super(ExprKind.UNARY_OP, vtype, src);
         this.op = op;
         this.term = term;
     }
 
     toString(): string {
-        return `UnaryOp{ op: ${UnaryOpKind[this.op]}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
+        return `UnaryOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
     }
 }
 
