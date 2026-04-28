@@ -300,11 +300,30 @@ export class FuncRetArg {
         }
         return Result.ok(hasInfer);
     }
-    get isNoArg() {
+    get hasNoArg() {
         return this.args.length === 0;
     }
     toString() {
         return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
+    }
+}
+export class StdFuncInfo {
+    name;
+    retArg;
+    hasSideEffect;
+    constructor(name, retArg, hasSideEffect) {
+        this.name = name;
+        this.retArg = retArg;
+        this.hasSideEffect = hasSideEffect;
+    }
+    get isFunc() {
+        return this.retArg.ret !== Vtype.VOID;
+    }
+    get isSub() {
+        return this.retArg.ret === Vtype.VOID;
+    }
+    toString() {
+        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, hasSideEffect: ${this.hasSideEffect} }`;
     }
 }
 export class FuncInfo {
@@ -547,31 +566,28 @@ export class ExprBracket extends Expr {
     }
 }
 export class ExprStdFunc extends Expr {
-    name;
-    retArg;
+    funcInfo;
     args;
-    constructor(src, vtype, name, retArg, args) {
+    constructor(src, vtype, funcInfo, args) {
         super(ExprKind.STD_FUNC, vtype, src);
-        this.name = name;
-        this.retArg = retArg;
+        this.funcInfo = funcInfo;
         this.args = args;
     }
     toString() {
-        return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 export class ExprMemberStdFunc extends Expr {
-    name;
-    retArg;
+    funcInfo;
     args;
-    constructor(src, vtype, name, retArg, args) {
+    constructor(src, vtype, funcInfo, args) {
         super(ExprKind.STD_FUNC, vtype, src);
-        this.name = name;
-        this.retArg = retArg;
+        this.funcInfo = funcInfo;
+        ;
         this.args = args;
     }
     toString() {
-        return `MemberStdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 export class ExprUserFunc extends Expr {

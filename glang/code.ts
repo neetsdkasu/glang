@@ -308,12 +308,36 @@ export class FuncRetArg {
         return Result.ok(hasInfer);
     }
 
-    get isNoArg(): boolean {
+    get hasNoArg(): boolean {
         return this.args.length === 0;
     }
 
     toString(): string {
         return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
+    }
+}
+
+export class StdFuncInfo {
+    readonly name: string;
+    readonly retArg: FuncRetArg;
+    readonly hasSideEffect: boolean;
+
+    constructor(name: string, retArg: FuncRetArg, hasSideEffect: boolean) {
+        this.name = name;
+        this.retArg = retArg;
+        this.hasSideEffect = hasSideEffect;
+    }
+
+    get isFunc(): boolean {
+        return this.retArg.ret !== Vtype.VOID;
+    }
+
+    get isSub(): boolean {
+        return this.retArg.ret === Vtype.VOID;
+    }
+
+    toString(): string {
+        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, hasSideEffect: ${this.hasSideEffect} }`;
     }
 }
 
@@ -586,36 +610,32 @@ export class ExprBracket extends Expr {
 }
 
 export class ExprStdFunc extends Expr {
-    readonly name: string;
-    readonly retArg: Readonly<FuncRetArg>;
+    readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
 
-    constructor(src: Token, vtype: Vtype, name: string, retArg: FuncRetArg, args: Expr[]) {
+    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[]) {
         super(ExprKind.STD_FUNC, vtype, src);
-        this.name = name;
-        this.retArg = retArg;
+        this.funcInfo = funcInfo;
         this.args = args;
     }
 
     toString(): string {
-        return `StdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 
 export class ExprMemberStdFunc extends Expr {
-    readonly name: string;
-    readonly retArg: Readonly<FuncRetArg>;
+    readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
 
-    constructor(src: Token, vtype: Vtype, name: string, retArg: FuncRetArg, args: Expr[]) {
+    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[]) {
         super(ExprKind.STD_FUNC, vtype, src);
-        this.name = name;
-        this.retArg = retArg;
+        this.funcInfo = funcInfo;;
         this.args = args;
     }
 
     toString(): string {
-        return `MemberStdFunc{ name: ${this.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 

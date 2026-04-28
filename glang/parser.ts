@@ -268,23 +268,23 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
 /**
  * 標準関数
  */
-const StdFuncWordMap: Readonly<Map<string,C.FuncRetArg>> = Object.freeze(new Map([
-    ["cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE])],
-    ["cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE])],
-    ["cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE])],
-    ["cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE])],
-    ["abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER])],
-    ["max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER])],
-    ["min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER])],
-    ["cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["sin", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT])],
-    ["sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])],
-    ["size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER])]
+const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Map([
+    ["cbool", new C.StdFuncInfo("cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false)],
+    ["cfloat", new C.StdFuncInfo("cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false)],
+    ["cint", new C.StdFuncInfo("cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false)],
+    ["cstr", new C.StdFuncInfo("cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false)],
+    ["abs", new C.StdFuncInfo("abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false)],
+    ["sign", new C.StdFuncInfo("sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false)],
+    ["max", new C.StdFuncInfo("max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false)],
+    ["min", new C.StdFuncInfo("min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false)],
+    ["cos", new C.StdFuncInfo("cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["sin",new C.StdFuncInfo("sin",  new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["tan", new C.StdFuncInfo("tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["pow", new C.StdFuncInfo("pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), false)],
+    ["sqrt", new C.StdFuncInfo("sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["floor", new C.StdFuncInfo("floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["ceil", new C.StdFuncInfo("ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false)],
+    ["size", new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false)]
 ]));
 
 enum Symbols {
@@ -1367,7 +1367,11 @@ export class Parser {
     #parseExprStdFunc(line: RQueue<Token>): Result<C.Expr,string> {
         const nameToken = line.dequeue()!;
         const name = nameToken.value.toLowerCase();
-        const retArg = StdFuncWordMap.get(name)!;
+        const funcInfo = StdFuncWordMap.get(name)!;
+
+        if (funcInfo.isSub) {
+            return syntaxError(`戻り値のない標準関数${name}は式に使用できません.`, nameToken);
+        }
 
         const lrbToken = line.dequeue()!;
         if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
@@ -1375,32 +1379,32 @@ export class Parser {
             return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
-        if (retArg.args.length === 0) {
+        if (funcInfo.retArg.args.length === 0) {
             // 引数なし関数
             const rrbToken = line.dequeue()!;
             if (rrbToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
-            return Result.ok(new C.ExprStdFunc(nameToken, retArg.ret, name, retArg, []));
+            return Result.ok(new C.ExprStdFunc(nameToken, funcInfo.retArg.ret, funcInfo, []));
         }
 
         const args: C.Expr[] = [];
 
-        for (let i = 0; i < retArg.args.length; i++) {
+        for (let i = 0; i < funcInfo.retArg.args.length; i++) {
             const token = line.front;
             const argRes = this.#parseExpr(line);
             if (argRes.isErr) {
                 return argRes;
             }
             const arg = argRes.result;
-            const argVtypeRes = C.inferVtype(retArg.args[i], arg.vtype);
+            const argVtypeRes = C.inferVtype(funcInfo.retArg.args[i], arg.vtype);
             if (argVtypeRes.isErr) {
                 return syntaxError(`標準関数${name}の${i+1}番目の引数の型が不一致です.`, token);
             }
             args.push(arg);
 
             const symToken = line.dequeue()!;
-            if (i + 1 < retArg.args.length) {
+            if (i + 1 < funcInfo.retArg.args.length) {
                 if (symToken.value !== Symbols.ARGLIST_DELIMITER) {
                     return syntaxError(`引数を区切る記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken);
                 }
@@ -1409,7 +1413,7 @@ export class Parser {
             }
         }
 
-        let ret: C.Vtype = retArg.ret;
+        let ret: C.Vtype =funcInfo.retArg.ret;
         if (ret & C.Vtype.INFER) {
             // 標準関数の戻り値の型にINFERが含まれるとき、戻り値の型と引数の型はすべて一致させる.(そうでないものを標準関数にしない).
             // 例: min, max, abs, sign など
@@ -1422,7 +1426,7 @@ export class Parser {
             }
         }
 
-        return Result.ok(new C.ExprStdFunc(nameToken, ret, name, retArg, args));
+        return Result.ok(new C.ExprStdFunc(nameToken, ret, funcInfo, args));
     }
 
     #parseExprUnknownUserFunc(line: RQueue<Token>): Result<C.Expr,string> {
@@ -1504,7 +1508,7 @@ export class Parser {
             return syntaxError(`ユーザー関数の呼び出しは名前に続いて記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
-        if (funcInfo.retArg.isNoArg) {
+        if (funcInfo.retArg.hasNoArg) {
             const rrbToken = line.dequeue()!;
             if (rrbToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
@@ -1603,22 +1607,22 @@ export class Parser {
 
         if (StdFuncWordMap.has(member)) {
             const stdFunc = StdFuncWordMap.get(member)!;
-            if (stdFunc.isNoArg) {
+            if (stdFunc.retArg.hasNoArg || stdFunc.isSub) {
                 return syntaxError(`標準関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
             }
-            if (C.inferVtype(stdFunc.args[0], obj.vtype).isErr) {
+            if (C.inferVtype(stdFunc.retArg.args[0], obj.vtype).isErr) {
                 return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
             }
             const lrbToken_sf = line.dequeue()!;
             if (lrbToken_sf.value !== Symbols.ARGLIST_BEGIN) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken_sf);
             }
-            if (stdFunc.args.length === 1) {
+            if (stdFunc.retArg.args.length === 1) {
                 const rrbToken_sf1 = line.dequeue()!;
                 if (rrbToken_sf1.value !== Symbols.ARGLIST_END) {
                     return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken_sf1);
                 }
-                let ret_sf1 = stdFunc.ret;
+                let ret_sf1 = stdFunc.retArg.ret;
                 if (ret_sf1 & C.Vtype.INFER) {
                     const inf_sf1Res = C.inferVtype(ret_sf1, obj.vtype);
                     if (inf_sf1Res.isErr) {
@@ -1626,17 +1630,17 @@ export class Parser {
                     }
                     ret_sf1 = inf_sf1Res.result;
                 }
-                return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf1, member, stdFunc, args));
+                return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf1, stdFunc, args));
             }
 
-            for (let i = 1; i < stdFunc.args.length; i++) {
+            for (let i = 1; i < stdFunc.retArg.args.length; i++) {
                 const token_sf = line.front;
                 const arg_sfRes = this.#parseExpr(line);
                 if (arg_sfRes.isErr) {
                     return arg_sfRes;
                 }
                 const arg_sf = arg_sfRes.result;
-                if (C.inferVtype(stdFunc.args[i], arg_sf.vtype).isErr) {
+                if (C.inferVtype(stdFunc.retArg.args[i], arg_sf.vtype).isErr) {
                     return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_sf);
                 }
                 args.push(arg_sf);
@@ -1644,7 +1648,7 @@ export class Parser {
                 // log.dump("arg_sf", arg_sf);
 
                 const symToken_sf = line.dequeue()!;
-                if (i + 1 < stdFunc.args.length) {
+                if (i + 1 < stdFunc.retArg.args.length) {
                     if (symToken_sf.value !== Symbols.ARGLIST_DELIMITER) {
                         return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, symToken_sf);
                     }
@@ -1653,7 +1657,7 @@ export class Parser {
                 }
             }
 
-            let ret_sf = stdFunc.ret;
+            let ret_sf = stdFunc.retArg.ret;
             if (ret_sf & C.Vtype.INFER) {
                 for (let i = 0; i < args.length; i++) {
                     const inf_sfRes = C.inferVtype(ret_sf, args[i].vtype);
@@ -1668,7 +1672,7 @@ export class Parser {
                 }
             }
 
-            return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf, member, stdFunc, args));
+            return Result.ok(new C.ExprMemberStdFunc(memberToken, ret_sf, stdFunc, args));
         }
 
         if (this.#env.isToplevel) {
@@ -1681,7 +1685,7 @@ export class Parser {
             if (userFunc.retArg.ret === C.Vtype.VOID) {
                 return syntaxError(`${Keyword.SUB}で定義されているユーザ関数${member}は式中で呼び出せません.`, memberToken);
             }
-            if (userFunc.retArg.isNoArg) {
+            if (userFunc.retArg.hasNoArg) {
                 return syntaxError(`ユーザ関数${member}はメンバーとして呼び出すことは出来ません.`, memberToken);
             }
             if (C.inferVtype(userFunc.retArg.args[0], obj.vtype).isErr) {
