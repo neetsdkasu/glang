@@ -29,6 +29,7 @@ export class Logger {
     }
 
     dump(msg: string, obj: any): void;
+    dump(msg: string, argn: number, ...args: any): void;
     dump<T1>(msg: string, func: (a1: T1) => any, a1: T1): void;
     dump<T1,T2>(msg: string, func: (a1: T1, a2: T2) => any, a1: T1, a2: T2): void;
     dump<T1,T2,T3>(msg: string, func: (a1: T1, a2: T2, a3: T3) => any, a1: T1, a2: T2, a3: T3): void;
@@ -39,7 +40,7 @@ export class Logger {
             if (typeof obj === "function") {
                 obj = obj(...args);
             } else if (args) {
-                obj = `${obj} ${args}`;
+                obj = `[ ${obj} ]: ${[...args].map( e => `${e}`).join(", ")}`;
             }
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
@@ -65,7 +66,11 @@ export class Logger {
 
     error(msg: string, obj?: object): void {
         if (this.#level & LogLevel.ERROR) {
-            console.log(`[${this.name}]E: ${msg}: ${obj}`);
+            if (obj) {
+                console.log(`[${this.name}]E: ${msg}: ${obj}`);
+            } else {
+                console.log(`[${this.name}]E: ${msg}`);
+            }
         }
     }
 

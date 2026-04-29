@@ -31,7 +31,7 @@ export class Logger {
                 obj = obj(...args);
             }
             else if (args) {
-                obj = `${obj} ${args}`;
+                obj = `[ ${obj} ]: ${[...args].map(e => `${e}`).join(", ")}`;
             }
             console.log(`[${this.name}]d: ${msg}: ${obj}`);
         }
@@ -53,7 +53,12 @@ export class Logger {
     }
     error(msg, obj) {
         if (this.#level & LogLevel.ERROR) {
-            console.log(`[${this.name}]E: ${msg}: ${obj}`);
+            if (obj) {
+                console.log(`[${this.name}]E: ${msg}: ${obj}`);
+            }
+            else {
+                console.log(`[${this.name}]E: ${msg}`);
+            }
         }
     }
     temp(level, proccess) {

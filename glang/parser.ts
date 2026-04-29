@@ -284,7 +284,8 @@ const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Ma
     new C.StdFuncInfo("sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
     new C.StdFuncInfo("floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
     new C.StdFuncInfo("ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false)
+    new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false),
+    new C.StdFuncInfo("sel", new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), false)
 ].map( fi => [fi.name, fi] )));
 
 enum Symbols {
@@ -309,27 +310,27 @@ const UnaryOpMap: Readonly<Map<string,C.UnaryOpInfo>> = Object.freeze(new Map([
 ].map( oi => [oi.op, oi] )));
 
 const BinaryOpMap: Readonly<Map<string,C.BinaryOpInfo>> = Object.freeze(new Map([
-    new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY,         "*",  100, C.Vtype.INFER_NUMBER),
-    new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE,           "/",  100, C.Vtype.FLOATING_POINT),
-    new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE,       "\\", 100, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER,     "%",  100, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.ADD,              "+",   90, C.Vtype.INFER_CONCAT),
-    new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT,         "-",   90, C.Vtype.INFER_NUMBER),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, ">>",  80, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, "<<",  80, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, ">>>", 80, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, "<<<", 80, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND,      "&",   70, C.Vtype.INFER_LOGICAL),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR,       "|",   60, C.Vtype.INFER_LOGICAL),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR,      "^",   50, C.Vtype.INTEGER),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ,       "==",  40, C.Vtype.INFER_PRIMITIVE),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE,       "!=",  40, C.Vtype.INFER_PRIMITIVE),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT,       ">",   40, C.Vtype.INFER_COMPARE),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE,       ">=",  40, C.Vtype.INFER_COMPARE),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT,       "<",   40, C.Vtype.INFER_COMPARE),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE,       "<=",  40, C.Vtype.INFER_COMPARE),
-    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, "&&",  30, C.Vtype.BOOLEAN),
-    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR,  "||",  20, C.Vtype.BOOLEAN)
+    new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY,         "*",  100, new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE,           "/",  100, new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT])),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE,       "\\", 100, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER,     "%",  100, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.ADD,              "+",   90, new C.FuncRetArg(C.Vtype.INFER_CONCAT, [C.Vtype.INFER_CONCAT, C.Vtype.INFER_CONCAT])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT,         "-",   90, new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, ">>",  80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, "<<",  80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, ">>>", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, "<<<", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND,      "&",   70, new C.FuncRetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR,       "|",   60, new C.FuncRetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR,      "^",   50, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ,       "==",  40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE,       "!=",  40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT,       ">",   40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE,       ">=",  40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT,       "<",   40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE,       "<=",  40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, "&&",  30, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR,  "||",  20, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN]))
 ].map( oi => [oi.op, oi] )));
 
 const AssignOpMap: Readonly<Map<string,C.AssignOpInfo>> = Object.freeze(new Map([
@@ -1186,11 +1187,35 @@ export class Parser {
                 const opX = ops.pop()!;
                 const termR = terms.pop()!;
                 const termL = terms.pop()!;
-                const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
-                if (vtypeXRes.isErr) {
-                    return syntaxError("オペランドの型と演算子が対応してません.", opX.src);
+                const vtypeLRes = C.inferVtype(opX.op.retArg.args[0], termL.vtype);
+                if (vtypeLRes.isErr) {
+                    return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
                 }
-                const vtypeX = vtypeXRes.result;
+                const vtypeL = vtypeLRes.result;
+                const vtypeRRes = C.inferVtype(opX.op.retArg.args[1], termR.vtype);
+                if (vtypeRRes.isErr) {
+                    return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
+                }
+                const vtypeR = vtypeRRes.result;
+                let vtypeX = opX.op.retArg.ret;
+                if (vtypeX & C.Vtype.INFER) {
+                    if (opX.op.retArg.args[0] & C.Vtype.INFER) {
+                        const vtypeXLRes = C.inferVtype(vtypeX, vtypeL);
+                        if (vtypeXLRes.isErr) {
+                            return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
+                        } else {
+                            vtypeX = vtypeXLRes.result;
+                        }
+                    }
+                    if (opX.op.retArg.args[1] & C.Vtype.INFER) {
+                        const vtypeXRRes = C.inferVtype(vtypeX, vtypeR);
+                        if (vtypeXRRes.isErr) {
+                            return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
+                        } else {
+                            vtypeX = vtypeXRRes.result;
+                        }
+                    }
+                }
                 const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
                 terms.push(termX);
             }
@@ -1203,11 +1228,35 @@ export class Parser {
             const opX = ops.pop()!;
             const termR = terms.pop()!;
             const termL = terms.pop()!;
-            const vtypeXRes = C.inferVtype(opX.op.vtype, termL.vtype, termR.vtype);
-            if (vtypeXRes.isErr) {
-                return syntaxError("オペランドの型と演算子が対応してません.", opX.src);
+            const vtypeLRes = C.inferVtype(opX.op.retArg.args[0], termL.vtype);
+            if (vtypeLRes.isErr) {
+                return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
             }
-            const vtypeX = vtypeXRes.result;
+            const vtypeL = vtypeLRes.result;
+            const vtypeRRes = C.inferVtype(opX.op.retArg.args[1], termR.vtype);
+            if (vtypeRRes.isErr) {
+                return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
+            }
+            const vtypeR = vtypeRRes.result;
+            let vtypeX = opX.op.retArg.ret;
+            if (vtypeX & C.Vtype.INFER) {
+                if (opX.op.retArg.args[0] & C.Vtype.INFER) {
+                    const vtypeXLRes = C.inferVtype(vtypeX, vtypeL);
+                    if (vtypeXLRes.isErr) {
+                        return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
+                    } else {
+                        vtypeX = vtypeXLRes.result;
+                    }
+                }
+                if (opX.op.retArg.args[1] & C.Vtype.INFER) {
+                    const vtypeXRRes = C.inferVtype(vtypeX, vtypeR);
+                    if (vtypeXRRes.isErr) {
+                        return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
+                    } else {
+                        vtypeX = vtypeXRRes.result;
+                    }
+                }
+            }
             const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
             terms.push(termX);
         }
@@ -1396,6 +1445,9 @@ export class Parser {
             const arg = argRes.result;
             const argVtypeRes = C.inferVtype(funcInfo.retArg.args[i], arg.vtype);
             if (argVtypeRes.isErr) {
+                log.dump("arg", arg);
+                log.dump("funcInro", funcInfo);
+                log.error(argVtypeRes.error);
                 return syntaxError(`標準関数${name}の${i+1}番目の引数の型が不一致です.`, token);
             }
             args.push(arg);
@@ -1410,16 +1462,18 @@ export class Parser {
             }
         }
 
-        let ret: C.Vtype =funcInfo.retArg.ret;
+        let ret: C.Vtype = funcInfo.retArg.ret;
         if (ret & C.Vtype.INFER) {
             // 標準関数の戻り値の型にINFERが含まれるとき、戻り値の型と引数の型はすべて一致させる.(そうでないものを標準関数にしない).
             // 例: min, max, abs, sign など
-            for (const arg of args) {
-                const retVtypeRes = C.inferVtype(ret, arg.vtype);
-                if (retVtypeRes.isErr) {
-                    return syntaxError(`標準関数${name}の引数の型は揃える必要があります.`, nameToken);
+            for (let i = 0; i < args.length; i++) {
+                if (funcInfo.retArg.args[i] & C.Vtype.INFER) {
+                    const retVtypeRes = C.inferVtype(ret, args[i].vtype);
+                    if (retVtypeRes.isErr) {
+                        return syntaxError(`標準関数${name}の第${i+1}番目の引数の型と戻り値の型は揃える必要があります.`, nameToken);
+                    }
+                    ret = retVtypeRes.result;
                 }
-                ret = retVtypeRes.result;
             }
         }
 
@@ -1660,12 +1714,15 @@ export class Parser {
             let ret_sf = stdFunc.retArg.ret;
             if (ret_sf & C.Vtype.INFER) {
                 for (let i = 0; i < args.length; i++) {
+                    if ((stdFunc.retArg.args[i] & C.Vtype.INFER) !== C.Vtype.INFER) {
+                        continue;
+                    }
                     const inf_sfRes = C.inferVtype(ret_sf, args[i].vtype);
                     if (inf_sfRes.isErr) {
                         if (i === 0) {
                             return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);                            
                         } else {
-                            return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, args[i].src);
+                            return syntaxError(`メンバー${member}の${i}番目の引数の型と戻り値の型が不一致です.`, args[i].src);
                         }
                     }
                     ret_sf = inf_sfRes.result;
@@ -1957,9 +2014,99 @@ export class Parser {
 
         log.info("parse for...");
 
+        const isNewVar = new U.Once<Boolean>();
+
+        if (line.front!.value.toLowerCase() === Keyword.LET) {
+            src.push(line.dequeue()!);
+            isNewVar.set(true);
+        } else {
+            isNewVar.set(false);
+        }
+
+        const nameToken = line.dequeue()!;
+        src.push(nameToken);
+
+        if (nameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("ループカウンタの変数名が必要です.", nameToken);
+        }
+
+        const name = nameToken.value.toLowerCase();
+
+        log.dump("name", name);
+
+        // for let name = での変数名新規登録は後回し、初期値計算で参照されてしまわないように.
+
+        const assignOpToken = line.dequeue()!;
+        src.push(assignOpToken);
+
+        if (assignOpToken.value !== Symbols.ASSIGN_OP) {
+            return syntaxError(`記号 ${Symbols.ASSIGN_OP} が必要です.`, assignOpToken);
+        }
+
+        const initValueToken = line.front;
+
+        const initValueExprRes = this.#parseExprTokens(line, src);
+        if (initValueExprRes.isErr) {
+            return Result.err(initValueExprRes.error);
+        }
+        const initValueExpr = initValueExprRes.result;
+
+        log.dump("initValue", initValueExpr);
+
+        if (initValueExpr.vtype !== C.Vtype.INTEGER) {
+            return syntaxError(`ループカウンタの初期値は整数型(${Keyword.INTEGER})である必要があります.`, initValueToken);
+        }
+        
+        const toToken = line.dequeue()!;
+        src.push(toToken);
+
+        if (toToken.value.toLowerCase() !== Keyword.TO) {
+            return syntaxError(`キーワード"${Keyword.TO}"が必要です.`, toToken);
+        }
+
+        const endValueToken = line.front;
+
+        const endValueExprRes = this.#parseExprTokens(line, src);
+        if (endValueExprRes.isErr) {
+            return Result.err(endValueExprRes.error);
+        }
+        const endValueExpr = endValueExprRes.result;
+
+        log.dump("endValue", endValueExpr);
+
+        if (endValueExpr.vtype !== C.Vtype.INTEGER) {
+            return syntaxError(`ループカウンタの終端値は整数型(${Keyword.INTEGER})である必要があります.`, endValueToken);
+        }
+
+        const stepValueExprOption = new U.Once<C.Expr | null>();
+
+        if (line.front!.value.toLowerCase() === Keyword.STEP) {
+            src.push(line.dequeue()!);
+
+            const stepValueToken = line.front;
+            
+            const stepValueExprRes = this.#parseExprTokens(line, src);
+            if (stepValueExprRes.isErr) {
+                return Result.err(stepValueExprRes.error);
+            }
+            stepValueExprOption.set(stepValueExprRes.result);
+
+            if (stepValueExprOption.get()!.vtype !== C.Vtype.INTEGER) {
+                return syntaxError(`ループカウンタの増減値は整数型(${Keyword.INTEGER})である必要があります.`, stepValueToken);
+            }
+        } else {
+            stepValueExprOption.set(null);
+        }
+        const stepValueExpr = stepValueExprOption.get();
+
+        log.dump("stepValue", stepValueExpr);
+
+        
 
 
         // TODO: 
+
+        log.dump("src", Token.lineToString, src);
 
         throw new Unimplemented(line.front);
     }

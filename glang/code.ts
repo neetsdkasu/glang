@@ -418,17 +418,17 @@ export class BinaryOpInfo {
     readonly kind: BinaryOpKind;
     readonly op: string;
     readonly priority: number;
-    readonly vtype: Vtype;
+    readonly retArg: FuncRetArg;
 
-    constructor(kind: BinaryOpKind, op: string, priority: number, vtype: Vtype) {
+    constructor(kind: BinaryOpKind, op: string, priority: number, retArg: FuncRetArg) {
         this.kind = kind;
         this.op = op;
         this.priority = priority;
-        this.vtype = vtype;
+        this.retArg = retArg;
     }
 
     toString(): string {
-        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority}, retArg: ${this.retArg} }`;
     }
 }
 

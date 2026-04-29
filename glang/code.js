@@ -400,15 +400,15 @@ export class BinaryOpInfo {
     kind;
     op;
     priority;
-    vtype;
-    constructor(kind, op, priority, vtype) {
+    retArg;
+    constructor(kind, op, priority, retArg) {
         this.kind = kind;
         this.op = op;
         this.priority = priority;
-        this.vtype = vtype;
+        this.retArg = retArg;
     }
     toString() {
-        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority}, retArg: ${this.retArg} }`;
     }
 }
 export var UnaryOpKind;
