@@ -263,7 +263,7 @@ export class NameInfo {
 }
 
 
-export class FuncRetArg {
+export class RetArg {
     readonly ret: Vtype;
     readonly args: Readonly<Vtype[]>;
 
@@ -280,7 +280,7 @@ export class FuncRetArg {
      * @param def: 関数定義のほう
      * @returns ok(false):完全一致(INFERなし). ok(true):一致(INFERが整合). err():不一致で整合性が取れない
      */
-    checkConsistencyWith(def: FuncRetArg): Result<boolean,string> {
+    checkConsistencyWith(def: RetArg): Result<boolean,string> {
         let hasInfer = false;
         if (this.ret & Vtype.INFER) {
             hasInfer = true;
@@ -313,16 +313,16 @@ export class FuncRetArg {
     }
 
     toString(): string {
-        return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
+        return `RetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
     }
 }
 
 export class StdFuncInfo {
     readonly name: string;
-    readonly retArg: FuncRetArg;
+    readonly retArg: RetArg;
     readonly hasSideEffect: boolean;
 
-    constructor(name: string, retArg: FuncRetArg, hasSideEffect: boolean) {
+    constructor(name: string, retArg: RetArg, hasSideEffect: boolean) {
         this.name = name;
         this.retArg = retArg;
         this.hasSideEffect = hasSideEffect;
@@ -344,14 +344,14 @@ export class StdFuncInfo {
 export class FuncInfo {
     readonly src: Readonly<Token[]>;
     readonly name: string;
-    readonly retArg: FuncRetArg;
+    readonly retArg: RetArg;
     readonly varId: number;
     readonly definition: boolean;
     readonly argNames: Readonly<NameInfo[]> | undefined;
     readonly outerBlockId: number | undefined;
     readonly innerBlockId: number | undefined;
 
-    constructor(src: Token[], name: string, retArg: FuncRetArg, varId: number, definition?: { argNames: NameInfo[], outerBlockId: number, innerBlockId: number } | undefined) {
+    constructor(src: Token[], name: string, retArg: RetArg, varId: number, definition?: { argNames: NameInfo[], outerBlockId: number, innerBlockId: number } | undefined) {
         this.src = src;
         this.name = name;
         this.retArg = retArg;
@@ -418,9 +418,9 @@ export class BinaryOpInfo {
     readonly kind: BinaryOpKind;
     readonly op: string;
     readonly priority: number;
-    readonly retArg: FuncRetArg;
+    readonly retArg: RetArg;
 
-    constructor(kind: BinaryOpKind, op: string, priority: number, retArg: FuncRetArg) {
+    constructor(kind: BinaryOpKind, op: string, priority: number, retArg: RetArg) {
         this.kind = kind;
         this.op = op;
         this.priority = priority;
