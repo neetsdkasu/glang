@@ -53,7 +53,7 @@ sub main()
     y = 0
     field_XY(0, 0) = 10
     for let i = 0 to 5 step 1
-        if i % 2 = 0 then
+        if i % 2 == 0 then
             x += 1
         else
             y += 1
@@ -71,11 +71,11 @@ sub add(x as integer, y as integer, v as integer)
     field_XY(x, y) += v
 end sub
 func fizzbuzz(n as integer) as string
-    if n % 15 = 0 then
+    if n % 15 == 0 then
         return "FizzBuzz"
-    else if n % 5 = 0 then
+    else if n % 5 == 0 then
         return "Buzz"
-    else if n % 3 = 0 then
+    else if n % 3 == 0 then
         return "Fizz"
     else
         return cstr(n)

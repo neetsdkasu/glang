@@ -256,7 +256,7 @@ export class NameInfo {
         return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length} }`;
     }
 }
-export class FuncRetArg {
+export class RetArg {
     ret;
     args;
     constructor(ret, args) {
@@ -304,7 +304,7 @@ export class FuncRetArg {
         return this.args.length === 0;
     }
     toString() {
-        return `FuncRetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
+        return `RetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
     }
 }
 export class StdFuncInfo {
@@ -668,6 +668,7 @@ export var CodeKind;
     CodeKind[CodeKind["LET"] = 2] = "LET";
     CodeKind[CodeKind["ASSIGN_VAR"] = 3] = "ASSIGN_VAR";
     CodeKind[CodeKind["ASSIGN_ARRAY"] = 4] = "ASSIGN_ARRAY";
+    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -677,20 +678,41 @@ export class Code {
         this.src = src;
     }
 }
-export class Block extends Code {
+export class BlockInfo {
+    src;
     id;
     parentId;
     varList;
     body;
     constructor(src, id, parentId, varList, body) {
-        super(CodeKind.BLOCK, src);
+        this.src = src;
         this.id = id;
         this.parentId = parentId;
         this.varList = varList;
         this.body = body;
     }
     toString() {
-        return `Block{ id: ${this.id}, body: {{ ${this.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}" }`;
+    }
+}
+export class Block extends Code {
+    blockInfo;
+    constructor(blockInfo) {
+        super(CodeKind.BLOCK, blockInfo.src);
+        this.blockInfo = blockInfo;
+    }
+    toString() {
+        return `Block{ id: ${this.blockInfo.id}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+    }
+}
+export class DefineUserFunc extends Block {
+    funcInfo;
+    constructor(funcInfo, blockInfo) {
+        super(blockInfo);
+        this.funcInfo = funcInfo;
+    }
+    toString() {
+        return `DefineUserFunc{ funcInfo: ${this.funcInfo}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
     }
 }
 export class Dim extends Code {

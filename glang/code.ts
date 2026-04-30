@@ -735,6 +735,7 @@ export enum CodeKind {
     LET,
     ASSIGN_VAR,
     ASSIGN_ARRAY,
+    DEFINE_USER_FUNC
 }
 
 export class Code {
@@ -747,14 +748,15 @@ export class Code {
     }
 }
 
-export class Block extends Code {
+export class BlockInfo {
+    readonly src: Token[];
     readonly id: number;
     readonly parentId: number | undefined;
     readonly varList: Readonly<NameInfo[]>;
     readonly body: Readonly<Code[]>;
 
     constructor(src: Token[], id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[]) {
-        super(CodeKind.BLOCK, src);
+        this.src = src;
         this.id = id;
         this.parentId = parentId;
         this.varList = varList;
@@ -762,7 +764,33 @@ export class Block extends Code {
     }
 
     toString(): string {
-        return `Block{ id: ${this.id}, body: {{ ${this.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}" }`;
+    }
+}
+
+export class Block extends Code {
+    readonly blockInfo: BlockInfo;
+
+    constructor(blockInfo: BlockInfo) {
+        super(CodeKind.BLOCK, blockInfo.src);
+        this.blockInfo = blockInfo;
+    }
+
+    toString(): string {
+        return `Block{ id: ${this.blockInfo.id}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
+    }
+}
+
+export class DefineUserFunc extends Block {
+    readonly funcInfo: FuncInfo;
+
+    constructor(funcInfo: FuncInfo, blockInfo: BlockInfo) {
+        super(blockInfo);
+        this.funcInfo = funcInfo;
+    }
+
+    toString(): string {
+        return `DefineUserFunc{ funcInfo: ${this.funcInfo}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
     }
 }
 

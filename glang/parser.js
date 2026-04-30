@@ -262,23 +262,23 @@ const ReservedWordSet = Object.freeze(new Set([
  * 標準関数
  */
 const StdFuncWordMap = Object.freeze(new Map([
-    new C.StdFuncInfo("cbool", new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cfloat", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cint", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cstr", new C.FuncRetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("abs", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("sign", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("max", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("min", new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("cos", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("sin", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("tan", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("pow", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("sqrt", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("floor", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("ceil", new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("size", new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false),
-    new C.StdFuncInfo("sel", new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), false)
+    new C.StdFuncInfo("cbool", new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false),
+    new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER]), false),
+    new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("sin", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
+    new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false),
+    new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), false)
 ].map(fi => [fi.name, fi])));
 var Symbols;
 (function (Symbols) {
@@ -301,27 +301,27 @@ const UnaryOpMap = Object.freeze(new Map([
     new C.UnaryOpInfo(C.UnaryOpKind.LOGICAL_NOT, "!", C.Vtype.BOOLEAN)
 ].map(oi => [oi.op, oi])));
 const BinaryOpMap = Object.freeze(new Map([
-    new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, "*", 100, new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE, "/", 100, new C.FuncRetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT])),
-    new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE, "\\", 100, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER, "%", 100, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.ADD, "+", 90, new C.FuncRetArg(C.Vtype.INFER_CONCAT, [C.Vtype.INFER_CONCAT, C.Vtype.INFER_CONCAT])),
-    new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT, "-", 90, new C.FuncRetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, ">>", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, "<<", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, ">>>", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, "<<<", 80, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND, "&", 70, new C.FuncRetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR, "|", 60, new C.FuncRetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
-    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR, "^", 50, new C.FuncRetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ, "==", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE, "!=", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT, ">", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE, ">=", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT, "<", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE, "<=", 40, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
-    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, "&&", 30, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN])),
-    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR, "||", 20, new C.FuncRetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN]))
+    new C.BinaryOpInfo(C.BinaryOpKind.MULTIPLY, "*", 100, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.DIVIDE, "/", 100, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT])),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_DIVIDE, "\\", 100, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.INT_REMINDER, "%", 100, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.ADD, "+", 90, new C.RetArg(C.Vtype.INFER_CONCAT, [C.Vtype.INFER_CONCAT, C.Vtype.INFER_CONCAT])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SUBTRACT, "-", 90, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER, C.Vtype.INFER_NUMBER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_R, ">>", 80, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_ASHIFT_L, "<<", 80, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_R, ">>>", 80, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_LSHIFT_L, "<<<", 80, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_AND, "&", 70, new C.RetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_OR, "|", 60, new C.RetArg(C.Vtype.INFER_LOGICAL, [C.Vtype.INFER_LOGICAL, C.Vtype.INFER_LOGICAL])),
+    new C.BinaryOpInfo(C.BinaryOpKind.BITWISE_XOR, "^", 50, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER, C.Vtype.INTEGER])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_EQ, "==", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_NE, "!=", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GT, ">", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_GE, ">=", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LT, "<", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.COMPARE_LE, "<=", 40, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_COMPARE, C.Vtype.INFER_COMPARE])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRCUIT_AND, "&&", 30, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN])),
+    new C.BinaryOpInfo(C.BinaryOpKind.SHORTCIRGUIT_OR, "||", 20, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN]))
 ].map(oi => [oi.op, oi])));
 const AssignOpMap = Object.freeze(new Map([
     new C.AssignOpInfo(C.AssignKind.ASSIGN, Symbols.ASSIGN_OP, C.Vtype.INFER_PRIMITIVE),
@@ -457,11 +457,14 @@ class Env {
             return Result.err("no block");
         }
         const map = this.#nameMapStack.pop();
-        const body = this.#codeBodyStack.pop();
+        const src = map.blockSrc ?? [];
+        const id = map.blockId;
         const parentId = this.#nameMapStack.at(-1)?.blockId;
-        const list = map.getNameList();
-        log.dump("block src", Token.lineToString, map.blockSrc ?? []);
-        return Result.ok({ parentBlockId: parentId, blockId: map.blockId, blockSrc: map.blockSrc, varList: list, body: body });
+        const varList = map.getNameList();
+        const body = this.#codeBodyStack.pop();
+        const blockInfo = new C.BlockInfo(src, id, parentId, varList, body);
+        log.dump("block src", Token.lineToString, src);
+        return Result.ok(blockInfo);
     }
     /**
      * sub/func/dim/letで指定された名前を最深ブロックに登録します.
@@ -569,7 +572,7 @@ class Env {
             if (name !== Keyword.MAIN) {
                 return syntaxError(`ユーザ関数名に予約語は使用できません. "${name}"`, src);
             }
-            else if (retArg.checkConsistencyWith(new C.FuncRetArg(C.Vtype.VOID, [])).isErr) {
+            else if (retArg.checkConsistencyWith(new C.RetArg(C.Vtype.VOID, [])).isErr) {
                 if (definition) {
                     return syntaxError(`${Keyword.MAIN}関数は"${Keyword.SUB} ${Keyword.MAIN}${Symbols.ARGLIST_BEGIN}${Symbols.ARGLIST_END}"で定義される必要があります.`, src);
                 }
@@ -726,21 +729,78 @@ export class Parser {
                 case Keyword.DIM:
                     res = this.#parseDim(line);
                     break;
-                case Keyword.FOR:
-                    res = this.#parseFor(line);
-                    break;
                 case Keyword.LET:
                     res = this.#parseLet(line);
                     break;
                 case Keyword.SUB:
                     res = this.#parseSub(line);
                     break;
-                case Keyword.CALL:
-                case Keyword.DO:
+                case Keyword.FUNC:
+                    throw new Unimplemented(line.front);
+                default:
+                    return syntaxError(`トップレベルで"${cmdToken.value}"から行頭の開始はできません.`, cmdToken);
+            }
+            if (res.isErr) {
+                return Result.err(res.error);
+            }
+        }
+        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
+        if (mainSub === undefined || !mainSub[0].definition) {
+            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`);
+        }
+        if (!this.#env.isToplevel) {
+            // ブロックが閉じておらずendが足りてない
+            throw new Unimplemented();
+        }
+        log.info("all done.");
+        return this.#env.pop();
+    }
+    /**
+     * endかelseで始まる行に到達するまでコードを読み込む.
+     */
+    #parseCodeBlock() {
+        log.info("parse block...");
+        for (;;) {
+            const lineRes = this.#scanLine();
+            if (lineRes.isErr) {
+                return Result.err(lineRes.error);
+            }
+            const line = lineRes.result;
+            const cmdToken = line.front;
+            log.dump("cmdToken", cmdToken);
+            if (cmdToken.tokenType === TokenType.EOF) {
+                return syntaxError(`キーワード"${Keyword.END}"でブロックを閉じる必要があります.`, cmdToken);
+            }
+            if (cmdToken.tokenType === TokenType.EOL) {
+                continue;
+            }
+            if (cmdToken.tokenType !== TokenType.WORD) {
+                return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
+            }
+            let res;
+            const cmd = cmdToken.value.toLowerCase();
+            switch (cmd) {
                 case Keyword.ELSE:
                 case Keyword.END:
+                    log.info("parsed block.");
+                    return Result.ok({ lastLine: line });
+                case Keyword.SUB:
                 case Keyword.FUNC:
+                    return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.DIM:
+                    res = this.#parseDim(line);
+                    break;
+                case Keyword.FOR:
+                    res = this.#parseFor(line);
+                    break;
+                case Keyword.LET:
+                    res = this.#parseLet(line);
+                    break;
                 case Keyword.IF:
+                    res = this.#parseIf(line);
+                    break;
+                case Keyword.CALL:
+                case Keyword.DO:
                     throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -763,20 +823,7 @@ export class Parser {
                 return Result.err(res.error);
             }
         }
-        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
-        if (mainSub === undefined || !mainSub[0].definition) {
-            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`);
-        }
-        if (!this.#env.isToplevel) {
-            // ブロックが閉じておらずendが足りてない
-            throw new Unimplemented();
-        }
-        const code = this.#env.pop();
-        if (code.isErr) {
-            return Result.err(code.error);
-        }
-        log.info("done");
-        return Result.ok(code.result.body);
+        // Unreachable
     }
     #parseDim(line) {
         const dimToken = line.dequeue();
@@ -907,8 +954,8 @@ export class Parser {
         if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             return syntaxError(`仮引数定義のための記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
-        let argTypes = [];
-        let argNames = [];
+        const argTypes = [];
+        const argNames = [];
         while (line.len) {
             const argNameToken = line.dequeue();
             src.push(argNameToken);
@@ -963,13 +1010,39 @@ export class Parser {
         if (eolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字です.", eolToken);
         }
-        const retArg = new C.FuncRetArg(C.Vtype.VOID, argTypes);
-        const res = this.#env.addUserFunc(src, subName, retArg, true, argNames);
-        if (res.isErr) {
-            return Result.err(res.error);
+        const retArg = new C.RetArg(C.Vtype.VOID, argTypes);
+        const funcInfoRes = this.#env.addUserFunc(src, subName, retArg, true, argNames);
+        if (funcInfoRes.isErr) {
+            return Result.err(funcInfoRes.error);
         }
-        log.dump("func info", res.result);
+        const funcInfo = funcInfoRes.result;
+        log.dump("funcInfo", funcInfo);
         log.dump("src", Token.lineToString, src);
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+        const endToken = lastLine.dequeue();
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.SUB}"で終了する必要があります.`, endToken);
+        }
+        const endSubToken = lastLine.dequeue();
+        if (endSubToken.value.toLowerCase() !== Keyword.SUB) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.SUB}"で終了する必要があります.`, endToken);
+        }
+        if (lastLine.len > 1) {
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        }
+        const innerBlockInfoRes = this.#env.pop();
+        U.assert(innerBlockInfoRes.isOk);
+        const innerCode = new C.Block(innerBlockInfoRes.result);
+        this.#env.addCode(innerCode);
+        const outerBlockInfoRes = this.#env.pop();
+        U.assert(outerBlockInfoRes.isOk);
+        const outerBlockInfo = outerBlockInfoRes.result;
+        const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
+        this.#env.addCode(defineUserFuncCode);
         log.info("parsed sub.");
         return Result.ok(undefined);
     }
@@ -1355,7 +1428,7 @@ export class Parser {
         }
         if (line.front.value === Symbols.ARGLIST_END) {
             line.dequeue();
-            const noArgFuncInfoRes = this.#env.addUserFunc([nameToken], name, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, []), false);
+            const noArgFuncInfoRes = this.#env.addUserFunc([nameToken], name, new C.RetArg(C.Vtype.INFER_PRIMITIVE, []), false);
             if (noArgFuncInfoRes.isErr) {
                 return Result.err(noArgFuncInfoRes.error);
             }
@@ -1385,7 +1458,7 @@ export class Parser {
                 return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
-        const funcInfoRes = this.#env.addUserFunc([nameToken], name, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+        const funcInfoRes = this.#env.addUserFunc([nameToken], name, new C.RetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
         if (funcInfoRes.isErr) {
             return Result.err(funcInfoRes.error);
         }
@@ -1617,7 +1690,7 @@ export class Parser {
         }
         if (line.front.value === Symbols.ARGLIST_END) {
             line.dequeue();
-            const ufi1Res = this.#env.addUserFunc([memberToken], member, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+            const ufi1Res = this.#env.addUserFunc([memberToken], member, new C.RetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
             if (ufi1Res.isErr) {
                 return Result.err(ufi1Res.error);
             }
@@ -1644,7 +1717,7 @@ export class Parser {
                 return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
             }
         }
-        const ufiRes = this.#env.addUserFunc([memberToken], member, new C.FuncRetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
+        const ufiRes = this.#env.addUserFunc([memberToken], member, new C.RetArg(C.Vtype.INFER_PRIMITIVE, argTypes), false);
         if (ufiRes.isErr) {
             return Result.err(ufiRes.error);
         }
@@ -1787,13 +1860,13 @@ export class Parser {
         else {
             isNewVar.set(false);
         }
-        const nameToken = line.dequeue();
-        src.push(nameToken);
-        if (nameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("ループカウンタの変数名が必要です.", nameToken);
+        const loopCounterNameToken = line.dequeue();
+        src.push(loopCounterNameToken);
+        if (loopCounterNameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("ループカウンタの変数名が必要です.", loopCounterNameToken);
         }
-        const name = nameToken.value.toLowerCase();
-        log.dump("name", name);
+        const loopCounterName = loopCounterNameToken.value.toLowerCase();
+        log.dump("loopCounterName", loopCounterName);
         // for let name = での変数名新規登録は後回し、初期値計算で参照されてしまわないように.
         const assignOpToken = line.dequeue();
         src.push(assignOpToken);
@@ -1843,8 +1916,92 @@ export class Parser {
         }
         const stepValueExpr = stepValueExprOption.get();
         log.dump("stepValue", stepValueExpr);
-        // TODO: 
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.FOR}"が必要です.`, eolToken);
+        }
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
         log.dump("src", Token.lineToString, src);
+        this.#env.push(src);
+        const loopCounter = new U.Once();
+        if (isNewVar.get()) {
+            const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
+            if (newVarInfoRes.isErr) {
+                return Result.err(newVarInfoRes.error);
+            }
+            loopCounter.set(newVarInfoRes.result);
+        }
+        else {
+            const varInfo = this.#env.findName(loopCounterName);
+            if (varInfo === undefined) {
+                return syntaxError(`変数${loopCounterNameToken.value}が定義されてません.`, loopCounterNameToken);
+            }
+            if (varInfo.vtype !== C.Vtype.INTEGER) {
+                return syntaxError(`ループカウンタの変数には整数型(${Keyword.INTEGER})のみ使用できます.`, loopCounterNameToken);
+            }
+            loopCounter.set(varInfo);
+        }
+        this.#env.push(src);
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+        const endToken = lastLine.dequeue();
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`"${Keyword.END} ${Keyword.FOR}"が必要です.`, endToken);
+        }
+        const endForToken = lastLine.dequeue();
+        if (endForToken.value.toLowerCase() !== Keyword.FOR) {
+            return syntaxError(`"${Keyword.END} ${Keyword.FOR}"が必要です.`, endToken);
+        }
+        if (lastLine.len > 1) {
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        }
+        const innerBlockInfoRes = this.#env.pop();
+        U.assert(innerBlockInfoRes.isOk);
+        const innerCode = new C.Block(innerBlockInfoRes.result);
+        this.#env.addCode(innerCode);
+        const outerBlockInfoRes = this.#env.pop();
+        U.assert(outerBlockInfoRes.isOk);
+        const outerBlockInfo = outerBlockInfoRes.result;
+        // TODO: 
+        log.info("parsed for.");
+        throw new Unimplemented(line.front);
+    }
+    #parseIf(line) {
+        const ifToken = line.dequeue();
+        const src = [ifToken];
+        log.info("parse if...");
+        const testExprToken = line.front;
+        const testExprRes = this.#parseExprTokens(line, src);
+        if (testExprRes.isErr) {
+            return Result.err(testExprRes.error);
+        }
+        const testExpr = testExprRes.result;
+        if (testExpr.vtype !== C.Vtype.BOOLEAN) {
+            return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, testExprToken);
+        }
+        log.dump("testExpr", testExpr);
+        if (line.front.value.toLowerCase() === Keyword.THEN) {
+            src.push(line.dequeue());
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.IF}"が必要です.`, eolToken);
+        }
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        log.dump("src", Token.lineToString, src);
+        this.#env.push(src);
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        // TODO
         throw new Unimplemented(line.front);
     }
 }

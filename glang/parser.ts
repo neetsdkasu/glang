@@ -474,17 +474,25 @@ class Env {
      * 
      * @returns 
      */
-    pop(): Result<{parentBlockId: number | undefined, blockId: number, blockSrc: Token[]|null, varList: Readonly<C.NameInfo[]>, body: C.Code[]},string> {
+    pop(): Result<C.BlockInfo,string> {
         log.info("drop block");
         if (this.#codeBodyStack.length === 0) {
             return Result.err("no block");
         }
+
         const map = this.#nameMapStack.pop()!;
-        const body = this.#codeBodyStack.pop()!;
+
+        const src = map.blockSrc ?? [];
+        const id = map.blockId;
         const parentId = this.#nameMapStack.at(-1)?.blockId;
-        const list = map.getNameList();
-        log.dump("block src", Token.lineToString, map.blockSrc ?? []);
-        return Result.ok({parentBlockId: parentId, blockId:map.blockId, blockSrc: map.blockSrc, varList: list, body: body});
+        const varList = map.getNameList();
+        const body = this.#codeBodyStack.pop()!;
+
+        const blockInfo = new C.BlockInfo(src, id, parentId, varList, body);
+
+        log.dump("block src", Token.lineToString, src);
+
+        return Result.ok(blockInfo);
     }
 
     /**
@@ -727,7 +735,7 @@ export class Parser {
         return Result.ok(RQueue.wrap(line));
     }
 
-    parse(): Result<C.Code[],string> {
+    parse(): Result<C.BlockInfo,string> {
         this.#env.reset();
         this.#env.push(null);
 
@@ -760,21 +768,91 @@ export class Parser {
                 case Keyword.DIM:
                     res = this.#parseDim(line);
                     break;
-                case Keyword.FOR:
-                    res = this.#parseFor(line);
-                    break;
                 case Keyword.LET:
                     res = this.#parseLet(line);
                     break;
                 case Keyword.SUB:
                     res = this.#parseSub(line);
                     break;
-                case Keyword.CALL:
-                case Keyword.DO:
+                case Keyword.FUNC:
+                    throw new Unimplemented(line.front);
+                default:
+                    return syntaxError(`トップレベルで"${cmdToken.value}"から行頭の開始はできません.`, cmdToken);
+            }
+
+            if (res.isErr) {
+                return Result.err(res.error);
+            }
+        }
+
+        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
+        if (mainSub === undefined || !mainSub[0].definition) {
+            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`)
+        }
+
+        if (!this.#env.isToplevel) {
+            // ブロックが閉じておらずendが足りてない
+            throw new Unimplemented();
+        }
+
+        log.info("all done.");
+
+        return this.#env.pop();
+    }
+
+    /**
+     * endかelseで始まる行に到達するまでコードを読み込む.
+     */
+    #parseCodeBlock(): Result<{ lastLine: RQueue<Token> },string> {
+        log.info("parse block...");
+        
+        for (;;) {
+            const lineRes = this.#scanLine();
+            if (lineRes.isErr) {
+                return Result.err(lineRes.error);
+            }
+            const line = lineRes.result;
+
+            const cmdToken = line.front!;
+
+            log.dump("cmdToken", cmdToken);
+
+            if (cmdToken.tokenType === TokenType.EOF) {
+                return syntaxError(`キーワード"${Keyword.END}"でブロックを閉じる必要があります.`, cmdToken);
+            }
+            if (cmdToken.tokenType === TokenType.EOL) {
+                continue;
+            }
+            if (cmdToken.tokenType !== TokenType.WORD) {
+                return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
+            }
+
+            let res: Result<undefined,string>;
+
+            const cmd = cmdToken.value.toLowerCase();
+
+            switch (cmd) {
                 case Keyword.ELSE:
                 case Keyword.END:
+                    log.info("parsed block.");
+                    return Result.ok({ lastLine: line });
+                case Keyword.SUB:
                 case Keyword.FUNC:
+                    return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.DIM:
+                    res = this.#parseDim(line);
+                    break;
+                case Keyword.FOR:
+                    res = this.#parseFor(line);
+                    break;
+                case Keyword.LET:
+                    res = this.#parseLet(line);
+                    break;
                 case Keyword.IF:
+                    res = this.#parseIf(line);
+                    break;
+                case Keyword.CALL:
+                case Keyword.DO:
                     throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -797,24 +875,7 @@ export class Parser {
             }
         }
 
-        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
-        if (mainSub === undefined || !mainSub[0].definition) {
-            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`)
-        }
-
-        if (!this.#env.isToplevel) {
-            // ブロックが閉じておらずendが足りてない
-            throw new Unimplemented();
-        }
-
-        const code = this.#env.pop();
-        if (code.isErr) {
-            return Result.err(code.error);
-        }
-
-        log.info("done");
-
-        return Result.ok(code.result.body);
+        // Unreachable
     }
 
     #parseDim(line: RQueue<Token>): Result<undefined,string> {
@@ -984,8 +1045,8 @@ export class Parser {
             return syntaxError(`仮引数定義のための記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
         }
 
-        let argTypes: C.Vtype[] = [];
-        let argNames: string[] = [];
+        const argTypes: C.Vtype[] = [];
+        const argNames: string[] = [];
 
         while (line.len) {
             const argNameToken = line.dequeue()!;
@@ -1053,14 +1114,52 @@ export class Parser {
 
         const retArg = new C.RetArg(C.Vtype.VOID, argTypes);
 
-        const res = this.#env.addUserFunc(src, subName, retArg, true, argNames);
-        if (res.isErr) {
-            return Result.err(res.error);
+        const funcInfoRes = this.#env.addUserFunc(src, subName, retArg, true, argNames);
+        if (funcInfoRes.isErr) {
+            return Result.err(funcInfoRes.error);
         }
+        const funcInfo = funcInfoRes.result;
 
-        log.dump("func info", res.result);
+        log.dump("funcInfo", funcInfo);
 
         log.dump("src", Token.lineToString, src);
+
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+
+        const endToken = lastLine.dequeue()!;
+
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.SUB}"で終了する必要があります.`, endToken);
+        }
+        
+        const endSubToken = lastLine.dequeue()!;
+        if (endSubToken.value.toLowerCase() !== Keyword.SUB) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.SUB}"で終了する必要があります.`, endToken);
+        }
+
+        if (lastLine.len > 1) {
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        }
+
+        const innerBlockInfoRes = this.#env.pop();
+        U.assert(innerBlockInfoRes.isOk);
+
+        const innerCode = new C.Block(innerBlockInfoRes.result);
+
+        this.#env.addCode(innerCode);
+
+        const outerBlockInfoRes = this.#env.pop();
+        U.assert(outerBlockInfoRes.isOk);
+        const outerBlockInfo = outerBlockInfoRes.result;
+
+        const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
+
+        this.#env.addCode(defineUserFuncCode);
+
         log.info("parsed sub.");
 
         return Result.ok(undefined);
@@ -2014,7 +2113,7 @@ export class Parser {
 
         log.info("parse for...");
 
-        const isNewVar = new U.Once<Boolean>();
+        const isNewVar = new U.Once<boolean>();
 
         if (line.front!.value.toLowerCase() === Keyword.LET) {
             src.push(line.dequeue()!);
@@ -2023,16 +2122,16 @@ export class Parser {
             isNewVar.set(false);
         }
 
-        const nameToken = line.dequeue()!;
-        src.push(nameToken);
+        const loopCounterNameToken = line.dequeue()!;
+        src.push(loopCounterNameToken);
 
-        if (nameToken.tokenType !== TokenType.WORD) {
-            return syntaxError("ループカウンタの変数名が必要です.", nameToken);
+        if (loopCounterNameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("ループカウンタの変数名が必要です.", loopCounterNameToken);
         }
 
-        const name = nameToken.value.toLowerCase();
+        const loopCounterName = loopCounterNameToken.value.toLowerCase();
 
-        log.dump("name", name);
+        log.dump("loopCounterName", loopCounterName);
 
         // for let name = での変数名新規登録は後回し、初期値計算で参照されてしまわないように.
 
@@ -2101,17 +2200,123 @@ export class Parser {
 
         log.dump("stepValue", stepValueExpr);
 
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.FOR}"が必要です.`, eolToken);
+        }
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        log.dump("src", Token.lineToString, src);
+
+        this.#env.push(src);
+
+        const loopCounter = new U.Once<C.NameInfo>();
+
+        if (isNewVar.get()) {
+            const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
+            if (newVarInfoRes.isErr) {
+                return Result.err(newVarInfoRes.error);
+            }
+            loopCounter.set(newVarInfoRes.result);
+        } else {
+            const varInfo = this.#env.findName(loopCounterName);
+            if (varInfo === undefined) {
+                return syntaxError(`変数${loopCounterNameToken.value}が定義されてません.`, loopCounterNameToken);
+            }
+            if (varInfo.vtype !== C.Vtype.INTEGER) {
+                return syntaxError(`ループカウンタの変数には整数型(${Keyword.INTEGER})のみ使用できます.`, loopCounterNameToken);
+            }
+            loopCounter.set(varInfo);
+        }
         
+        this.#env.push(src);
+
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+
+        const endToken = lastLine.dequeue()!;
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`"${Keyword.END} ${Keyword.FOR}"が必要です.`, endToken);
+        }
+
+        const endForToken = lastLine.dequeue()!;
+        if (endForToken.value.toLowerCase() !== Keyword.FOR) {
+            return syntaxError(`"${Keyword.END} ${Keyword.FOR}"が必要です.`, endToken);
+        }
+
+        if (lastLine.len > 1) {
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        }
+
+        const innerBlockInfoRes = this.#env.pop();
+        U.assert(innerBlockInfoRes.isOk);
+
+        const innerCode = new C.Block(innerBlockInfoRes.result);
+
+        this.#env.addCode(innerCode);
+
+        const outerBlockInfoRes = this.#env.pop();
+        U.assert(outerBlockInfoRes.isOk);
+        const outerBlockInfo = outerBlockInfoRes.result;
 
 
         // TODO: 
 
-        log.dump("src", Token.lineToString, src);
+        log.info("parsed for.");
 
         throw new Unimplemented(line.front);
     }
 
+    #parseIf(line: RQueue<Token>): Result<undefined,string> {
+        const ifToken = line.dequeue()!;
+        const src: Token[] = [ifToken];
 
+        log.info("parse if...");
+
+        const testExprToken = line.front;
+
+        const testExprRes = this.#parseExprTokens(line, src);
+        if (testExprRes.isErr) {
+            return Result.err(testExprRes.error);
+        }
+        const testExpr = testExprRes.result;
+        if (testExpr.vtype !== C.Vtype.BOOLEAN) {
+            return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, testExprToken);
+        }
+
+        log.dump("testExpr", testExpr);
+
+        if (line.front!.value.toLowerCase() === Keyword.THEN) {
+            src.push(line.dequeue()!);
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.IF}"が必要です.`, eolToken);
+        }
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        log.dump("src", Token.lineToString, src);
+
+        this.#env.push(src);
+
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+
+        // TODO
+
+
+        throw new Unimplemented(line.front);
+    }
 }
 
 export default Parser;
