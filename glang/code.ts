@@ -28,7 +28,7 @@ export enum Vtype {
     PRIMITIVE_TYPE  = BOOLEAN | INTEGER | FLOATING_POINT | STRING,
     NUMBER_TYPE     = INTEGER | FLOATING_POINT,
     LOGICAL_TYPE    = BOOLEAN | INTEGER,
-    COMPARE_TYPE     = NUMBER_TYPE | STRING,
+    COMPARE_TYPE    = NUMBER_TYPE | STRING,
     CONCAT_TYPE     = NUMBER_TYPE | STRING,
     NON_PRIMITIVE   = ARRAY_TYPE | SUB | FUNC | REFERENCE_VAR,
     BOOL_ARRAY      = BOOLEAN | ARRAY_1D,
@@ -50,7 +50,8 @@ export enum Vtype {
     INFER_CONCAT    = INFER | CONCAT_TYPE,
     INFER_ARRAY     = INFER | ARRAY_TYPE,
     INFER_REFERENCE = INFER | REFERENCE_VAR,
-    INFER_ALL       = INFER | PRIMITIVE_TYPE | NON_PRIMITIVE
+    INFER_ALL       = INFER | PRIMITIVE_TYPE | NON_PRIMITIVE,
+    UNKNOWN         = VOID | INFER_ALL
 }
 
 export function arrayDimension(vtype: Vtype): number {
@@ -317,15 +318,22 @@ export class RetArg {
     }
 }
 
+export enum SideEffect {
+    NONE,
+    WRITE_GLOBAL_VAR,
+    ACCESS_IO,
+    ALL = WRITE_GLOBAL_VAR | ACCESS_IO
+}
+
 export class StdFuncInfo {
     readonly name: string;
     readonly retArg: RetArg;
-    readonly hasSideEffect: boolean;
+    readonly sideEffect: SideEffect;
 
-    constructor(name: string, retArg: RetArg, hasSideEffect: boolean) {
+    constructor(name: string, retArg: RetArg, sideEffect: SideEffect) {
         this.name = name;
         this.retArg = retArg;
-        this.hasSideEffect = hasSideEffect;
+        this.sideEffect = sideEffect;
     }
 
     get isFunc(): boolean {
@@ -337,7 +345,7 @@ export class StdFuncInfo {
     }
 
     toString(): string {
-        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, hasSideEffect: ${this.hasSideEffect} }`;
+        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, sideEffect: ${SideEffect[this.sideEffect]} }`;
     }
 }
 
@@ -736,7 +744,9 @@ export enum CodeKind {
     ASSIGN_VAR,
     ASSIGN_ARRAY,
     DEFINE_USER_FUNC,
-    IF
+    IF,
+    CALL_STD_FUNC,
+    CALL_USER_FUNC
 }
 
 export class Code {
@@ -879,5 +889,36 @@ export class If extends Code {
         return `If{ [[ ${this.blockInfoList.map( (bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}` ).join(", ")} ]] }`;
     }
 }
+
+export class CallStdFunc extends Code {
+    readonly funcInfo: StdFuncInfo;
+    readonly args: Readonly<Expr[]>;
+
+    constructor(src: Token[], funcInfo: StdFuncInfo, args: Expr[]) {
+        super(CodeKind.CALL_STD_FUNC, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+
+    toString(): string {
+        return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+
+export class CallUserFunc extends Code {
+    readonly funcInfo: FuncInfo;
+    readonly args: Readonly<Expr[]>;
+
+    constructor(src: Token[], funcInfo: FuncInfo, args: Expr[]) {
+        super(CodeKind.CALL_USER_FUNC, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+
+    toString(): string {
+        return `CallUserFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+
 
 export default {};

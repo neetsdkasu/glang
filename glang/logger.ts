@@ -42,7 +42,7 @@ export class Logger {
             } else if (args) {
                 obj = `[ ${obj} ]: ${[...args].map( e => `${e}`).join(", ")}`;
             }
-            console.log(`[${this.name}]d: ${msg}: ${obj}`);
+            console.log(`[${this.name}]v: ${msg}: ${obj}`);
         }
     }
 
@@ -60,7 +60,7 @@ export class Logger {
 
     warn(msg: string): void {
         if (this.#level & LogLevel.WARN) {
-            console.log(`[${this.name}]w: ${msg}`);
+            console.log(`[${this.name}]W: ${msg}`);
         }
     }
 

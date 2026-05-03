@@ -269,23 +269,23 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
  * 標準関数
  */
 const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Map([
-    new C.StdFuncInfo("cbool", new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), false),
-    new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), false),
-    new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("sin",  new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), false),
-    new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), false),
-    new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), false)
+    new C.StdFuncInfo("cbool", new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
+    new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
+    new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
+    new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
+    new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
+    new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
+    new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
+    new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
+    new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("sin",  new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
+    new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), C.SideEffect.NONE),
+    new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE)
 ].map( fi => [fi.name, fi] )));
 
 enum Symbols {
@@ -461,7 +461,7 @@ class Env {
      * @param blockSrc ブロックを構築するソースコード情報(func/sub/for/if/elseなど). トップレベルのみnull.
      */
     push(blockSrc: Token[] | null): number {
-        log.info("new block");
+        log.debug("new block");
         log.dump("block src", Token.lineToString, blockSrc ?? []);
         const blockId = this.#newBlockId();
         this.#nameMapStack.push(new NameMap(blockId, blockSrc));
@@ -475,7 +475,7 @@ class Env {
      * @returns 
      */
     pop(): Result<C.BlockInfo,string> {
-        log.info("drop block");
+        log.debug("drop block");
         if (this.#codeBodyStack.length === 0) {
             return Result.err("no block");
         }
@@ -505,7 +505,7 @@ class Env {
      * @returns 
      */
     addName(src: Token[], name: string, vtype: C.Vtype): Result<C.NameInfo,string> {
-        log.info("add name");
+        log.debug("add name");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
             return syntaxError(`名前に予約語は使用できません. "${name}"`, src);
@@ -599,7 +599,7 @@ class Env {
      * @returns 
      */
     addUserFunc(src: Token[], name: string, retArg: C.RetArg, definition: boolean, argNames?: string[] | undefined): Result<C.FuncInfo,string> {
-        log.info("add func");
+        log.debug("add func");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
             if (name !== Keyword.MAIN) {
@@ -795,7 +795,7 @@ export class Parser {
             throw new Unimplemented();
         }
 
-        log.info("all done.");
+        log.debug("all done.");
 
         return this.#env.pop();
     }
@@ -804,7 +804,7 @@ export class Parser {
      * endかelseで始まる行に到達するまでコードを読み込む.
      */
     #parseCodeBlock(): Result<{ lastLine: RQueue<Token> },string> {
-        log.info("parse block...");
+        log.debug("parse block...");
         
         for (;;) {
             const lineRes = this.#scanLine();
@@ -834,24 +834,26 @@ export class Parser {
             switch (cmd) {
                 case Keyword.ELSE:
                 case Keyword.END:
-                    log.info("parsed block.");
+                    log.debug("parsed block.");
                     return Result.ok({ lastLine: line });
                 case Keyword.SUB:
                 case Keyword.FUNC:
                     return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.CALL:
+                    res = this.#parseCall(line);
+                    break;
                 case Keyword.DIM:
                     res = this.#parseDim(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
                     break;
-                case Keyword.LET:
-                    res = this.#parseLet(line);
-                    break;
                 case Keyword.IF:
                     res = this.#parseIf(line);
                     break;
-                case Keyword.CALL:
+                case Keyword.LET:
+                    res = this.#parseLet(line);
+                    break;
                 case Keyword.RETURN:
                 case Keyword.DO:
                     throw new Unimplemented(line.front);
@@ -883,7 +885,7 @@ export class Parser {
         const dimToken = line.dequeue()!;
         const src: Token[] = [dimToken];
 
-        log.info("parse dim...");
+        log.debug("parse dim...");
 
         const arrNameToken = line.dequeue()!;
         src.push(arrNameToken);
@@ -1013,7 +1015,7 @@ export class Parser {
 
         log.dump("src", Token.lineToString, src);
 
-        log.info("parsed dim.");
+        log.debug("parsed dim.");
 
         return Result.ok(undefined);
     }
@@ -1022,7 +1024,7 @@ export class Parser {
         const subToken = line.dequeue()!;
         const src: Token[] = [subToken];
 
-        log.info("parse sub...");
+        log.debug("parse sub...");
 
         if (!this.#env.isToplevel) {
             return syntaxError(`${Keyword.SUB}はトップレベルでのみ使用できます.`, subToken);
@@ -1161,7 +1163,7 @@ export class Parser {
 
         this.#env.addCode(defineUserFuncCode);
 
-        log.info("parsed sub.");
+        log.debug("parsed sub.");
 
         return Result.ok(undefined);
     }
@@ -1170,7 +1172,7 @@ export class Parser {
         const letToken = line.dequeue()!;
         const src: Token[] = [letToken];
 
-        log.info("parse let...");
+        log.debug("parse let...");
 
         const nameToken = line.dequeue()!;
         src.push(nameToken);
@@ -1217,13 +1219,13 @@ export class Parser {
         this.#env.addCode(code);
 
         log.dump("src", Token.lineToString, src);
-        log.info("parsed let.");
+        log.debug("parsed let.");
 
         return Result.ok(undefined);
     }
 
     #parseExprTokens(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
-        log.info("parse expression...");
+        log.debug("parse expression...");
 
         const beforeSize = line.len;
 
@@ -1244,7 +1246,7 @@ export class Parser {
         }
         src.push(...tokens.items);
 
-        log.info("parsed expression.");
+        log.debug("parsed expression.");
 
         return res;
     }
@@ -1938,7 +1940,7 @@ export class Parser {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
 
-        log.info("parse assign...");
+        log.debug("parse assign...");
 
         if (this.#env.isToplevel) {
             return syntaxError("代入はトップレベルでは使用できません.", nameToken);
@@ -2001,7 +2003,7 @@ export class Parser {
 
         log.dump("src", Token.lineToString, src);
 
-        log.info("parsed assign.");
+        log.debug("parsed assign.");
 
         return Result.ok(undefined);
     }
@@ -2010,7 +2012,7 @@ export class Parser {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
 
-        log.info("parse assign array...");
+        log.debug("parse assign array...");
 
         const name = nameToken.value.toLowerCase();
 
@@ -2103,7 +2105,7 @@ export class Parser {
 
         log.dump("src", Token.lineToString, src);
 
-        log.info("parsed assign array.");
+        log.debug("parsed assign array.");
 
         return Result.ok(undefined);
     }
@@ -2112,7 +2114,7 @@ export class Parser {
         const forToken = line.dequeue()!;
         const src: Token[] = [forToken];
 
-        log.info("parse for...");
+        log.debug("parse for...");
 
         const isNewVar = new U.Once<boolean>();
 
@@ -2178,7 +2180,7 @@ export class Parser {
             return syntaxError(`ループカウンタの終端値は整数型(${Keyword.INTEGER})である必要があります.`, endValueToken);
         }
 
-        const stepValueExprOption = new U.Once<C.Expr | null>();
+        let  stepValueExpr: C.Expr | null;
 
         if (line.front!.value.toLowerCase() === Keyword.STEP) {
             src.push(line.dequeue()!);
@@ -2189,15 +2191,14 @@ export class Parser {
             if (stepValueExprRes.isErr) {
                 return Result.err(stepValueExprRes.error);
             }
-            stepValueExprOption.set(stepValueExprRes.result);
+            stepValueExpr = stepValueExprRes.result;
 
-            if (stepValueExprOption.get()!.vtype !== C.Vtype.INTEGER) {
+            if (stepValueExpr.vtype !== C.Vtype.INTEGER) {
                 return syntaxError(`ループカウンタの増減値は整数型(${Keyword.INTEGER})である必要があります.`, stepValueToken);
             }
         } else {
-            stepValueExprOption.set(null);
+            stepValueExpr = null;
         }
-        const stepValueExpr = stepValueExprOption.get();
 
         log.dump("stepValue", stepValueExpr);
 
@@ -2213,14 +2214,14 @@ export class Parser {
 
         this.#env.push(src);
 
-        const loopCounter = new U.Once<C.NameInfo>();
+        let loopCounter: C.NameInfo;
 
         if (isNewVar.get()) {
             const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
             if (newVarInfoRes.isErr) {
                 return Result.err(newVarInfoRes.error);
             }
-            loopCounter.set(newVarInfoRes.result);
+            loopCounter = newVarInfoRes.result;
         } else {
             const varInfo = this.#env.findName(loopCounterName);
             if (varInfo === undefined) {
@@ -2229,7 +2230,7 @@ export class Parser {
             if (varInfo.vtype !== C.Vtype.INTEGER) {
                 return syntaxError(`ループカウンタの変数には整数型(${Keyword.INTEGER})のみ使用できます.`, loopCounterNameToken);
             }
-            loopCounter.set(varInfo);
+            loopCounter = varInfo;
         }
         
         this.#env.push(src);
@@ -2268,7 +2269,7 @@ export class Parser {
 
         // TODO: 
 
-        log.info("parsed for.");
+        log.debug("parsed for.");
 
         throw new Unimplemented(line.front);
     }
@@ -2277,7 +2278,7 @@ export class Parser {
         const ifToken = line.dequeue()!;
         const src: Token[] = [ifToken];
 
-        log.info("parse if...");
+        log.debug("parse if...");
 
         const testExprToken = line.front;
 
@@ -2311,7 +2312,7 @@ export class Parser {
         const blockInfoList: C.BlockInfo[] = [];    // IF expr [THEN] / ELSE IF expr [THEN] / ELSE
 
         for (;;) {
-            log.info("parse if-block...");
+            log.debug("parse if-block...");
             // log.dump("if-block src", Token.lineToString, srcList.at(-1)!);
 
             this.#env.push(srcList.at(-1)!);
@@ -2343,7 +2344,7 @@ export class Parser {
                 }
                 const blockEndEolToken = lastLine.dequeue()!;
                 if (blockEndEolToken.tokenType === TokenType.EOF) {
-                    return syntaxError("ここでファイルの末尾は不正です.", blockEndEolToken);
+                    return syntaxError("ここでソースコードの末尾は不正です.", blockEndEolToken);
                 } else if (blockEndEolToken.tokenType !== TokenType.EOL) {
                     return syntaxError("不正な文字(あるいは文字列)です.", blockEndEolToken);
                 }
@@ -2400,7 +2401,232 @@ export class Parser {
         
         this.#env.addCode(code);
 
-        log.info("parsed if.");
+        log.debug("parsed if.");
+
+        return Result.ok(undefined);
+    }
+
+    #parseCall(line: RQueue<Token>): Result<undefined,string> {
+        const callToken = line.dequeue()!;
+        const src: Token[] = [callToken];
+
+        log.debug("parse call...");
+
+        const funcNameToken = line.dequeue()!;
+        src.push(funcNameToken);
+
+        if (funcNameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("関数名が必要です.", funcNameToken);
+        }
+
+        const funcName = funcNameToken.value.toLowerCase();
+
+        log.dump("funcName", funcName);
+
+        const lrbToken = line.dequeue()!;
+        src.push(lrbToken);
+
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
+            return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
+        }
+
+        if (StdFuncWordMap.has(funcName)) {
+            const stdFuncInfo = StdFuncWordMap.get(funcName)!;
+
+            if (stdFuncInfo.retArg.hasNoArg) {
+                const stdFuncRrbToken = line.dequeue()!;
+                src.push(stdFuncRrbToken);
+                if (stdFuncRrbToken.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, stdFuncRrbToken);
+                }
+                const stdFuncNoArgEolToken = line.dequeue()!;
+                if (stdFuncNoArgEolToken.tokenType === TokenType.EOF) {
+                    return syntaxError("ここでソースコードの末尾は不正です.", stdFuncNoArgEolToken);
+                } else if (stdFuncNoArgEolToken.tokenType !== TokenType.EOL) {
+                    return syntaxError("不正な文字(あるいは文字列)です.", stdFuncNoArgEolToken);
+                }
+                const stdFuncNoArgCode = new C.CallStdFunc(src, stdFuncInfo, []);
+                this.#env.addCode(stdFuncNoArgCode);
+                log.dump("src", Token.lineToString, src);
+                log.debug("parsed call. [no arg std func]");
+                return Result.ok(undefined);
+            }
+
+            const stdFuncArgs: C.Expr[] = [];
+
+            for (let i = 0; i < stdFuncInfo.retArg.args.length; i++) {
+                const stdFuncArgToken = line.front;
+
+                const stdFuncArgRes = this.#parseExprTokens(line, src);
+                if (stdFuncArgRes.isErr) {
+                    return Result.err(stdFuncArgRes.error);
+                }
+                const stdFuncArg = stdFuncArgRes.result;
+                stdFuncArgs.push(stdFuncArg);
+
+                log.dump("stdFuncArg", stdFuncArg);
+
+                if (C.inferVtype(stdFuncInfo.retArg.args[i], stdFuncArg.vtype).isErr) {
+                    return syntaxError(`標準関数${funcName}の${i+1}番目の引数の型が不一致です.`, stdFuncArgToken);
+                }
+
+                const stdFuncSymToken = line.dequeue()!;
+                src.push(stdFuncSymToken);
+
+                if (i + 1 < stdFuncInfo.retArg.args.length) {
+                    if (stdFuncSymToken.value !== Symbols.ARGLIST_DELIMITER) {
+                        return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, stdFuncSymToken);
+                    }
+                } else if (stdFuncSymToken.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, stdFuncSymToken);
+                }
+            }
+
+            if (stdFuncInfo.retArg.ret & C.Vtype.INFER) {
+                let stdFuncRet = stdFuncInfo.retArg.ret;
+                for (let i = 0; i < stdFuncInfo.retArg.args.length; i++) {
+                    if (stdFuncInfo.retArg.args[i] & C.Vtype.INFER) {
+                        const stdFuncTypeInfer = C.inferVtype(stdFuncRet, stdFuncArgs[i].vtype);
+                        if (stdFuncTypeInfer.isErr) {
+                            return syntaxError(`標準関数${funcName}の${i+1}番目の引数の型が不一致です.`, stdFuncArgs[i].src);
+                        }
+                        stdFuncRet = stdFuncTypeInfer.result;
+                    }
+                }
+            }
+
+            const stdFuncEolToken = line.dequeue()!;
+            if (stdFuncEolToken.tokenType === TokenType.EOF) {
+                return syntaxError("ここでファイルの末尾は不正です.", stdFuncEolToken);
+            } else if (stdFuncEolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字(あるいは文字列)です.", stdFuncEolToken);
+            }
+
+            const stdFuncCode = new C.CallStdFunc(src, stdFuncInfo, stdFuncArgs);
+            this.#env.addCode(stdFuncCode);
+            log.dump("src", Token.lineToString, src);
+            log.debug("parsed call. [std func]");
+            return Result.ok(undefined);
+        }
+
+        const userFunc = this.#env.findUserFunc(funcName)?.find( fi => fi.definition );
+
+        if (userFunc !== undefined) {
+
+            if (userFunc.retArg.hasNoArg) {
+                const userFuncRrbToken = line.dequeue()!;
+                src.push(userFuncRrbToken);
+                if (userFuncRrbToken.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, userFuncRrbToken);
+                }
+                const userFuncNoArgEolToken = line.dequeue()!;
+                if (userFuncNoArgEolToken.tokenType === TokenType.EOF) {
+                    return syntaxError("ここでソースコードの末尾は不正です.", userFuncNoArgEolToken);
+                } else if (userFuncNoArgEolToken.tokenType !== TokenType.EOL) {
+                    return syntaxError("不正な文字(あるいは文字列)です.", userFuncNoArgEolToken);
+                }
+                const userFuncNoArgCode = new C.CallUserFunc(src, userFunc, []);
+                this.#env.addCode(userFuncNoArgCode);
+                log.dump("src", Token.lineToString, src);
+                log.debug("parsed call. [no arg user func]");
+                return Result.ok(undefined);
+            }
+            
+            const userFuncArgs: C.Expr[] = [];
+
+            for (let i = 0; i < userFunc.retArg.args.length; i++) {
+                const userFuncArgToken = line.front;
+
+                const userFuncArgRes = this.#parseExprTokens(line, src);
+                if (userFuncArgRes.isErr) {
+                    return Result.err(userFuncArgRes.error);
+                }
+                const userFuncArg = userFuncArgRes.result;
+                userFuncArgs.push(userFuncArg);
+
+                log.dump("userFuncArg", userFuncArg);
+
+                if (C.inferVtype(userFunc.retArg.args[i], userFuncArg.vtype).isErr) {
+                    return syntaxError(`ユーザ関数${funcNameToken.value}の${i+1}番目の引数の型が不一致です.`, userFuncArgToken);
+                }
+
+                const userFuncSymToken = line.dequeue()!;
+                src.push(userFuncSymToken);
+                
+                if (i + 1 < userFunc.retArg.args.length) {
+                    if (userFuncSymToken.value !== Symbols.ARGLIST_DELIMITER) {
+                        return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} が必要です.`, userFuncSymToken);
+                    }
+                } else if (userFuncSymToken.value !== Symbols.ARGLIST_END) {
+                    return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, userFuncSymToken);
+                }
+            }
+
+            const userFuncEolToken = line.dequeue()!;
+            if (userFuncEolToken.tokenType === TokenType.EOF) {
+                return syntaxError("ここでソースコードの末尾は不正です.", userFuncEolToken);
+            } else if (userFuncEolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字(あるいは文字列)です.", userFuncEolToken);
+            }
+
+            const userFuncCode = new C.CallUserFunc(src, userFunc, userFuncArgs);
+            this.#env.addCode(userFuncCode);
+            
+            log.dump("src", Token.lineToString, src);
+            log.debug("parsed call. [user func]");
+            return Result.ok(undefined);
+        }
+
+        const args: C.Expr[] = [];
+        const argTypes: C.Vtype[] = [];
+
+        while (line.len) {
+            const token = line.front;
+
+            const argRes = this.#parseExprTokens(line, src);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            const arg = argRes.result;
+            args.push(arg);
+            argTypes.push(arg.vtype);
+
+            log.dump("arg", arg);
+
+            const symToken = line.dequeue()!;
+            src.push(symToken);
+
+            if (symToken.value === Symbols.ARGLIST_DELIMITER) {
+                continue;
+            } else if (symToken.value == Symbols.ARGLIST_END) {
+                break;
+            } else {
+                return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
+            }
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        const retArg = new C.RetArg(C.Vtype.UNKNOWN, argTypes);
+
+        const funcInfoRes = this.#env.addUserFunc(src, funcName, retArg, false);
+        if (funcInfoRes.isErr) {
+            return Result.err(funcInfoRes.error);
+        }
+        const funcInfo = funcInfoRes.result;
+
+        const code = new C.CallUserFunc(src, funcInfo, args);
+
+        this.#env.addCode(code);
+
+        log.dump("src", Token.lineToString, src);
+
+        log.debug("parsed call. [unknown user func]");
 
         return Result.ok(undefined);
     }

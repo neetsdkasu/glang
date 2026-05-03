@@ -50,6 +50,7 @@ export var Vtype;
     Vtype[Vtype["INFER_ARRAY"] = 2080] = "INFER_ARRAY";
     Vtype[Vtype["INFER_REFERENCE"] = 3072] = "INFER_REFERENCE";
     Vtype[Vtype["INFER_ALL"] = 3902] = "INFER_ALL";
+    Vtype[Vtype["UNKNOWN"] = 3903] = "UNKNOWN";
 })(Vtype || (Vtype = {}));
 export function arrayDimension(vtype) {
     const size = Math.floor((vtype & (Vtype.ARRAY_SIZE)) / (Vtype.ARRAY_SIZE_1));
@@ -307,14 +308,21 @@ export class RetArg {
         return `RetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
     }
 }
+export var SideEffect;
+(function (SideEffect) {
+    SideEffect[SideEffect["NONE"] = 0] = "NONE";
+    SideEffect[SideEffect["WRITE_GLOBAL_VAR"] = 1] = "WRITE_GLOBAL_VAR";
+    SideEffect[SideEffect["ACCESS_IO"] = 2] = "ACCESS_IO";
+    SideEffect[SideEffect["ALL"] = 3] = "ALL";
+})(SideEffect || (SideEffect = {}));
 export class StdFuncInfo {
     name;
     retArg;
-    hasSideEffect;
-    constructor(name, retArg, hasSideEffect) {
+    sideEffect;
+    constructor(name, retArg, sideEffect) {
         this.name = name;
         this.retArg = retArg;
-        this.hasSideEffect = hasSideEffect;
+        this.sideEffect = sideEffect;
     }
     get isFunc() {
         return this.retArg.ret !== Vtype.VOID;
@@ -323,7 +331,7 @@ export class StdFuncInfo {
         return this.retArg.ret === Vtype.VOID;
     }
     toString() {
-        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, hasSideEffect: ${this.hasSideEffect} }`;
+        return `StdFuncInfo{ name: ${this.name}, retArg: ${this.retArg}, sideEffect: ${SideEffect[this.sideEffect]} }`;
     }
 }
 export class FuncInfo {
@@ -670,6 +678,8 @@ export var CodeKind;
     CodeKind[CodeKind["ASSIGN_ARRAY"] = 4] = "ASSIGN_ARRAY";
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
     CodeKind[CodeKind["IF"] = 6] = "IF";
+    CodeKind[CodeKind["CALL_STD_FUNC"] = 7] = "CALL_STD_FUNC";
+    CodeKind[CodeKind["CALL_USER_FUNC"] = 8] = "CALL_USER_FUNC";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -784,6 +794,30 @@ export class If extends Code {
     }
     toString() {
         return `If{ [[ ${this.blockInfoList.map((bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}`).join(", ")} ]] }`;
+    }
+}
+export class CallStdFunc extends Code {
+    funcInfo;
+    args;
+    constructor(src, funcInfo, args) {
+        super(CodeKind.CALL_STD_FUNC, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+    toString() {
+        return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class CallUserFunc extends Code {
+    funcInfo;
+    args;
+    constructor(src, funcInfo, args) {
+        super(CodeKind.CALL_USER_FUNC, src);
+        this.funcInfo = funcInfo;
+        this.args = args;
+    }
+    toString() {
+        return `CallUserFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 export default {};
