@@ -735,21 +735,22 @@ export enum CodeKind {
     LET,
     ASSIGN_VAR,
     ASSIGN_ARRAY,
-    DEFINE_USER_FUNC
+    DEFINE_USER_FUNC,
+    IF
 }
 
 export class Code {
     readonly kind: CodeKind;
     readonly src: Readonly<Token[]>;
 
-    constructor(kind: CodeKind, src: Token[]) {
+    constructor(kind: CodeKind, src: Readonly<Token[]>) {
         this.kind = kind;
         this.src = src;
     }
 }
 
 export class BlockInfo {
-    readonly src: Token[];
+    readonly src: Readonly<Token[]>;
     readonly id: number;
     readonly parentId: number | undefined;
     readonly varList: Readonly<NameInfo[]>;
@@ -781,12 +782,14 @@ export class Block extends Code {
     }
 }
 
-export class DefineUserFunc extends Block {
+export class DefineUserFunc extends Code {
     readonly funcInfo: FuncInfo;
+    readonly blockInfo: BlockInfo;
 
     constructor(funcInfo: FuncInfo, blockInfo: BlockInfo) {
-        super(blockInfo);
+        super(CodeKind.DEFINE_USER_FUNC, funcInfo.src);
         this.funcInfo = funcInfo;
+        this.blockInfo = blockInfo;
     }
 
     toString(): string {
@@ -860,5 +863,21 @@ export class AssignArray extends Code {
     }
 }
 
+export class If extends Code {
+    readonly srcList: Readonly<Token[][]>;
+    readonly testExprList: Readonly<Expr[]>;
+    readonly blockInfoList: Readonly<BlockInfo[]>;
+
+    constructor(srcList: Token[][], testExprList: Expr[], blockInfoList: BlockInfo[]) {
+        super(CodeKind.IF, srcList[0]);
+        this.srcList = srcList;
+        this.testExprList = testExprList;
+        this.blockInfoList = blockInfoList;
+    }
+
+    toString(): string {
+        return `If{ [[ ${this.blockInfoList.map( (bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}` ).join(", ")} ]] }`;
+    }
+}
 
 export default {};

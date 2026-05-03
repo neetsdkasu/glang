@@ -852,6 +852,7 @@ export class Parser {
                     res = this.#parseIf(line);
                     break;
                 case Keyword.CALL:
+                case Keyword.RETURN:
                 case Keyword.DO:
                     throw new Unimplemented(line.front);
                 default:
@@ -2305,17 +2306,103 @@ export class Parser {
 
         log.dump("src", Token.lineToString, src);
 
-        this.#env.push(src);
+        const srcList: Token[][] = [src];           // IF expr [THEN] / ELSE IF expr [THEN] / ELSE
+        const testExprList: C.Expr[] = [testExpr];  // IF expr [THEN] / ELSE IF expr [THEN]
+        const blockInfoList: C.BlockInfo[] = [];    // IF expr [THEN] / ELSE IF expr [THEN] / ELSE
 
-        const blockRes = this.#parseCodeBlock();
-        if (blockRes.isErr) {
-            return Result.err(blockRes.error);
+        for (;;) {
+            log.info("parse if-block...");
+            // log.dump("if-block src", Token.lineToString, srcList.at(-1)!);
+
+            this.#env.push(srcList.at(-1)!);
+            
+            const blockRes = this.#parseCodeBlock();
+            if (blockRes.isErr) {
+                return Result.err(blockRes.error);
+            }
+            const lastLine = blockRes.result.lastLine;
+
+            const blockInfoRes = this.#env.pop();
+            U.assert(blockInfoRes.isOk);
+            const blockInfo = blockInfoRes.result;
+
+            blockInfoList.push(blockInfo);
+
+            const blockEndSrc: Token[] = [];
+
+            const blockEndToken = lastLine.dequeue()!;
+            blockEndSrc.push(blockEndToken);
+
+            const blockEndKeyword = blockEndToken.value.toLowerCase();
+
+            if (blockEndKeyword === Keyword.END) {
+                // END IF
+                const blockEndIfToken = lastLine.dequeue()!;
+                if (blockEndIfToken.value.toLowerCase() !== Keyword.IF) {
+                    return syntaxError(`"${Keyword.END} ${Keyword.IF}"が必要です.`, blockEndToken);
+                }
+                const blockEndEolToken = lastLine.dequeue()!;
+                if (blockEndEolToken.tokenType === TokenType.EOF) {
+                    return syntaxError("ここでファイルの末尾は不正です.", blockEndEolToken);
+                } else if (blockEndEolToken.tokenType !== TokenType.EOL) {
+                    return syntaxError("不正な文字(あるいは文字列)です.", blockEndEolToken);
+                }
+                break;
+            } else if (testExprList.length < blockInfoList.length) {
+                // exprが少ない == ELSE ブロック なので END IF が必要
+                return syntaxError(`"${Keyword.END} ${Keyword.IF}"が必要です.`, blockEndToken);
+            } else if (blockEndKeyword !== Keyword.ELSE) {
+                return syntaxError(`"${Keyword.END} ${Keyword.IF}"が必要です.`, blockEndToken);
+            }
+            // ELSE か ELSE IF expr [THEN]
+            if (lastLine.front!.tokenType === TokenType.EOL) {
+                // ELSE
+                srcList.push(blockEndSrc);
+                continue;
+            }
+            const elseIfToken = lastLine.dequeue()!;
+            blockEndSrc.push(elseIfToken);
+            
+            if (elseIfToken.value.toLowerCase() !== Keyword.IF) {
+                return syntaxError(`キーワード"${Keyword.IF}"が必要です.`, elseIfToken);
+            }
+
+            const elseIfTestExprToken = lastLine.front;
+
+            const elseIfTestExprRes = this.#parseExprTokens(lastLine, blockEndSrc);
+            if (elseIfTestExprRes.isErr) {
+                return Result.err(elseIfTestExprRes.error);
+            }
+            const elseIfTestExpr = elseIfTestExprRes.result;
+            testExprList.push(elseIfTestExpr);
+
+            log.dump("elseIfTestExpr", elseIfTestExpr);
+
+            if (elseIfTestExpr.vtype !== C.Vtype.BOOLEAN) {
+                return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, elseIfTestExprToken);
+            }
+
+            if (lastLine.front!.value.toLowerCase() === Keyword.THEN) {
+                blockEndSrc.push(lastLine.dequeue()!);
+            }
+
+            const elseIfEolToken = lastLine.dequeue()!;
+            if (elseIfEolToken.tokenType === TokenType.EOF) {
+                return syntaxError(`"${Keyword.END} ${Keyword.IF}"が必要です.`, elseIfEolToken);
+            } else if (elseIfEolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字(あるいは文字列)です.", elseIfEolToken);
+            }
+
+            srcList.push(blockEndSrc);
         }
 
-        // TODO
+        const code = new C.If(srcList, testExprList, blockInfoList);
+        
+        this.#env.addCode(code);
 
+        log.info("parsed if.");
 
-        throw new Unimplemented(line.front);
+        return Result.ok(undefined);
     }
 }
 

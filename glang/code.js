@@ -669,6 +669,7 @@ export var CodeKind;
     CodeKind[CodeKind["ASSIGN_VAR"] = 3] = "ASSIGN_VAR";
     CodeKind[CodeKind["ASSIGN_ARRAY"] = 4] = "ASSIGN_ARRAY";
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
+    CodeKind[CodeKind["IF"] = 6] = "IF";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -705,11 +706,13 @@ export class Block extends Code {
         return `Block{ id: ${this.blockInfo.id}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
     }
 }
-export class DefineUserFunc extends Block {
+export class DefineUserFunc extends Code {
     funcInfo;
+    blockInfo;
     constructor(funcInfo, blockInfo) {
-        super(blockInfo);
+        super(CodeKind.DEFINE_USER_FUNC, funcInfo.src);
         this.funcInfo = funcInfo;
+        this.blockInfo = blockInfo;
     }
     toString() {
         return `DefineUserFunc{ funcInfo: ${this.funcInfo}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
@@ -767,6 +770,20 @@ export class AssignArray extends Code {
     }
     toString() {
         return `AssignArray{ name: ${this.nameInfo.name}, op: "${this.op.op}", indexes: (( ${this.indexes.map(e => `[[ ${e} ]]`).join(", ")} )) expr: (( ${this.expr} )) }`;
+    }
+}
+export class If extends Code {
+    srcList;
+    testExprList;
+    blockInfoList;
+    constructor(srcList, testExprList, blockInfoList) {
+        super(CodeKind.IF, srcList[0]);
+        this.srcList = srcList;
+        this.testExprList = testExprList;
+        this.blockInfoList = blockInfoList;
+    }
+    toString() {
+        return `If{ [[ ${this.blockInfoList.map((bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}`).join(", ")} ]] }`;
     }
 }
 export default {};
