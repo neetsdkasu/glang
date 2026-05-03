@@ -45,8 +45,9 @@ enum Keyword {
     FUNC = "func",
     IF = "if",
     INTEGER = "integer",
-    MAIN = "main",
     LET = "let",
+    MAIN = "main",
+    PRINT = "print",
     RETURN = "return",
     STEP = "step",
     STRING = "string",
@@ -203,7 +204,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "overwrite",
     "peek",
     "pop",
-    "print",
+    Keyword.PRINT,
     "private",
     "proc",
     "process",
@@ -801,7 +802,12 @@ export class Parser {
     }
 
     /**
-     * endかelseで始まる行に到達するまでコードを読み込む.
+     * コードブロックを読み取る.
+     * sub/func/for/if/doなど内部コードブロックを読み取る際に呼び出す.
+     * このメソッドを呼び出す前にthis.#env.push(...)でブロックを生成する必要がある.
+     * このメソッドの呼び出し後はthis.#env.pop()でブロックを完了する必要がある.
+     * endかelseで始まる行に到達するまでコードを読み取る.
+     * @returns 読み取りに成功した場合はlastLineフィールドにendかelseで始まる文を収めたオブジェクトを返す.失敗した場合はエラーメッセージを返す.
      */
     #parseCodeBlock(): Result<{ lastLine: RQueue<Token> },string> {
         log.debug("parse block...");
@@ -881,6 +887,11 @@ export class Parser {
         // Unreachable
     }
 
+    /**
+     * 配列定義のdim文を読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseDim(line: RQueue<Token>): Result<undefined,string> {
         const dimToken = line.dequeue()!;
         const src: Token[] = [dimToken];
@@ -1020,6 +1031,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * 戻り値のないユーザ関数定義のsub文および内部コードブロックを読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseSub(line: RQueue<Token>): Result<undefined,string> {
         const subToken = line.dequeue()!;
         const src: Token[] = [subToken];
@@ -1168,6 +1184,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * 変数の宣言と初期化のlet文を読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseLet(line: RQueue<Token>): Result<undefined,string> {
         const letToken = line.dequeue()!;
         const src: Token[] = [letToken];
@@ -1224,6 +1245,12 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * 各命令文の処理内で式をパースする際はこのメソッドを呼び出す.
+     * @param line 
+     * @param src 
+     * @returns 
+     */
     #parseExprTokens(line: RQueue<Token>, src: Token[]): Result<C.Expr,string> {
         log.debug("parse expression...");
 
@@ -1251,6 +1278,13 @@ export class Parser {
         return res;
     }
 
+    /**
+     * 式を読み取る.2つの項と二項演算子を1つ項にまとめる.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * 
+     * @param line 
+     * @returns 
+     */
     #parseExpr(line: RQueue<Token>): Result<C.Expr,string> {
         const ops: { src: Token, op: C.BinaryOpInfo }[] = [];
         const terms: C.Expr[] = [];
@@ -1368,6 +1402,12 @@ export class Parser {
         return Result.ok(terms[0]);
     }
 
+    /**
+     * 項を読み取る.     
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprTerm(line: RQueue<Token>): Result<C.Expr,string> {
 
         const token = line.dequeue()!;
@@ -1448,6 +1488,12 @@ export class Parser {
         return syntaxError("不正な文字です.", token);
     }
 
+    /**
+     * 単項演算子を読み取る.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprUnaryOp(line: RQueue<Token>): Result<C.Expr,string> {
         const opToken = line.dequeue()!;
         U.assertEq(opToken.tokenType, TokenType.OPERATOR);
@@ -1512,6 +1558,12 @@ export class Parser {
         return Result.ok(new C.ExprUnaryOp(opToken, unaryVtypeRes.result, unaryOpInfo, termU));
     }
 
+    /**
+     * 標準関数の呼び出しを読み取る.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprStdFunc(line: RQueue<Token>): Result<C.Expr,string> {
         const nameToken = line.dequeue()!;
         const name = nameToken.value.toLowerCase();
@@ -1582,6 +1634,12 @@ export class Parser {
         return Result.ok(new C.ExprStdFunc(nameToken, ret, funcInfo, args));
     }
 
+    /**
+     * 後置で定義されているかもしれないユーザ関数の呼び出しを読み取る.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprUnknownUserFunc(line: RQueue<Token>): Result<C.Expr,string> {
         const nameToken = line.dequeue()!;
         const name = nameToken.value.toLowerCase();
@@ -1638,6 +1696,12 @@ export class Parser {
         return Result.ok(new C.ExprUserFunc(nameToken, funcInfoRes.result, argTerms));
     }
 
+    /**
+     * 前置で定義済みのユーザ関数の呼び出しを読み取る.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprUserFunc(line: RQueue<Token>): Result<C.Expr,string> {
         const nameToken = line.dequeue()!;
         const name = nameToken.value.toLowerCase();
@@ -1699,6 +1763,12 @@ export class Parser {
         return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, args));
     }
 
+    /**
+     * 配列の要素参照を読み込む.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param line 
+     * @returns 
+     */
     #parseExprArrayVar(line: RQueue<Token>): Result<C.Expr,string> {
         const nameToken = line.dequeue()!;
         const name = nameToken.value.toLowerCase();
@@ -1744,6 +1814,13 @@ export class Parser {
         return Result.ok(new C.ExprArrayVarVal(nameToken, nameInfo, indexes));
     }
 
+    /**
+     * メンバ呼び出ししている関数を読み込む.
+     * 名前が#parseExprから始まるメソッドからのみ呼び出す.他のメソッドから呼び出さない.
+     * @param obj 
+     * @param line 
+     * @returns 
+     */
     #parseExprMember(obj: C.Expr, line: RQueue<Token>): Result<C.Expr,string> {
         const args: C.Expr[] = [obj];
 
@@ -1936,6 +2013,11 @@ export class Parser {
         return Result.ok(new C.ExprMemberUserFunc(memberToken, ufiRes.result, args));
     }
 
+    /**
+     * 変数への代入文を読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseAssign(line: RQueue<Token>): Result<undefined,string> {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
@@ -2008,6 +2090,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * 配列要素への代入文を読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseAssignArray(line: RQueue<Token>): Result<undefined,string> {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
@@ -2110,6 +2197,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * for文および内部コードブロックを読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseFor(line: RQueue<Token>): Result<undefined,string> {
         const forToken = line.dequeue()!;
         const src: Token[] = [forToken];
@@ -2290,6 +2382,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * if文およびelse文およびそれらの内部コードブロックを読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseIf(line: RQueue<Token>): Result<undefined,string> {
         const ifToken = line.dequeue()!;
         const src: Token[] = [ifToken];
@@ -2422,6 +2519,11 @@ export class Parser {
         return Result.ok(undefined);
     }
 
+    /**
+     * call文を読み取る.
+     * @param line 
+     * @returns 
+     */
     #parseCall(line: RQueue<Token>): Result<undefined,string> {
         const callToken = line.dequeue()!;
         const src: Token[] = [callToken];
