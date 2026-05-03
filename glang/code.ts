@@ -738,15 +738,16 @@ export class ExprArrayRef extends Expr {
 }
 
 export enum CodeKind {
-    BLOCK,
-    DIM,
-    LET,
-    ASSIGN_VAR,
     ASSIGN_ARRAY,
-    DEFINE_USER_FUNC,
-    IF,
+    ASSIGN_VAR,
+    BLOCK,
     CALL_STD_FUNC,
-    CALL_USER_FUNC
+    CALL_USER_FUNC,
+    DEFINE_USER_FUNC,
+    DIM,
+    FOR,
+    IF,
+    LET
 }
 
 export class Code {
@@ -920,5 +921,25 @@ export class CallUserFunc extends Code {
     }
 }
 
+export class For extends Code {
+    readonly loopCounter: NameInfo;
+    readonly blockInfo: BlockInfo;
+    readonly initValue: Readonly<{ nameInfo: NameInfo, expr: Expr }>;
+    readonly endValue: Readonly<{ nameInfo: NameInfo, expr: Expr }>;
+    readonly stepValue: Readonly<{ nameInfo: NameInfo, expr: Expr | null }>;
+
+    constructor(src: Token[], loopCounter: NameInfo, blockInfo: BlockInfo, initValue: { nameInfo: NameInfo, expr: Expr }, endValue: { nameInfo: NameInfo, expr: Expr }, stepValue: { nameInfo: NameInfo, expr: Expr | null }) {
+        super(CodeKind.FOR, src);
+        this.loopCounter = loopCounter;
+        this.blockInfo = blockInfo;
+        this.initValue = initValue;
+        this.endValue = endValue;
+        this.stepValue = stepValue;
+    }
+
+    toString(): string {
+        return `For{ }`;
+    }
+}
 
 export default {};

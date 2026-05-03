@@ -1926,7 +1926,13 @@ export class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
         log.dump("src", Token.lineToString, src);
+        // outer block.
+        // 初期値、終端値、増減値をここのブロックに記憶する.
+        // ループカウンタ変数が新規定義の場合の紐付けブロックになる.
         this.#env.push(src);
+        const initValueNameInfo = this.#env.addName(src, "#init", C.Vtype.INTEGER).result;
+        const endValueNameInfo = this.#env.addName(src, "#end", C.Vtype.INTEGER).result;
+        const stepValueNameInfo = this.#env.addName(src, "#step", C.Vtype.INTEGER).result;
         let loopCounter;
         if (isNewVar.get()) {
             const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
@@ -1945,6 +1951,7 @@ export class Parser {
             }
             loopCounter = varInfo;
         }
+        // inner block.
         this.#env.push(src);
         const blockRes = this.#parseCodeBlock();
         if (blockRes.isErr) {
@@ -1959,19 +1966,28 @@ export class Parser {
         if (endForToken.value.toLowerCase() !== Keyword.FOR) {
             return syntaxError(`"${Keyword.END} ${Keyword.FOR}"が必要です.`, endToken);
         }
-        if (lastLine.len > 1) {
-            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        const endEolToken = lastLine.dequeue();
+        if (endEolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", endEolToken);
+        }
+        else if (endEolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", endEolToken);
         }
         const innerBlockInfoRes = this.#env.pop();
         U.assert(innerBlockInfoRes.isOk);
+        // inner block を C.Code にする必要があるのかは要検討.
         const innerCode = new C.Block(innerBlockInfoRes.result);
         this.#env.addCode(innerCode);
         const outerBlockInfoRes = this.#env.pop();
         U.assert(outerBlockInfoRes.isOk);
         const outerBlockInfo = outerBlockInfoRes.result;
-        // TODO: 
+        const initValue = { nameInfo: initValueNameInfo, expr: initValueExpr };
+        const endValue = { nameInfo: endValueNameInfo, expr: endValueExpr };
+        const stepValue = { nameInfo: stepValueNameInfo, expr: stepValueExpr };
+        const code = new C.For(src, loopCounter, outerBlockInfo, initValue, endValue, stepValue);
+        this.#env.addCode(code);
         log.debug("parsed for.");
-        throw new Unimplemented(line.front);
+        return Result.ok(undefined);
     }
     #parseIf(line) {
         const ifToken = line.dequeue();

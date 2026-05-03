@@ -70,7 +70,7 @@ const COMMENT_CHAR = "'";
 const STRING_CHAR = '"';
 const COLON_CHAR = ":";
 const SEMICOLON_CHAR = ";";
-const OPERATOR_CHARS = "+-*/%=<>.~^@?!|&\\";
+const OPERATOR_CHARS = "+-*/%=<>.~^@#$?!|&\\";
 const DIGIT_CHARS = "0123456789";
 const HEX_DIGIT_CHARS = DIGIT_CHARS + "ABCDEF" + "abcdef";
 

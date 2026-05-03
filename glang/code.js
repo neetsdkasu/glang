@@ -671,15 +671,16 @@ export class ExprArrayRef extends Expr {
 }
 export var CodeKind;
 (function (CodeKind) {
-    CodeKind[CodeKind["BLOCK"] = 0] = "BLOCK";
-    CodeKind[CodeKind["DIM"] = 1] = "DIM";
-    CodeKind[CodeKind["LET"] = 2] = "LET";
-    CodeKind[CodeKind["ASSIGN_VAR"] = 3] = "ASSIGN_VAR";
-    CodeKind[CodeKind["ASSIGN_ARRAY"] = 4] = "ASSIGN_ARRAY";
+    CodeKind[CodeKind["ASSIGN_ARRAY"] = 0] = "ASSIGN_ARRAY";
+    CodeKind[CodeKind["ASSIGN_VAR"] = 1] = "ASSIGN_VAR";
+    CodeKind[CodeKind["BLOCK"] = 2] = "BLOCK";
+    CodeKind[CodeKind["CALL_STD_FUNC"] = 3] = "CALL_STD_FUNC";
+    CodeKind[CodeKind["CALL_USER_FUNC"] = 4] = "CALL_USER_FUNC";
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
-    CodeKind[CodeKind["IF"] = 6] = "IF";
-    CodeKind[CodeKind["CALL_STD_FUNC"] = 7] = "CALL_STD_FUNC";
-    CodeKind[CodeKind["CALL_USER_FUNC"] = 8] = "CALL_USER_FUNC";
+    CodeKind[CodeKind["DIM"] = 6] = "DIM";
+    CodeKind[CodeKind["FOR"] = 7] = "FOR";
+    CodeKind[CodeKind["IF"] = 8] = "IF";
+    CodeKind[CodeKind["LET"] = 9] = "LET";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -818,6 +819,24 @@ export class CallUserFunc extends Code {
     }
     toString() {
         return `CallUserFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class For extends Code {
+    loopCounter;
+    blockInfo;
+    initValue;
+    endValue;
+    stepValue;
+    constructor(src, loopCounter, blockInfo, initValue, endValue, stepValue) {
+        super(CodeKind.FOR, src);
+        this.loopCounter = loopCounter;
+        this.blockInfo = blockInfo;
+        this.initValue = initValue;
+        this.endValue = endValue;
+        this.stepValue = stepValue;
+    }
+    toString() {
+        return `For{ }`;
     }
 }
 export default {};
