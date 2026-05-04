@@ -681,6 +681,7 @@ export var CodeKind;
     CodeKind[CodeKind["FOR"] = 7] = "FOR";
     CodeKind[CodeKind["IF"] = 8] = "IF";
     CodeKind[CodeKind["LET"] = 9] = "LET";
+    CodeKind[CodeKind["PRINT"] = 10] = "PRINT";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -836,7 +837,17 @@ export class For extends Code {
         this.stepValue = stepValue;
     }
     toString() {
-        return `For{ }`;
+        return `For{ loopCounter: ${this.loopCounter.name}, init: (( ${this.initValue.expr} )), end: (( ${this.endValue.expr} )), step: (( ${this.stepValue.expr}, block: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} ))  }`;
+    }
+}
+export class Print extends Code {
+    args;
+    constructor(src, args) {
+        super(CodeKind.PRINT, src);
+        this.args = args;
+    }
+    toString() {
+        return `Print{ args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
 export default {};

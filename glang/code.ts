@@ -747,7 +747,8 @@ export enum CodeKind {
     DIM,
     FOR,
     IF,
-    LET
+    LET,
+    PRINT
 }
 
 export class Code {
@@ -938,7 +939,20 @@ export class For extends Code {
     }
 
     toString(): string {
-        return `For{ }`;
+        return `For{ loopCounter: ${ this.loopCounter.name }, init: (( ${ this.initValue.expr } )), end: (( ${ this.endValue.expr } )), step: (( ${this.stepValue.expr}, block: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} ))  }`;
+    }
+}
+
+export class Print extends Code {
+    readonly args: Expr[];
+
+    constructor(src: Token[], args: Expr[]) {
+        super(CodeKind.PRINT, src);
+        this.args = args;
+    }
+
+    toString(): string {
+        return `Print{ args: (( ${this.args.map( a => `[[ ${a} ]]` ).join(", ")} )) }`;
     }
 }
 

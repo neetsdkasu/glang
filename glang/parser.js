@@ -294,6 +294,7 @@ var Symbols;
     Symbols["DIMLIST_BEGIN"] = "(";
     Symbols["DIMLIST_END"] = ")";
     Symbols["MEMBER_ACCESS_OP"] = ".";
+    Symbols["PRINT_DELIMITER"] = ",";
 })(Symbols || (Symbols = {}));
 const UnaryOpMap = Object.freeze(new Map([
     new C.UnaryOpInfo(C.UnaryOpKind.POSITIVE_SIGN, "+", C.Vtype.INFER_NUMBER),
@@ -807,6 +808,9 @@ export class Parser {
                     break;
                 case Keyword.LET:
                     res = this.#parseLet(line);
+                    break;
+                case Keyword.PRINT:
+                    res = this.#parsePrint(line);
                     break;
                 case Keyword.RETURN:
                 case Keyword.DO:
@@ -2382,6 +2386,41 @@ export class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("parsed call. [unknown user func]");
+        return Result.ok(undefined);
+    }
+    #parsePrint(line) {
+        const printToken = line.dequeue();
+        const src = [printToken];
+        log.debug("parse print...");
+        const args = [];
+        while (line.len) {
+            const token = line.front;
+            const argRes = this.#parseExprTokens(line, src);
+            if (argRes.isErr) {
+                return syntaxError(argRes.error, token);
+            }
+            const arg = argRes.result;
+            args.push(arg);
+            log.dump("arg", arg);
+            if (C.inferVtype(arg.vtype, C.Vtype.INFER_PRIMITIVE).isErr) {
+                return syntaxError(`${Keyword.PRINT}にはプリミティブ型(${[Keyword.BOOLEAN, Keyword.FLOAT, Keyword.INTEGER, Keyword.STRING].join("/")})のみ渡せます.`, token);
+            }
+            const commaToken = line.dequeue();
+            src.push(commaToken);
+            if (commaToken.tokenType === TokenType.EOF) {
+                return syntaxError("ここでソースコードの末尾は不正です.", commaToken);
+            }
+            else if (commaToken.tokenType === TokenType.EOL) {
+                break;
+            }
+            else if (commaToken.value !== Symbols.PRINT_DELIMITER) {
+                return syntaxError(`記号 ${Symbols.PRINT_DELIMITER} が必要です.`, commaToken);
+            }
+        }
+        const code = new C.Print(src, args);
+        this.#env.addCode(code);
+        log.dump("src", Token.lineToString, src);
+        log.debug("parsed print.");
         return Result.ok(undefined);
     }
 }
