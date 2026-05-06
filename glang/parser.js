@@ -729,7 +729,8 @@ export class Parser {
                     res = this.#parseSub(line);
                     break;
                 case Keyword.FUNC:
-                    throw new Unimplemented(line.front);
+                    res = this.#parseFunc(line);
+                    break;
                 default:
                     return syntaxError(`トップレベルで"${cmdToken.value}"から行頭の開始はできません.`, cmdToken);
             }
@@ -739,7 +740,7 @@ export class Parser {
         }
         const mainSub = this.#env.findUserFunc(Keyword.MAIN);
         if (mainSub === undefined || !mainSub[0].definition) {
-            return Result.err(`${Keyword.MAIN}関数を定義する必要があります.`);
+            return syntaxError(`${Keyword.MAIN}関数を定義する必要があります.`, "");
         }
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
@@ -792,7 +793,7 @@ export class Parser {
                     res = this.#parseDim(line);
                     break;
                 case Keyword.DO:
-                    res = this.#parseDo(line);
+                    res = this.#parseDoWhile(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
@@ -2408,7 +2409,7 @@ export class Parser {
         log.debug("PARSED print.");
         return Result.ok(undefined);
     }
-    #parseDo(line) {
+    #parseDoWhile(line) {
         const doToken = line.dequeue();
         const src = [doToken];
         log.debug("PARSE do...");
@@ -2462,6 +2463,138 @@ export class Parser {
         const code = new C.DoWhile(src, testExpr, blockInfo);
         this.#env.addCode(code);
         log.debug("PARSED do.");
+        return Result.ok(undefined);
+    }
+    #parseFunc(line) {
+        const funcToken = line.dequeue();
+        const src = [funcToken];
+        log.debug("PARSE func...");
+        if (!this.#env.isToplevel) {
+            return syntaxError(`${Keyword.FUNC}はトップレベルでのみ使用できます.`, funcToken);
+        }
+        const funcNameToken = line.dequeue();
+        src.push(funcNameToken);
+        log.dump("funcName", funcNameToken.value);
+        if (funcNameToken.tokenType !== TokenType.WORD) {
+            return syntaxError("ユーザ関数名が必要です.", funcNameToken);
+        }
+        const funcName = funcNameToken.value.toLowerCase();
+        const lrbToken = line.dequeue();
+        src.push(lrbToken);
+        if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
+            return syntaxError(`仮引数定義のための記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
+        }
+        const argTypes = [];
+        const argNames = [];
+        while (line.len) {
+            const argNameToken = line.dequeue();
+            src.push(argNameToken);
+            if (argTypes.length === 0 && argNameToken.tokenType === TokenType.RIGHT_ROUND_BRACKET) {
+                // 引数なしの関数.
+                break;
+            }
+            if (argNameToken.tokenType !== TokenType.WORD) {
+                return syntaxError((argTypes.length == ~0 ? `記号 ${Symbols.ARGLIST_END} または` : "") + "仮引数定義が必要です.", argNameToken);
+            }
+            const argName = argNameToken.value.toLowerCase();
+            argNames.push(argName);
+            log.dump(`argName[${argNames.length}]`, argName);
+            const asToken = line.dequeue();
+            src.push(asToken);
+            if (asToken.value.toLowerCase() !== Keyword.AS) {
+                return syntaxError(`キーワード"${Keyword.AS}"が必要です.`, asToken);
+            }
+            const argTypeToken = line.dequeue();
+            src.push(argTypeToken);
+            const argType = argTypeToken.value.toLowerCase();
+            switch (argType) {
+                case Keyword.BOOLEAN:
+                    argTypes.push(C.Vtype.BOOLEAN);
+                    break;
+                case Keyword.FLOAT:
+                    argTypes.push(C.Vtype.FLOATING_POINT);
+                    break;
+                case Keyword.INTEGER:
+                    argTypes.push(C.Vtype.INTEGER);
+                    break;
+                case Keyword.STRING:
+                    argTypes.push(C.Vtype.STRING);
+                    break;
+                default:
+                    return syntaxError(`型名(${[Keyword.BOOLEAN, Keyword.FLOAT, Keyword.INTEGER, Keyword.STRING].join("/")})が必要です.`, argTypeToken);
+            }
+            log.dump(`argType[${argTypes.length}]`, argType);
+            const symToken = line.dequeue();
+            src.push(symToken);
+            if (symToken.value === Symbols.ARGLIST_END) {
+                break;
+            }
+            if (symToken.value !== Symbols.ARGLIST_DELIMITER) {
+                return syntaxError(`記号 ${Symbols.ARGLIST_DELIMITER} または 記号 ${Symbols.ARGLIST_END} が必要です.`, symToken);
+            }
+        }
+        const funcAsToken = line.dequeue();
+        src.push(funcAsToken);
+        if (funcAsToken.value.toLowerCase() !== Keyword.AS) {
+            return syntaxError(`キーワード"${Keyword.AS}"が必要です.`, funcAsToken);
+        }
+        const retTypeToken = line.dequeue();
+        src.push(retTypeToken);
+        let retType;
+        switch (retTypeToken.value.toLowerCase()) {
+            case Keyword.BOOLEAN:
+                retType = C.Vtype.BOOLEAN;
+                break;
+            case Keyword.FLOAT:
+                retType = C.Vtype.FLOATING_POINT;
+                break;
+            case Keyword.INTEGER:
+                retType = C.Vtype.INTEGER;
+                break;
+            case Keyword.STRING:
+                retType = C.Vtype.STRING;
+                break;
+            default:
+                return syntaxError(`型名(${[Keyword.BOOLEAN, Keyword.FLOAT, Keyword.INTEGER, Keyword.STRING].join("/")})が必要です.`, retTypeToken);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError(`対となる"${Keyword.END} ${Keyword.FUNC}"が必要です.`, eolToken);
+        }
+        if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字です.", eolToken);
+        }
+        const retArg = new C.RetArg(retType, argTypes);
+        const funcInfoRes = this.#env.addUserFunc(src, funcName, retArg, true, argNames);
+        if (funcInfoRes.isErr) {
+            return Result.err(funcInfoRes.error);
+        }
+        const funcInfo = funcInfoRes.result;
+        log.dump("funcInfo", funcInfo);
+        log.dump("src", Token.lineToString, src);
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+        const endToken = lastLine.dequeue();
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.FUNC}"で終了する必要があります.`, endToken);
+        }
+        const endSubToken = lastLine.dequeue();
+        if (endSubToken.value.toLowerCase() !== Keyword.FUNC) {
+            return syntaxError(`ブロックは"${Keyword.END} ${Keyword.FUNC}"で終了する必要があります.`, endToken);
+        }
+        if (lastLine.len > 1) {
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+        }
+        const innerBlockInfo = this.#env.pop();
+        const innerCode = new C.Block(innerBlockInfo);
+        this.#env.addCode(innerCode);
+        const outerBlockInfo = this.#env.pop();
+        const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
+        this.#env.addCode(defineUserFuncCode);
+        log.debug("PARSED func.");
         return Result.ok(undefined);
     }
 }
