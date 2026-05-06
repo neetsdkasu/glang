@@ -5,6 +5,8 @@
 import CharReader from "charreader";
 import { Result } from "utils";
 
+export type ScannerError = string;
+
 export enum TokenType {
     EOF,
     EOL,
@@ -147,7 +149,7 @@ export class Scanner {
         }
     }
 
-    scan(): Result<boolean,string> {
+    scan(): Result<boolean,ScannerError> {
 
         if (this.#token?.tokenType === TokenType.EOL) {
             this.#row++;
@@ -204,7 +206,7 @@ export class Scanner {
         return Result.ok(true);
     }
 
-    #readString(): Result<string,string> {
+    #readString(): Result<string,ScannerError> {
         let s = "";
         let end = false;
         while (this.#reader.hasNext()) {
@@ -333,7 +335,7 @@ export class Scanner {
         };
     }
 
-    #readBinInteger(): Result<string,string> {
+    #readBinInteger(): Result<string,ScannerError> {
         let bin = "";
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
@@ -349,7 +351,7 @@ export class Scanner {
         return Result.ok(bin);
     }
 
-    #readHexInteger(): Result<string,string> {
+    #readHexInteger(): Result<string,ScannerError> {
         let hex = "";
         while (this.#reader.hasNext()) {
             const ch = this.#reader.next();
@@ -369,7 +371,7 @@ export class Scanner {
      * @param head 
      * @returns
      */
-    #readWord(head: string): Result<string,string> {
+    #readWord(head: string): Result<string,ScannerError> {
         if (!isWordChar(head) || DIGIT_CHARS.includes(head)) {
             return Result.err(`${ErrWord} ( ${this} )`);
         }

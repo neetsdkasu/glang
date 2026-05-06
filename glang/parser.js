@@ -8,16 +8,6 @@ import { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
 import * as U from "utils";
 import * as C from "code";
-/*
-古いtscのせいでArray<T>にfindLastメソッドがないのだけど
-これを有効にすればArray<T>にfindLastが追加されるぽい？のだけど、コメントアウトして無効にしてる
-素直にtscのバージョンをアップデートすることを検討したほうがよさそう
-declare global {
-    interface Array<T> {
-        findLast(callbackFn: (element: T, index: number, array: Array<T>) => boolean, thisArg?: object): T | undefined;
-    }
-}
-*/
 function syntaxError(msg, obj) {
     return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
 }
@@ -456,7 +446,7 @@ class Env {
     pop() {
         log.debug("drop block");
         if (this.#codeBodyStack.length === 0) {
-            return Result.err("no block");
+            throw new Error("BUG: no block");
         }
         const map = this.#nameMapStack.pop();
         const src = map.blockSrc ?? [];
@@ -466,7 +456,7 @@ class Env {
         const body = this.#codeBodyStack.pop();
         const blockInfo = new C.BlockInfo(src, id, parentId, varList, body);
         log.dump("block src", Token.lineToString, src);
-        return Result.ok(blockInfo);
+        return blockInfo;
     }
     /**
      * sub/func/dim/letで指定された名前を最深ブロックに登録します.
@@ -706,6 +696,7 @@ export class Parser {
         return Result.ok(RQueue.wrap(line));
     }
     parse() {
+        log.debug("START PARSE...");
         this.#env.reset();
         this.#env.push(null);
         for (;;) {
@@ -754,8 +745,8 @@ export class Parser {
             // ブロックが閉じておらずendが足りてない
             throw new Unimplemented();
         }
-        log.debug("all done.");
-        return this.#env.pop();
+        log.debug("END PARSE.");
+        return Result.ok(this.#env.pop());
     }
     /**
      * コードブロックを読み取る.
@@ -766,7 +757,7 @@ export class Parser {
      * @returns 読み取りに成功した場合はlastLineフィールドにendかelseで始まる文を収めたオブジェクトを返す.失敗した場合はエラーメッセージを返す.
      */
     #parseCodeBlock() {
-        log.debug("parse block...");
+        log.debug("PARSE block...");
         for (;;) {
             const lineRes = this.#scanLine();
             if (lineRes.isErr) {
@@ -789,7 +780,7 @@ export class Parser {
             switch (cmd) {
                 case Keyword.ELSE:
                 case Keyword.END:
-                    log.debug("parsed block.");
+                    log.debug("PARSED block.");
                     return Result.ok({ lastLine: line });
                 case Keyword.SUB:
                 case Keyword.FUNC:
@@ -799,6 +790,9 @@ export class Parser {
                     break;
                 case Keyword.DIM:
                     res = this.#parseDim(line);
+                    break;
+                case Keyword.DO:
+                    res = this.#parseDo(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
@@ -813,7 +807,6 @@ export class Parser {
                     res = this.#parsePrint(line);
                     break;
                 case Keyword.RETURN:
-                case Keyword.DO:
                     throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -846,7 +839,7 @@ export class Parser {
     #parseDim(line) {
         const dimToken = line.dequeue();
         const src = [dimToken];
-        log.debug("parse dim...");
+        log.debug("PARSE dim...");
         const arrNameToken = line.dequeue();
         src.push(arrNameToken);
         const arrName = arrNameToken.value.toLowerCase();
@@ -950,7 +943,7 @@ export class Parser {
         const code = new C.Dim(src, varInfo.result, dims);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed dim.");
+        log.debug("PARSED dim.");
         return Result.ok(undefined);
     }
     /**
@@ -961,7 +954,7 @@ export class Parser {
     #parseSub(line) {
         const subToken = line.dequeue();
         const src = [subToken];
-        log.debug("parse sub...");
+        log.debug("PARSE sub...");
         if (!this.#env.isToplevel) {
             return syntaxError(`${Keyword.SUB}はトップレベルでのみ使用できます.`, subToken);
         }
@@ -1057,16 +1050,13 @@ export class Parser {
         if (lastLine.len > 1) {
             return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
         }
-        const innerBlockInfoRes = this.#env.pop();
-        U.assert(innerBlockInfoRes.isOk);
-        const innerCode = new C.Block(innerBlockInfoRes.result);
+        const innerBlockInfo = this.#env.pop();
+        const innerCode = new C.Block(innerBlockInfo);
         this.#env.addCode(innerCode);
-        const outerBlockInfoRes = this.#env.pop();
-        U.assert(outerBlockInfoRes.isOk);
-        const outerBlockInfo = outerBlockInfoRes.result;
+        const outerBlockInfo = this.#env.pop();
         const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
         this.#env.addCode(defineUserFuncCode);
-        log.debug("parsed sub.");
+        log.debug("PARSED sub.");
         return Result.ok(undefined);
     }
     /**
@@ -1077,7 +1067,7 @@ export class Parser {
     #parseLet(line) {
         const letToken = line.dequeue();
         const src = [letToken];
-        log.debug("parse let...");
+        log.debug("PARSE let...");
         const nameToken = line.dequeue();
         src.push(nameToken);
         if (nameToken.tokenType !== TokenType.WORD) {
@@ -1109,7 +1099,7 @@ export class Parser {
         const code = new C.Let(src, nameInfo, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed let.");
+        log.debug("PARSED let.");
         return Result.ok(undefined);
     }
     /**
@@ -1119,7 +1109,7 @@ export class Parser {
      * @returns
      */
     #parseExprTokens(line, src) {
-        log.debug("parse expression...");
+        log.debug("PARSE expression...");
         const beforeSize = line.len;
         const res = this.#parseExpr(line);
         const afterSize = line.len;
@@ -1133,7 +1123,7 @@ export class Parser {
             throw new Error("BUG");
         }
         src.push(...tokens.items);
-        log.debug("parsed expression.");
+        log.debug("PARSED expression.");
         return res;
     }
     /**
@@ -1816,7 +1806,7 @@ export class Parser {
     #parseAssign(line) {
         const nameToken = line.dequeue();
         const src = [nameToken];
-        log.debug("parse assign...");
+        log.debug("PARSE assign...");
         if (this.#env.isToplevel) {
             return syntaxError("代入はトップレベルでは使用できません.", nameToken);
         }
@@ -1861,7 +1851,7 @@ export class Parser {
         const code = new C.AssignVar(src, op, nameInfo, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed assign.");
+        log.debug("PARSED assign.");
         return Result.ok(undefined);
     }
     /**
@@ -1872,7 +1862,7 @@ export class Parser {
     #parseAssignArray(line) {
         const nameToken = line.dequeue();
         const src = [nameToken];
-        log.debug("parse assign array...");
+        log.debug("PARSE assign array...");
         const name = nameToken.value.toLowerCase();
         log.dump("name", name);
         const nameInfo = this.#env.findName(name);
@@ -1939,7 +1929,7 @@ export class Parser {
         const code = new C.AssignArray(src, op, nameInfo, indexes, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed assign array.");
+        log.debug("PARSED assign array.");
         return Result.ok(undefined);
     }
     /**
@@ -1950,7 +1940,7 @@ export class Parser {
     #parseFor(line) {
         const forToken = line.dequeue();
         const src = [forToken];
-        log.debug("parse for...");
+        log.debug("PARSE for...");
         const isNewVar = new U.Once();
         if (line.front.value.toLowerCase() === Keyword.LET) {
             src.push(line.dequeue());
@@ -2042,7 +2032,7 @@ export class Parser {
             if (varInfo === undefined) {
                 return syntaxError(`変数${loopCounterNameToken.value}が定義されてません.`, loopCounterNameToken);
             }
-            if (varInfo.vtype !== C.Vtype.INTEGER) {
+            if (C.inferVtype(varInfo.vtype, C.Vtype.INTEGER).isErr) {
                 return syntaxError(`ループカウンタの変数には整数型(${Keyword.INTEGER})のみ使用できます.`, loopCounterNameToken);
             }
             loopCounter = varInfo;
@@ -2069,20 +2059,17 @@ export class Parser {
         else if (endEolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字(あるいは文字列)です.", endEolToken);
         }
-        const innerBlockInfoRes = this.#env.pop();
-        U.assert(innerBlockInfoRes.isOk);
+        const innerBlockInfo = this.#env.pop();
         // inner block を C.Code にする必要があるのかは要検討.
-        const innerCode = new C.Block(innerBlockInfoRes.result);
+        const innerCode = new C.Block(innerBlockInfo);
         this.#env.addCode(innerCode);
-        const outerBlockInfoRes = this.#env.pop();
-        U.assert(outerBlockInfoRes.isOk);
-        const outerBlockInfo = outerBlockInfoRes.result;
+        const outerBlockInfo = this.#env.pop();
         const initValue = { nameInfo: initValueNameInfo, expr: initValueExpr };
         const endValue = { nameInfo: endValueNameInfo, expr: endValueExpr };
         const stepValue = { nameInfo: stepValueNameInfo, expr: stepValueExpr };
         const code = new C.For(src, loopCounter, outerBlockInfo, initValue, endValue, stepValue);
         this.#env.addCode(code);
-        log.debug("parsed for.");
+        log.debug("PARSED for.");
         return Result.ok(undefined);
     }
     /**
@@ -2093,14 +2080,14 @@ export class Parser {
     #parseIf(line) {
         const ifToken = line.dequeue();
         const src = [ifToken];
-        log.debug("parse if...");
+        log.debug("PARSE if...");
         const testExprToken = line.front;
         const testExprRes = this.#parseExprTokens(line, src);
         if (testExprRes.isErr) {
             return Result.err(testExprRes.error);
         }
         const testExpr = testExprRes.result;
-        if (testExpr.vtype !== C.Vtype.BOOLEAN) {
+        if (C.inferVtype(testExpr.vtype, C.Vtype.BOOLEAN).isErr) {
             return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, testExprToken);
         }
         log.dump("testExpr", testExpr);
@@ -2119,7 +2106,7 @@ export class Parser {
         const testExprList = [testExpr]; // IF expr [THEN] / ELSE IF expr [THEN]
         const blockInfoList = []; // IF expr [THEN] / ELSE IF expr [THEN] / ELSE
         for (;;) {
-            log.debug("parse if-block...");
+            log.debug("PARSE if-block...");
             // log.dump("if-block src", Token.lineToString, srcList.at(-1)!);
             this.#env.push(srcList.at(-1));
             const blockRes = this.#parseCodeBlock();
@@ -2127,9 +2114,7 @@ export class Parser {
                 return Result.err(blockRes.error);
             }
             const lastLine = blockRes.result.lastLine;
-            const blockInfoRes = this.#env.pop();
-            U.assert(blockInfoRes.isOk);
-            const blockInfo = blockInfoRes.result;
+            const blockInfo = this.#env.pop();
             blockInfoList.push(blockInfo);
             const blockEndSrc = [];
             const blockEndToken = lastLine.dequeue();
@@ -2176,7 +2161,7 @@ export class Parser {
             const elseIfTestExpr = elseIfTestExprRes.result;
             testExprList.push(elseIfTestExpr);
             log.dump("elseIfTestExpr", elseIfTestExpr);
-            if (elseIfTestExpr.vtype !== C.Vtype.BOOLEAN) {
+            if (C.inferVtype(elseIfTestExpr.vtype, C.Vtype.BOOLEAN).isErr) {
                 return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, elseIfTestExprToken);
             }
             if (lastLine.front.value.toLowerCase() === Keyword.THEN) {
@@ -2193,7 +2178,7 @@ export class Parser {
         }
         const code = new C.If(srcList, testExprList, blockInfoList);
         this.#env.addCode(code);
-        log.debug("parsed if.");
+        log.debug("PARSED if.");
         return Result.ok(undefined);
     }
     /**
@@ -2204,7 +2189,7 @@ export class Parser {
     #parseCall(line) {
         const callToken = line.dequeue();
         const src = [callToken];
-        log.debug("parse call...");
+        log.debug("PARSE call...");
         const funcNameToken = line.dequeue();
         src.push(funcNameToken);
         if (funcNameToken.tokenType !== TokenType.WORD) {
@@ -2235,7 +2220,7 @@ export class Parser {
                 const stdFuncNoArgCode = new C.CallStdFunc(src, stdFuncInfo, []);
                 this.#env.addCode(stdFuncNoArgCode);
                 log.dump("src", Token.lineToString, src);
-                log.debug("parsed call. [no arg std func]");
+                log.debug("PARSED call. [no arg std func]");
                 return Result.ok(undefined);
             }
             const stdFuncArgs = [];
@@ -2284,7 +2269,7 @@ export class Parser {
             const stdFuncCode = new C.CallStdFunc(src, stdFuncInfo, stdFuncArgs);
             this.#env.addCode(stdFuncCode);
             log.dump("src", Token.lineToString, src);
-            log.debug("parsed call. [std func]");
+            log.debug("PARSED call. [std func]");
             return Result.ok(undefined);
         }
         const userFunc = this.#env.findUserFunc(funcName)?.find(fi => fi.definition);
@@ -2305,7 +2290,7 @@ export class Parser {
                 const userFuncNoArgCode = new C.CallUserFunc(src, userFunc, []);
                 this.#env.addCode(userFuncNoArgCode);
                 log.dump("src", Token.lineToString, src);
-                log.debug("parsed call. [no arg user func]");
+                log.debug("PARSED call. [no arg user func]");
                 return Result.ok(undefined);
             }
             const userFuncArgs = [];
@@ -2342,7 +2327,7 @@ export class Parser {
             const userFuncCode = new C.CallUserFunc(src, userFunc, userFuncArgs);
             this.#env.addCode(userFuncCode);
             log.dump("src", Token.lineToString, src);
-            log.debug("parsed call. [user func]");
+            log.debug("PARSED call. [user func]");
             return Result.ok(undefined);
         }
         const args = [];
@@ -2385,13 +2370,13 @@ export class Parser {
         const code = new C.CallUserFunc(src, funcInfo, args);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed call. [unknown user func]");
+        log.debug("PARSED call. [unknown user func]");
         return Result.ok(undefined);
     }
     #parsePrint(line) {
         const printToken = line.dequeue();
         const src = [printToken];
-        log.debug("parse print...");
+        log.debug("PARSE print...");
         const args = [];
         while (line.len) {
             const token = line.front;
@@ -2420,7 +2405,63 @@ export class Parser {
         const code = new C.Print(src, args);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("parsed print.");
+        log.debug("PARSED print.");
+        return Result.ok(undefined);
+    }
+    #parseDo(line) {
+        const doToken = line.dequeue();
+        const src = [doToken];
+        log.debug("PARSE do...");
+        // DOのみで無限ループ、UNTIL、後置WHILE、いずれも想定してない.
+        // 前置WHILE の DO WHILE expr のみを想定.
+        const whileToken = line.dequeue();
+        src.push(whileToken);
+        if (whileToken.value.toLowerCase() !== Keyword.WHILE) {
+            return syntaxError(`キーワード"${Keyword.WHILE}"が必要です.`, whileToken);
+        }
+        const testExprToken = line.front;
+        const testExprRes = this.#parseExprTokens(line, src);
+        if (testExprRes.isErr) {
+            return Result.err(testExprRes.error);
+        }
+        const testExpr = testExprRes.result;
+        log.dump("testExpr", testExpr);
+        if (C.inferVtype(testExpr.vtype, C.Vtype.BOOLEAN).isErr) {
+            return syntaxError(`条件文は真偽値型(${Keyword.BOOLEAN})の式が必要です.`, testExprToken);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        log.dump("src", Token.lineToString, src);
+        this.#env.push(src);
+        const blockRes = this.#parseCodeBlock();
+        if (blockRes.isErr) {
+            return Result.err(blockRes.error);
+        }
+        const lastLine = blockRes.result.lastLine;
+        const endToken = lastLine.dequeue();
+        if (endToken.value.toLowerCase() !== Keyword.END) {
+            return syntaxError(`"${Keyword.END} ${Keyword.DO}"が必要です.`, endToken);
+        }
+        const endDoToken = lastLine.dequeue();
+        if (endDoToken.value.toLowerCase() !== Keyword.DO) {
+            return syntaxError(`"${Keyword.END} ${Keyword.DO}"が必要です.`, endToken);
+        }
+        const endDoEolToken = lastLine.dequeue();
+        if (endDoEolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", endDoEolToken);
+        }
+        else if (endDoEolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", endDoEolToken);
+        }
+        const blockInfo = this.#env.pop();
+        const code = new C.DoWhile(src, testExpr, blockInfo);
+        this.#env.addCode(code);
+        log.debug("PARSED do.");
         return Result.ok(undefined);
     }
 }

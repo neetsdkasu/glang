@@ -84,6 +84,12 @@ export function inferVtype(t1: Vtype, t2: Vtype, t3?: Vtype): Result<Vtype,strin
             // どちらもINFERを含まない場合は完全一致のみの判定でおわり.
             return Result.err("型の整合性がとれません.");
         }
+        if (t1 === Vtype.UNKNOWN) {
+            return Result.ok(t2);
+        }
+        if (t2 === Vtype.UNKNOWN) {
+            return Result.ok(t1);
+        }
         if ((t1 & t2) & Vtype.INFER) {
             // どちらもINFERを含む場合は、どうしよう.
             let infPrim = (t1 & t2) & Vtype.PRIMITIVE_TYPE;
@@ -745,6 +751,7 @@ export enum CodeKind {
     CALL_USER_FUNC,
     DEFINE_USER_FUNC,
     DIM,
+    DO_WHILE,
     FOR,
     IF,
     LET,
@@ -939,7 +946,22 @@ export class For extends Code {
     }
 
     toString(): string {
-        return `For{ loopCounter: ${ this.loopCounter.name }, init: (( ${ this.initValue.expr } )), end: (( ${ this.endValue.expr } )), step: (( ${this.stepValue.expr}, block: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} ))  }`;
+        return `For{ loopCounter: ${ this.loopCounter.name }, init: (( ${ this.initValue.expr } )), end: (( ${ this.endValue.expr } )), step: (( ${this.stepValue.expr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
+    }
+}
+
+export class DoWhile extends Code {
+    readonly testExpr: Expr;
+    readonly blockInfo: BlockInfo;
+
+    constructor(src: Token[], testExpr: Expr, blockInfo: BlockInfo) {
+        super(CodeKind.DO_WHILE, src);
+        this.testExpr = testExpr;
+        this.blockInfo = blockInfo;
+    }
+
+    toString(): string {
+        return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
     }
 }
 

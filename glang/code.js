@@ -82,6 +82,12 @@ export function inferVtype(t1, t2, t3) {
             // どちらもINFERを含まない場合は完全一致のみの判定でおわり.
             return Result.err("型の整合性がとれません.");
         }
+        if (t1 === Vtype.UNKNOWN) {
+            return Result.ok(t2);
+        }
+        if (t2 === Vtype.UNKNOWN) {
+            return Result.ok(t1);
+        }
         if ((t1 & t2) & Vtype.INFER) {
             // どちらもINFERを含む場合は、どうしよう.
             let infPrim = (t1 & t2) & Vtype.PRIMITIVE_TYPE;
@@ -678,10 +684,11 @@ export var CodeKind;
     CodeKind[CodeKind["CALL_USER_FUNC"] = 4] = "CALL_USER_FUNC";
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
     CodeKind[CodeKind["DIM"] = 6] = "DIM";
-    CodeKind[CodeKind["FOR"] = 7] = "FOR";
-    CodeKind[CodeKind["IF"] = 8] = "IF";
-    CodeKind[CodeKind["LET"] = 9] = "LET";
-    CodeKind[CodeKind["PRINT"] = 10] = "PRINT";
+    CodeKind[CodeKind["DO_WHILE"] = 7] = "DO_WHILE";
+    CodeKind[CodeKind["FOR"] = 8] = "FOR";
+    CodeKind[CodeKind["IF"] = 9] = "IF";
+    CodeKind[CodeKind["LET"] = 10] = "LET";
+    CodeKind[CodeKind["PRINT"] = 11] = "PRINT";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -837,7 +844,19 @@ export class For extends Code {
         this.stepValue = stepValue;
     }
     toString() {
-        return `For{ loopCounter: ${this.loopCounter.name}, init: (( ${this.initValue.expr} )), end: (( ${this.endValue.expr} )), step: (( ${this.stepValue.expr}, block: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} ))  }`;
+        return `For{ loopCounter: ${this.loopCounter.name}, init: (( ${this.initValue.expr} )), end: (( ${this.endValue.expr} )), step: (( ${this.stepValue.expr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
+    }
+}
+export class DoWhile extends Code {
+    testExpr;
+    blockInfo;
+    constructor(src, testExpr, blockInfo) {
+        super(CodeKind.DO_WHILE, src);
+        this.testExpr = testExpr;
+        this.blockInfo = blockInfo;
+    }
+    toString() {
+        return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
     }
 }
 export class Print extends Code {
