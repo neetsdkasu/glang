@@ -59,6 +59,11 @@ Sub main()
             y += 1
         End If
         Call add(x, y, 1)
+        If i > 4 Then
+            Break
+        Else If i > 3 Then
+            Continue
+        End If
     End For
     Let s = fizzbuzz(18)
     Print "abcd", x+y, field_XY(2,2), s

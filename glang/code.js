@@ -349,6 +349,7 @@ export class FuncInfo {
     argNames;
     outerBlockId;
     innerBlockId;
+    #sideEffect = SideEffect.NONE;
     constructor(src, name, retArg, varId, definition) {
         this.src = src;
         this.name = name;
@@ -367,6 +368,12 @@ export class FuncInfo {
             this.innerBlockId = definition.innerBlockId;
         }
     }
+    get sideEffect() {
+        return this.#sideEffect;
+    }
+    addSideEffect(sideEffect) {
+        this.#sideEffect |= sideEffect;
+    }
     validate(other) {
         if (this.varId !== other.varId || this.name !== other.name) {
             log.error("this", this);
@@ -383,7 +390,7 @@ export class FuncInfo {
         return cal.retArg.checkConsistencyWith(def.retArg);
     }
     toString() {
-        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
+        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, sideEffect: ${SideEffect[this.#sideEffect]}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
     }
 }
 export var BinaryOpKind;
@@ -689,6 +696,7 @@ export var CodeKind;
     CodeKind[CodeKind["IF"] = 9] = "IF";
     CodeKind[CodeKind["LET"] = 10] = "LET";
     CodeKind[CodeKind["PRINT"] = 11] = "PRINT";
+    CodeKind[CodeKind["RETURN"] = 12] = "RETURN";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -857,6 +865,30 @@ export class DoWhile extends Code {
     }
     toString() {
         return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
+    }
+}
+export class Return extends Code {
+    funcInfo;
+    value;
+    constructor(src, funcInfo, value) {
+        super(CodeKind.RETURN, src);
+        this.funcInfo = funcInfo;
+        if (funcInfo.retArg.ret === Vtype.VOID) {
+            U.assert(value === undefined);
+            this.value = null;
+        }
+        else {
+            U.assert(value !== undefined);
+            this.value = value;
+        }
+    }
+    toString() {
+        if (this.value === null) {
+            return `Return{ sub: ${this.funcInfo.name} }`;
+        }
+        else {
+            return `Return{ func: ${this.funcInfo.name}, value: (( ${this.value} )) }`;
+        }
     }
 }
 export class Print extends Code {

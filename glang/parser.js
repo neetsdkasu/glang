@@ -407,6 +407,7 @@ class Env {
     #totalVarCount = 0; // ユニークな変数IDを生成するために使用します.
     #userFuncMap = new Map(); // ユーザ関数の情報を管理します.
     #uniqueNameMap = new Map(); // ユーザ関数名と同名の変数が関数定義前に指定されていることを検出する目的に使用されます.
+    #definitionUserFunc = null;
     constructor() { }
     reset() {
         this.#totalBlockCount = 0;
@@ -415,6 +416,7 @@ class Env {
         this.#totalVarCount = 0;
         this.#userFuncMap.clear();
         this.#uniqueNameMap.clear();
+        this.#definitionUserFunc = null;
     }
     get isToplevel() {
         return this.#nameMapStack.length === 1;
@@ -424,6 +426,18 @@ class Env {
     }
     #newVarId() {
         return this.#totalVarCount++;
+    }
+    get definitionUserFunc() {
+        U.assert(this.#definitionUserFunc !== null);
+        return this.#definitionUserFunc;
+    }
+    isGlobalBlockId(blockId) {
+        U.assert(this.#nameMapStack.length > 0);
+        return this.#nameMapStack[0].blockId === blockId;
+    }
+    isGlobalName(name) {
+        U.assert(this.#nameMapStack.length > 0);
+        return this.#nameMapStack[0].has(name);
     }
     /**
      * 変数名などを束縛するブロックをブロックネスト最深部に追加します.
@@ -445,9 +459,8 @@ class Env {
      */
     pop() {
         log.debug("drop block");
-        if (this.#codeBodyStack.length === 0) {
-            throw new Error("BUG: no block");
-        }
+        U.assert(this.#nameMapStack.length > 0);
+        U.assert(this.#codeBodyStack.length > 0);
         const map = this.#nameMapStack.pop();
         const src = map.blockSrc ?? [];
         const id = map.blockId;
@@ -456,6 +469,9 @@ class Env {
         const body = this.#codeBodyStack.pop();
         const blockInfo = new C.BlockInfo(src, id, parentId, varList, body);
         log.dump("block src", Token.lineToString, src);
+        if (this.isToplevel) {
+            this.#definitionUserFunc = null;
+        }
         return blockInfo;
     }
     /**
@@ -549,6 +565,7 @@ class Env {
     /**
      * ユーザ関数の情報を登録します.
      * ユーザ関数定義(func/sub)のほか、関数定義前に式中で使用されたユーザ関数(らしき名前)もここで登録します.
+     * 定義でこのメソッドの呼び出しのときブロックを二段分積む(#env.push)のでend func/subの処理ではブロックを二段分取り出す(#env.pop)必要があります.
      *
      * @param src
      * @param name
@@ -581,12 +598,9 @@ class Env {
             return syntaxError(`ユーザ関数名との名前の重複はできません(シャドーイングはできない仕様です)."${name}"`, dup);
         }
         if (definition) {
-            if (argNames === undefined) {
-                throw new Error("BUG");
-            }
-            if (retArg.args.length !== argNames.length) {
-                throw new Error("BUG");
-            }
+            U.assert(this.isToplevel);
+            U.assert(argNames !== undefined);
+            U.assert(retArg.args.length === argNames.length);
             const dup = new Set();
             for (let argName of argNames) {
                 argName = argName.toLowerCase();
@@ -608,11 +622,7 @@ class Env {
         let varId;
         const varInfo = this.#nameMapStack.at(0)?.get(name);
         if (varInfo) {
-            if (varInfo.vtype !== C.Vtype.SUB && varInfo.vtype !== C.Vtype.FUNC) {
-                // #uniqueNameMapのとこで弾かれているはず.
-                log.error("varInfo", varInfo);
-                throw new Error("BUG: グローバル変数名でユーザ関数名が使用されています.");
-            }
+            U.assert(varInfo.vtype === C.Vtype.SUB || varInfo.vtype === C.Vtype.FUNC);
             varId = varInfo.varId;
         }
         else {
@@ -665,6 +675,9 @@ class Env {
         }
         else {
             this.#userFuncMap.set(name, [funcInfo]);
+        }
+        if (definition) {
+            this.#definitionUserFunc = funcInfo;
         }
         log.dump("added func", name);
         return Result.ok(funcInfo);
@@ -808,6 +821,10 @@ export class Parser {
                     res = this.#parsePrint(line);
                     break;
                 case Keyword.RETURN:
+                    res = this.#parseReturn(line);
+                    break;
+                case Keyword.BREAK:
+                case Keyword.CONTINUE:
                     throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -1411,6 +1428,9 @@ export class Parser {
         if (funcInfo.isSub) {
             return syntaxError(`戻り値のない標準関数${name}は式に使用できません.`, nameToken);
         }
+        if (!this.#env.isToplevel) {
+            this.#env.definitionUserFunc.addSideEffect(funcInfo.sideEffect);
+        }
         const lrbToken = line.dequeue();
         if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             // 関数型とかあれば参照返すのかなあ…？
@@ -1540,6 +1560,7 @@ export class Parser {
             line.recover();
             return this.#parseExprUnknownUserFunc(line);
         }
+        this.#env.definitionUserFunc.addSideEffect(funcInfo.sideEffect);
         const lrbToken = line.dequeue();
         if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
             return syntaxError(`ユーザー関数の呼び出しは名前に続いて記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken);
@@ -1647,6 +1668,9 @@ export class Parser {
             if (C.inferVtype(stdFunc.retArg.args[0], obj.vtype).isErr) {
                 return syntaxError(`標準関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
             }
+            if (!this.#env.isToplevel) {
+                this.#env.definitionUserFunc.addSideEffect(stdFunc.sideEffect);
+            }
             const lrbToken_sf = line.dequeue();
             if (lrbToken_sf.value !== Symbols.ARGLIST_BEGIN) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken_sf);
@@ -1722,6 +1746,7 @@ export class Parser {
             if (C.inferVtype(userFunc.retArg.args[0], obj.vtype).isErr) {
                 return syntaxError(`ユーザ関数${member}の第1引数と同じ型の値からのみメンバーとして呼び出せます.`, memberToken);
             }
+            this.#env.definitionUserFunc.addSideEffect(userFunc.sideEffect);
             const lrbToken_uf = line.dequeue();
             if (lrbToken_uf.value !== Symbols.ARGLIST_BEGIN) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_BEGIN} が必要です.`, lrbToken_uf);
@@ -1849,6 +1874,9 @@ export class Parser {
             nameInfo.incrementCounter();
         }
         nameInfo.markWritten();
+        if (this.#env.isGlobalName(name)) {
+            this.#env.definitionUserFunc.addSideEffect(C.SideEffect.WRITE_GLOBAL_VAR);
+        }
         const code = new C.AssignVar(src, op, nameInfo, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
@@ -1927,6 +1955,9 @@ export class Parser {
             nameInfo.incrementCounter();
         }
         nameInfo.markWritten();
+        if (this.#env.isGlobalName(name)) {
+            this.#env.definitionUserFunc.addSideEffect(C.SideEffect.WRITE_GLOBAL_VAR);
+        }
         const code = new C.AssignArray(src, op, nameInfo, indexes, expr);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
@@ -2596,6 +2627,28 @@ export class Parser {
         this.#env.addCode(defineUserFuncCode);
         log.debug("PARSED func.");
         return Result.ok(undefined);
+    }
+    #parseReturn(line) {
+        const returnToken = line.dequeue();
+        const src = [returnToken];
+        log.debug("PARSE return...");
+        const funcInfo = this.#env.definitionUserFunc;
+        const retType = funcInfo.retArg.ret;
+        if (retType === C.Vtype.VOID) {
+            const subEolToken = line.dequeue();
+            if (subEolToken.tokenType === TokenType.EOF) {
+                return syntaxError("ここでソースコードの末尾は不正です.", subEolToken);
+            }
+            else if (subEolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字(あるいは文字列)です.", subEolToken);
+            }
+            const subReturnCode = new C.Return(src, funcInfo);
+            this.#env.addCode(subReturnCode);
+            log.dump("src", Token.lineToString, src);
+            log.debug("PARSED return.");
+            return Result.ok(undefined);
+        }
+        throw new Unimplemented(line.front);
     }
 }
 export default Parser;
