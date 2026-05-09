@@ -451,7 +451,7 @@ export class BinaryOpInfo {
     }
 
     toString(): string {
-        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority}, retArg: ${this.retArg} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op}, priority: ${this.priority}, retArg: ${this.retArg} }`;
     }
 }
 
@@ -756,8 +756,10 @@ export enum CodeKind {
     ASSIGN_ARRAY,
     ASSIGN_VAR,
     BLOCK,
+    BREAK,
     CALL_STD_FUNC,
     CALL_USER_FUNC,
+    CONTINUE,
     DEFINE_USER_FUNC,
     DIM,
     DO_WHILE,
@@ -785,7 +787,7 @@ export class BlockInfo {
     readonly varList: Readonly<NameInfo[]>;
     readonly body: Readonly<Code[]>;
 
-    constructor(src: Token[], id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[]) {
+    constructor(src: Readonly<Token[]>, id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[]) {
         this.src = src;
         this.id = id;
         this.parentId = parentId;
@@ -972,6 +974,37 @@ export class DoWhile extends Code {
 
     toString(): string {
         return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
+    }
+}
+
+export class Break extends Code {
+    readonly blockId: number;
+    readonly blockSrc: Readonly<Token[]>;
+
+    constructor(src: Token[], blockId: number, blockSrc: Readonly<Token[]>) {
+        super(CodeKind.BREAK, src);
+        this.blockId = blockId;
+        this.blockSrc = blockSrc;
+    }
+
+    toString(): string {
+        return `Break{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
+    }
+}
+
+
+export class Continue extends Code {
+    readonly blockId: number;
+    readonly blockSrc: Readonly<Token[]>;
+
+    constructor(src: Token[], blockId: number, blockSrc: Readonly<Token[]>) {
+        super(CodeKind.BREAK, src);
+        this.blockId = blockId;
+        this.blockSrc = blockSrc;
+    }
+
+    toString(): string {
+        return `Continue{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
     }
 }
 

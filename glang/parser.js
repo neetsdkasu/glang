@@ -377,10 +377,12 @@ function parseNumber(token, unaryOp) {
 class NameMap {
     blockId;
     blockSrc;
+    isLoopTrap;
     #map = new Map();
-    constructor(blockId, blockSrc) {
+    constructor(blockId, blockSrc, isLoopTrap) {
         this.blockId = blockId;
         this.blockSrc = blockSrc;
+        this.isLoopTrap = isLoopTrap;
     }
     #newBlockVarId() {
         return this.#map.size;
@@ -431,6 +433,14 @@ class Env {
         U.assert(this.#definitionUserFunc !== null);
         return this.#definitionUserFunc;
     }
+    findLoopTrapBlock() {
+        for (let i = this.#nameMapStack.length - 1; i >= 0; i--) {
+            if (this.#nameMapStack[i].isLoopTrap) {
+                return this.#nameMapStack[i];
+            }
+        }
+        return undefined;
+    }
     isGlobalBlockId(blockId) {
         U.assert(this.#nameMapStack.length > 0);
         return this.#nameMapStack[0].blockId === blockId;
@@ -443,12 +453,13 @@ class Env {
      * 変数名などを束縛するブロックをブロックネスト最深部に追加します.
      *
      * @param blockSrc ブロックを構築するソースコード情報(func/sub/for/if/elseなど). トップレベルのみnull.
+     * @returns 新しく作られたブロックのID
      */
-    push(blockSrc) {
+    push(blockSrc, isLoopTrap) {
         log.debug("new block");
         log.dump("block src", Token.lineToString, blockSrc ?? []);
         const blockId = this.#newBlockId();
-        this.#nameMapStack.push(new NameMap(blockId, blockSrc));
+        this.#nameMapStack.push(new NameMap(blockId, blockSrc, isLoopTrap ?? false));
         this.#codeBodyStack.push([]);
         return blockId;
     }
@@ -799,8 +810,14 @@ export class Parser {
                 case Keyword.SUB:
                 case Keyword.FUNC:
                     return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.BREAK:
+                    res = this.#parseBreak(line);
+                    break;
                 case Keyword.CALL:
                     res = this.#parseCall(line);
+                    break;
+                case Keyword.CONTINUE:
+                    res = this.#parseContinue(line);
                     break;
                 case Keyword.DIM:
                     res = this.#parseDim(line);
@@ -823,9 +840,6 @@ export class Parser {
                 case Keyword.RETURN:
                     res = this.#parseReturn(line);
                     break;
-                case Keyword.BREAK:
-                case Keyword.CONTINUE:
-                    throw new Unimplemented(line.front);
                 default:
                     const nameInfo = this.#env.findName(cmd);
                     if (nameInfo !== undefined) {
@@ -1973,13 +1987,10 @@ export class Parser {
         const forToken = line.dequeue();
         const src = [forToken];
         log.debug("PARSE for...");
-        const isNewVar = new U.Once();
-        if (line.front.value.toLowerCase() === Keyword.LET) {
-            src.push(line.dequeue());
-            isNewVar.set(true);
-        }
-        else {
-            isNewVar.set(false);
+        const letToken = line.dequeue();
+        src.push(letToken);
+        if (letToken.value.toLowerCase() !== Keyword.LET) {
+            return syntaxError(`キーワード"${Keyword.LET}"が必要です.`, letToken);
         }
         const loopCounterNameToken = line.dequeue();
         src.push(loopCounterNameToken);
@@ -2047,28 +2058,15 @@ export class Parser {
         // outer block.
         // 初期値、終端値、増減値をここのブロックに記憶する.
         // ループカウンタ変数が新規定義の場合の紐付けブロックになる.
-        this.#env.push(src);
-        const initValueNameInfo = this.#env.addName(src, "#init", C.Vtype.INTEGER).result;
-        const endValueNameInfo = this.#env.addName(src, "#end", C.Vtype.INTEGER).result;
-        const stepValueNameInfo = this.#env.addName(src, "#step", C.Vtype.INTEGER).result;
-        let loopCounter;
-        if (isNewVar.get()) {
-            const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
-            if (newVarInfoRes.isErr) {
-                return Result.err(newVarInfoRes.error);
-            }
-            loopCounter = newVarInfoRes.result;
+        const blockId = this.#env.push(src, true);
+        const initValueNameInfo = this.#env.addName(src, `#init#${blockId}`, C.Vtype.INTEGER).result;
+        const endValueNameInfo = this.#env.addName(src, `#end#${blockId}`, C.Vtype.INTEGER).result;
+        const stepValueNameInfo = this.#env.addName(src, `#step#${blockId}`, C.Vtype.INTEGER).result;
+        const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
+        if (newVarInfoRes.isErr) {
+            return Result.err(newVarInfoRes.error);
         }
-        else {
-            const varInfo = this.#env.findName(loopCounterName);
-            if (varInfo === undefined) {
-                return syntaxError(`変数${loopCounterNameToken.value}が定義されてません.`, loopCounterNameToken);
-            }
-            if (C.inferVtype(varInfo.vtype, C.Vtype.INTEGER).isErr) {
-                return syntaxError(`ループカウンタの変数には整数型(${Keyword.INTEGER})のみ使用できます.`, loopCounterNameToken);
-            }
-            loopCounter = varInfo;
-        }
+        const loopCounter = newVarInfoRes.result;
         // inner block.
         this.#env.push(src);
         const blockRes = this.#parseCodeBlock();
@@ -2469,7 +2467,7 @@ export class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
         log.dump("src", Token.lineToString, src);
-        this.#env.push(src);
+        this.#env.push(src, true);
         const blockRes = this.#parseCodeBlock();
         if (blockRes.isErr) {
             return Result.err(blockRes.error);
@@ -2626,6 +2624,54 @@ export class Parser {
         const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
         this.#env.addCode(defineUserFuncCode);
         log.debug("PARSED func.");
+        return Result.ok(undefined);
+    }
+    #parseBreak(line) {
+        const breakToken = line.dequeue();
+        const src = [breakToken];
+        log.debug("PARSE break...");
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        const blockSummary = this.#env.findLoopTrapBlock();
+        if (blockSummary === undefined) {
+            return syntaxError("対応するループが見つかりません.", breakToken);
+        }
+        U.assert(blockSummary.blockSrc !== null);
+        log.dump("loopBlockId", blockSummary.blockId);
+        log.dump("loopBlockSrc", Token.lineToString, blockSummary.blockSrc);
+        const code = new C.Break(src, blockSummary.blockId, blockSummary.blockSrc);
+        this.#env.addCode(code);
+        log.dump("src", Token.lineToString, src);
+        log.debug("PARSED break.");
+        return Result.ok(undefined);
+    }
+    #parseContinue(line) {
+        const continueToken = line.dequeue();
+        const src = [continueToken];
+        log.debug("PARSE continue...");
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        const blockSummary = this.#env.findLoopTrapBlock();
+        if (blockSummary === undefined) {
+            return syntaxError("対応するループが見つかりません.", continueToken);
+        }
+        U.assert(blockSummary.blockSrc !== null);
+        log.dump("loopBlockId", blockSummary.blockId);
+        log.dump("loopBlockSrc", Token.lineToString, blockSummary.blockSrc);
+        const code = new C.Continue(src, blockSummary.blockId, blockSummary.blockSrc);
+        this.#env.addCode(code);
+        log.dump("src", Token.lineToString, src);
+        log.debug("PARSED continue.");
         return Result.ok(undefined);
     }
     #parseReturn(line) {

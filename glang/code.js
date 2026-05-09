@@ -429,7 +429,7 @@ export class BinaryOpInfo {
         this.retArg = retArg;
     }
     toString() {
-        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op} priority: ${this.priority}, retArg: ${this.retArg} }`;
+        return `BinOpInfo{ kind: ${BinaryOpKind[this.kind]}, op: ${this.op}, priority: ${this.priority}, retArg: ${this.retArg} }`;
     }
 }
 export var UnaryOpKind;
@@ -687,16 +687,18 @@ export var CodeKind;
     CodeKind[CodeKind["ASSIGN_ARRAY"] = 0] = "ASSIGN_ARRAY";
     CodeKind[CodeKind["ASSIGN_VAR"] = 1] = "ASSIGN_VAR";
     CodeKind[CodeKind["BLOCK"] = 2] = "BLOCK";
-    CodeKind[CodeKind["CALL_STD_FUNC"] = 3] = "CALL_STD_FUNC";
-    CodeKind[CodeKind["CALL_USER_FUNC"] = 4] = "CALL_USER_FUNC";
-    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 5] = "DEFINE_USER_FUNC";
-    CodeKind[CodeKind["DIM"] = 6] = "DIM";
-    CodeKind[CodeKind["DO_WHILE"] = 7] = "DO_WHILE";
-    CodeKind[CodeKind["FOR"] = 8] = "FOR";
-    CodeKind[CodeKind["IF"] = 9] = "IF";
-    CodeKind[CodeKind["LET"] = 10] = "LET";
-    CodeKind[CodeKind["PRINT"] = 11] = "PRINT";
-    CodeKind[CodeKind["RETURN"] = 12] = "RETURN";
+    CodeKind[CodeKind["BREAK"] = 3] = "BREAK";
+    CodeKind[CodeKind["CALL_STD_FUNC"] = 4] = "CALL_STD_FUNC";
+    CodeKind[CodeKind["CALL_USER_FUNC"] = 5] = "CALL_USER_FUNC";
+    CodeKind[CodeKind["CONTINUE"] = 6] = "CONTINUE";
+    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 7] = "DEFINE_USER_FUNC";
+    CodeKind[CodeKind["DIM"] = 8] = "DIM";
+    CodeKind[CodeKind["DO_WHILE"] = 9] = "DO_WHILE";
+    CodeKind[CodeKind["FOR"] = 10] = "FOR";
+    CodeKind[CodeKind["IF"] = 11] = "IF";
+    CodeKind[CodeKind["LET"] = 12] = "LET";
+    CodeKind[CodeKind["PRINT"] = 13] = "PRINT";
+    CodeKind[CodeKind["RETURN"] = 14] = "RETURN";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -865,6 +867,30 @@ export class DoWhile extends Code {
     }
     toString() {
         return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
+    }
+}
+export class Break extends Code {
+    blockId;
+    blockSrc;
+    constructor(src, blockId, blockSrc) {
+        super(CodeKind.BREAK, src);
+        this.blockId = blockId;
+        this.blockSrc = blockSrc;
+    }
+    toString() {
+        return `Break{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
+    }
+}
+export class Continue extends Code {
+    blockId;
+    blockSrc;
+    constructor(src, blockId, blockSrc) {
+        super(CodeKind.BREAK, src);
+        this.blockId = blockId;
+        this.blockSrc = blockSrc;
+    }
+    toString() {
+        return `Continue{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
     }
 }
 export class Return extends Code {
