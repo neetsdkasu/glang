@@ -160,19 +160,22 @@ export class NameInfo {
     readonly varId: number;
     readonly blockId: number;
     readonly blockVarId: number;
+    readonly isLoopCounter: boolean;
     #vtype: Vtype;
     #count: number = 0;
     #written: number = 0;
     #lastWritten: number = 0;
     #unused: number[] = [];
 
-    constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number) {
+    constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number, isLoopCounter?: boolean) {
         this.src = src;
         this.name = name;
         this.#vtype = vtype;
         this.varId = varId;
         this.blockId = blockId;
         this.blockVarId = blockVarId;
+        this.isLoopCounter = isLoopCounter === true;
+        U.assert(!isLoopCounter || vtype === Vtype.INTEGER);
     }
 
     /**
@@ -265,7 +268,7 @@ export class NameInfo {
     }
 
     toString(): string {
-        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length} }`;
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length}, loopCounter: ${this.isLoopCounter} }`;
     }
 }
 
@@ -780,23 +783,33 @@ export class Code {
     }
 }
 
+export enum BlockEndKind {
+    NONE,
+    CONTINUE,
+    BREAK,
+    RETURN,
+    ALL = CONTINUE | BREAK | RETURN
+}
+
 export class BlockInfo {
     readonly src: Readonly<Token[]>;
     readonly id: number;
     readonly parentId: number | undefined;
     readonly varList: Readonly<NameInfo[]>;
     readonly body: Readonly<Code[]>;
+    readonly blockEnd: BlockEndKind;
 
-    constructor(src: Readonly<Token[]>, id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[]) {
+    constructor(src: Readonly<Token[]>, id: number, parentId: number | undefined, varList: Readonly<NameInfo[]>, body: Code[], blockEnd: BlockEndKind) {
         this.src = src;
         this.id = id;
         this.parentId = parentId;
         this.varList = varList;
         this.body = body;
+        this.blockEnd = blockEnd;
     }
 
     toString(): string {
-        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}" }`;
+        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
 }
 

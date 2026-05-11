@@ -166,18 +166,21 @@ export class NameInfo {
     varId;
     blockId;
     blockVarId;
+    isLoopCounter;
     #vtype;
     #count = 0;
     #written = 0;
     #lastWritten = 0;
     #unused = [];
-    constructor(src, name, vtype, varId, blockId, blockVarId) {
+    constructor(src, name, vtype, varId, blockId, blockVarId, isLoopCounter) {
         this.src = src;
         this.name = name;
         this.#vtype = vtype;
         this.varId = varId;
         this.blockId = blockId;
         this.blockVarId = blockVarId;
+        this.isLoopCounter = isLoopCounter === true;
+        U.assert(!isLoopCounter || vtype === Vtype.INTEGER);
     }
     /**
      * 変数の読み込み回数.
@@ -260,7 +263,7 @@ export class NameInfo {
         return (this.vtype & vtype) !== 0;
     }
     toString() {
-        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length} }`;
+        return `NameInfo{ src: "${Token.lineToString(this.src)}", name: ${this.name}, vtype: ${Vtype[this.vtype]}, varId: ${this.varId}, blockId: ${this.blockId}, blockVarId: ${this.blockVarId}, count: ${this.#count}, written: ${this.written}, unused: ${this.unused.length}, loopCounter: ${this.isLoopCounter} }`;
     }
 }
 export class RetArg {
@@ -708,21 +711,31 @@ export class Code {
         this.src = src;
     }
 }
+export var BlockEndKind;
+(function (BlockEndKind) {
+    BlockEndKind[BlockEndKind["NONE"] = 0] = "NONE";
+    BlockEndKind[BlockEndKind["CONTINUE"] = 1] = "CONTINUE";
+    BlockEndKind[BlockEndKind["BREAK"] = 2] = "BREAK";
+    BlockEndKind[BlockEndKind["RETURN"] = 3] = "RETURN";
+    BlockEndKind[BlockEndKind["ALL"] = 3] = "ALL";
+})(BlockEndKind || (BlockEndKind = {}));
 export class BlockInfo {
     src;
     id;
     parentId;
     varList;
     body;
-    constructor(src, id, parentId, varList, body) {
+    blockEnd;
+    constructor(src, id, parentId, varList, body, blockEnd) {
         this.src = src;
         this.id = id;
         this.parentId = parentId;
         this.varList = varList;
         this.body = body;
+        this.blockEnd = blockEnd;
     }
     toString() {
-        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}" }`;
+        return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
 }
 export class Block extends Code {

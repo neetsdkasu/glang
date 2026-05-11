@@ -390,8 +390,9 @@ class NameMap {
     has(name) {
         return this.#map.has(name);
     }
-    set(src, name, vtype, varId) {
-        const nameInfo = new C.NameInfo(src, name, vtype, varId, this.blockId, this.#newBlockVarId());
+    set(src, name, vtype, varId, isLoopCounter) {
+        U.assert(!isLoopCounter || vtype === C.Vtype.INTEGER);
+        const nameInfo = new C.NameInfo(src, name, vtype, varId, this.blockId, this.#newBlockVarId(), isLoopCounter ?? false);
         this.#map.set(name, nameInfo);
         return nameInfo;
     }
@@ -410,6 +411,7 @@ class Env {
     #userFuncMap = new Map(); // ユーザ関数の情報を管理します.
     #uniqueNameMap = new Map(); // ユーザ関数名と同名の変数が関数定義前に指定されていることを検出する目的に使用されます.
     #definitionUserFunc = null;
+    #blockEndStack = []; // ブロックのコードリスト内でbreak/continue/returnの出現情報を保持する.それ以降のコードをデッドコードにするための情報.
     constructor() { }
     reset() {
         this.#totalBlockCount = 0;
@@ -419,6 +421,7 @@ class Env {
         this.#userFuncMap.clear();
         this.#uniqueNameMap.clear();
         this.#definitionUserFunc = null;
+        this.#blockEndStack = [];
     }
     get isToplevel() {
         return this.#nameMapStack.length === 1;
@@ -449,6 +452,22 @@ class Env {
         U.assert(this.#nameMapStack.length > 0);
         return this.#nameMapStack[0].has(name);
     }
+    get isBlockEnd() {
+        return this.#blockEndStack.at(-1) !== C.BlockEndKind.NONE;
+    }
+    /**
+     * ブロックのコードリスト内のbreak/continue/returnの出現を記録する.
+     * break/continue/returnの処理側で呼び出す.Env内からは呼び出さない.
+     */
+    setBlockEnd(kind) {
+        log.debug("set block end");
+        log.dump("kind", C.BlockEndKind[kind]);
+        U.assert(!this.isToplevel);
+        U.assert(this.#codeBodyStack.at(-1).length > 0);
+        const n = this.#blockEndStack.length;
+        U.assert(this.#blockEndStack[n - 1] === C.BlockEndKind.NONE);
+        this.#blockEndStack[n - 1] = kind;
+    }
     /**
      * 変数名などを束縛するブロックをブロックネスト最深部に追加します.
      *
@@ -461,6 +480,7 @@ class Env {
         const blockId = this.#newBlockId();
         this.#nameMapStack.push(new NameMap(blockId, blockSrc, isLoopTrap ?? false));
         this.#codeBodyStack.push([]);
+        this.#blockEndStack.push(C.BlockEndKind.NONE);
         return blockId;
     }
     /**
@@ -472,13 +492,15 @@ class Env {
         log.debug("drop block");
         U.assert(this.#nameMapStack.length > 0);
         U.assert(this.#codeBodyStack.length > 0);
+        U.assert(this.#blockEndStack.length > 0);
         const map = this.#nameMapStack.pop();
         const src = map.blockSrc ?? [];
         const id = map.blockId;
         const parentId = this.#nameMapStack.at(-1)?.blockId;
         const varList = map.getNameList();
         const body = this.#codeBodyStack.pop();
-        const blockInfo = new C.BlockInfo(src, id, parentId, varList, body);
+        const blockEnd = this.#blockEndStack.pop();
+        const blockInfo = new C.BlockInfo(src, id, parentId, varList, body, blockEnd);
         log.dump("block src", Token.lineToString, src);
         if (this.isToplevel) {
             this.#definitionUserFunc = null;
@@ -494,7 +516,8 @@ class Env {
      * @param vtype
      * @returns
      */
-    addName(src, name, vtype) {
+    addName(src, name, vtype, isLoopCounter) {
+        U.assert(!isLoopCounter || vtype === C.Vtype.INTEGER);
         log.debug("add name");
         name = name.toLowerCase();
         if (ReservedWordSet.has(name)) {
@@ -519,7 +542,7 @@ class Env {
             this.#uniqueNameMap.set(name, src);
         }
         const current = this.#nameMapStack.at(-1);
-        const nameInfo = current.set(src, name, vtype, this.#newVarId());
+        const nameInfo = current.set(src, name, vtype, this.#newVarId(), isLoopCounter);
         log.dump("added name", name);
         return Result.ok(nameInfo);
     }
@@ -561,7 +584,11 @@ class Env {
      * @param code
      */
     addCode(code) {
+        if (this.#blockEndStack.at(-1) !== C.BlockEndKind.NONE) {
+            return false;
+        }
         this.#codeBodyStack.at(-1).push(code);
+        return true;
     }
     /**
      * 指定した名前のユーザ関数に関する情報を取得します.
@@ -807,6 +834,11 @@ export class Parser {
                 case Keyword.END:
                     log.debug("PARSED block.");
                     return Result.ok({ lastLine: line });
+            }
+            if (this.#env.isBlockEnd) {
+                return syntaxError("デッドコードです.", cmdToken);
+            }
+            switch (cmd) {
                 case Keyword.SUB:
                 case Keyword.FUNC:
                     return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
@@ -1856,6 +1888,9 @@ export class Parser {
         U.assert(nameInfo !== undefined);
         U.assert(nameInfo.hasAnyType(C.Vtype.PRIMITIVE_TYPE));
         U.assert(!nameInfo.hasAnyType(C.Vtype.NON_PRIMITIVE));
+        if (nameInfo.isLoopCounter) {
+            return syntaxError("ループカウンタへの代入は不正です.", nameToken);
+        }
         const assignOpToken = line.dequeue();
         src.push(assignOpToken);
         const op = AssignOpMap.get(assignOpToken.value);
@@ -2062,7 +2097,7 @@ export class Parser {
         const initValueNameInfo = this.#env.addName(src, `#init#${blockId}`, C.Vtype.INTEGER).result;
         const endValueNameInfo = this.#env.addName(src, `#end#${blockId}`, C.Vtype.INTEGER).result;
         const stepValueNameInfo = this.#env.addName(src, `#step#${blockId}`, C.Vtype.INTEGER).result;
-        const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER);
+        const newVarInfoRes = this.#env.addName(src, loopCounterName, C.Vtype.INTEGER, true);
         if (newVarInfoRes.isErr) {
             return Result.err(newVarInfoRes.error);
         }
@@ -2093,12 +2128,20 @@ export class Parser {
         // inner block を C.Code にする必要があるのかは要検討.
         const innerCode = new C.Block(innerBlockInfo);
         this.#env.addCode(innerCode);
+        if (innerBlockInfo.blockEnd & C.BlockEndKind.RETURN) {
+            // 条件次第ではループ内を1回も実行しない場合がありend for以降はデッドコードにはならない.
+            // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
+        }
         const outerBlockInfo = this.#env.pop();
         const initValue = { nameInfo: initValueNameInfo, expr: initValueExpr };
         const endValue = { nameInfo: endValueNameInfo, expr: endValueExpr };
         const stepValue = { nameInfo: stepValueNameInfo, expr: stepValueExpr };
         const code = new C.For(src, loopCounter, outerBlockInfo, initValue, endValue, stepValue);
         this.#env.addCode(code);
+        if (outerBlockInfo.blockEnd & C.BlockEndKind.RETURN) {
+            // 条件次第ではループ内を1回も実行しない場合がありend for以降はデッドコードにはならない.
+            // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
+        }
         log.debug("PARSED for.");
         return Result.ok(undefined);
     }
@@ -2208,6 +2251,20 @@ export class Parser {
         }
         const code = new C.If(srcList, testExprList, blockInfoList);
         this.#env.addCode(code);
+        if (testExprList.length !== blockInfoList.length) {
+            // ELSE 節 が存在するとき、end if以降がデッドコードになるかを判定.
+            // すべての分岐で何らかの脱出コード(break/continue/return)で終わっている場合にend if以降はデッドコードになる.
+            let kind = C.BlockEndKind.ALL;
+            for (const bi of blockInfoList) {
+                kind &= bi.blockEnd;
+            }
+            if (kind & C.BlockEndKind.ALL) {
+                for (const bi of blockInfoList) {
+                    kind |= bi.blockEnd;
+                }
+                this.#env.setBlockEnd(kind & C.BlockEndKind.ALL);
+            }
+        }
         log.debug("PARSED if.");
         return Result.ok(undefined);
     }
@@ -2491,6 +2548,10 @@ export class Parser {
         const blockInfo = this.#env.pop();
         const code = new C.DoWhile(src, testExpr, blockInfo);
         this.#env.addCode(code);
+        if (blockInfo.blockEnd & C.BlockEndKind.RETURN) {
+            // 条件次第ではループ内が1回も実行されない場合がありend do以降はデッドコードにはならない.
+            // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
+        }
         log.debug("PARSED do.");
         return Result.ok(undefined);
     }
@@ -2646,6 +2707,7 @@ export class Parser {
         log.dump("loopBlockSrc", Token.lineToString, blockSummary.blockSrc);
         const code = new C.Break(src, blockSummary.blockId, blockSummary.blockSrc);
         this.#env.addCode(code);
+        this.#env.setBlockEnd(C.BlockEndKind.BREAK);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED break.");
         return Result.ok(undefined);
@@ -2670,6 +2732,7 @@ export class Parser {
         log.dump("loopBlockSrc", Token.lineToString, blockSummary.blockSrc);
         const code = new C.Continue(src, blockSummary.blockId, blockSummary.blockSrc);
         this.#env.addCode(code);
+        this.#env.setBlockEnd(C.BlockEndKind.CONTINUE);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED continue.");
         return Result.ok(undefined);
@@ -2690,6 +2753,7 @@ export class Parser {
             }
             const subReturnCode = new C.Return(src, funcInfo);
             this.#env.addCode(subReturnCode);
+            this.#env.setBlockEnd(C.BlockEndKind.RETURN);
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED return.");
             return Result.ok(undefined);
