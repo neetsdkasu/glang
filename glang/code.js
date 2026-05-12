@@ -49,6 +49,7 @@ export var Vtype;
     Vtype[Vtype["INFER_CONCAT"] = 2076] = "INFER_CONCAT";
     Vtype[Vtype["INFER_ARRAY"] = 2080] = "INFER_ARRAY";
     Vtype[Vtype["INFER_REFERENCE"] = 3072] = "INFER_REFERENCE";
+    Vtype[Vtype["INFER_CALLABLE"] = 2816] = "INFER_CALLABLE";
     Vtype[Vtype["INFER_ALL"] = 3902] = "INFER_ALL";
     Vtype[Vtype["UNKNOWN"] = 3903] = "UNKNOWN";
 })(Vtype || (Vtype = {}));

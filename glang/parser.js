@@ -410,7 +410,7 @@ class Env {
     #totalVarCount = 0; // ユニークな変数IDを生成するために使用します.
     #userFuncMap = new Map(); // ユーザ関数の情報を管理します.
     #uniqueNameMap = new Map(); // ユーザ関数名と同名の変数が関数定義前に指定されていることを検出する目的に使用されます.
-    #definitionUserFunc = null;
+    #definitionUserFunc = null; // returnの型チェック用
     #blockEndStack = []; // ブロックのコードリスト内でbreak/continue/returnの出現情報を保持する.それ以降のコードをデッドコードにするための情報.
     constructor() { }
     reset() {
@@ -660,11 +660,18 @@ class Env {
         let varId;
         const varInfo = this.#nameMapStack.at(0)?.get(name);
         if (varInfo) {
-            U.assert(varInfo.vtype === C.Vtype.SUB || varInfo.vtype === C.Vtype.FUNC);
+            U.assert(C.inferVtype(varInfo.vtype, C.Vtype.INFER_CALLABLE).isOk);
             varId = varInfo.varId;
+            if (definition) {
+                const vtype = retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
+                this.#nameMapStack.at(0).set(src, name, vtype, varId);
+            }
         }
         else {
-            const vtype = retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
+            U.assert(retArg.ret === C.Vtype.UNKNOWN || retArg.ret === C.Vtype.VOID ||
+                (retArg.ret & C.Vtype.UNKNOWN) === (retArg.ret & C.Vtype.INFER_PRIMITIVE));
+            const vtype = retArg.ret === C.Vtype.UNKNOWN ? C.Vtype.INFER_CALLABLE
+                : retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
             varId = this.#newVarId();
             this.#nameMapStack.at(0).set(src, name, vtype, varId);
         }
@@ -2755,10 +2762,32 @@ export class Parser {
             this.#env.addCode(subReturnCode);
             this.#env.setBlockEnd(C.BlockEndKind.RETURN);
             log.dump("src", Token.lineToString, src);
-            log.debug("PARSED return.");
+            log.debug("PARSED return. [sub]");
             return Result.ok(undefined);
         }
-        throw new Unimplemented(line.front);
+        const returnValueToken = line.front;
+        const returnValueRes = this.#parseExprTokens(line, src);
+        if (returnValueRes.isErr) {
+            return Result.err(returnValueRes.error);
+        }
+        const returnValue = returnValueRes.result;
+        log.dump("returnValue", returnValue);
+        if (C.inferVtype(returnValue.vtype, retType).isErr) {
+            return syntaxError("戻り値の型が不一致です.", returnToken);
+        }
+        const funcEolToken = line.dequeue();
+        if (funcEolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", funcEolToken);
+        }
+        else if (funcEolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", funcEolToken);
+        }
+        log.dump("src", Token.lineToString, src);
+        const funcReturnCode = new C.Return(src, funcInfo, returnValue);
+        this.#env.addCode(funcReturnCode);
+        this.#env.setBlockEnd(C.BlockEndKind.RETURN);
+        log.debug("PARSED return. [func]");
+        return Result.ok(undefined);
     }
 }
 export default Parser;
