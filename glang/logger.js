@@ -30,8 +30,8 @@ export class Logger {
             if (typeof obj === "function") {
                 obj = obj(...args);
             }
-            else if (args) {
-                obj = `[ ${obj} ]: ${[...args].map(e => `${e}`).join(", ")}`;
+            else if (args.length > 0) {
+                obj = `[[[ ${obj}, ${[...args].map(e => `${e}`).join(", ")} ]]]`;
             }
             console.log(`[${this.name}]v: ${msg}: ${obj}`);
         }

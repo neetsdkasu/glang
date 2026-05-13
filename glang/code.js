@@ -183,6 +183,12 @@ export class NameInfo {
         this.isLoopCounter = isLoopCounter === true;
         U.assert(!isLoopCounter || vtype === Vtype.INTEGER);
     }
+    suck(garbage) {
+        this.#count = garbage.#count;
+        this.#written = garbage.#written;
+        this.#lastWritten = garbage.#lastWritten;
+        this.#unused = [...garbage.#unused];
+    }
     /**
      * 変数の読み込み回数.
      */

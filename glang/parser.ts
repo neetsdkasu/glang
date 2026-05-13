@@ -715,7 +715,7 @@ class Env {
             varId = varInfo.varId;
             if (definition) {
                 const vtype = retArg.ret === C.Vtype.VOID ? C.Vtype.SUB : C.Vtype.FUNC;
-                this.#nameMapStack.at(0)!.set(src, name, vtype, varId);
+                this.#nameMapStack.at(0)!.set(src, name, vtype, varId).suck(varInfo);
             }
         } else {
             U.assert(retArg.ret === C.Vtype.UNKNOWN || retArg.ret === C.Vtype.VOID ||
@@ -1824,7 +1824,7 @@ export class Parser {
             if (rrbToken.value !== Symbols.ARGLIST_END) {
                 return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken);
             }
-            this.#env.findName("name")!.incrementCounter();
+            this.#env.findName(name)!.incrementCounter();
             return Result.ok(new C.ExprUserFunc(nameToken, funcInfo, []));
         }
 
@@ -2760,6 +2760,7 @@ export class Parser {
                 }
                 const userFuncNoArgCode = new C.CallUserFunc(src, userFunc, []);
                 this.#env.addCode(userFuncNoArgCode);
+                this.#env.findName(funcName)!.incrementCounter();
                 log.dump("src", Token.lineToString, src);
                 log.debug("PARSED call. [no arg user func]");
                 return Result.ok(undefined);
@@ -2804,6 +2805,8 @@ export class Parser {
 
             const userFuncCode = new C.CallUserFunc(src, userFunc, userFuncArgs);
             this.#env.addCode(userFuncCode);
+
+            this.#env.findName(funcName)!.incrementCounter();
             
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [user func]");
@@ -2812,6 +2815,33 @@ export class Parser {
 
         const args: C.Expr[] = [];
         const argTypes: C.Vtype[] = [];
+
+        if (line.front!.value === Symbols.ARGLIST_END) {
+            // no arg user func
+            src.push(line.dequeue()!);
+            const noArgEolToken = line.dequeue()!;
+            if (noArgEolToken.tokenType === TokenType.EOF) {
+                return syntaxError("ここでソースコードの末尾は不正です.", noArgEolToken);
+            } else if (noArgEolToken.tokenType !== TokenType.EOL) {
+                return syntaxError("不正な文字(あるいは文字列)です.", noArgEolToken);
+            }
+
+            const noArgFuncInfoRes = this.#env.addUserFunc(src, funcName, new C.RetArg(C.Vtype.UNKNOWN, []), false);
+            if (noArgFuncInfoRes.isErr) {
+                return Result.err(noArgFuncInfoRes.error);
+            }
+            const noArgFuncInfo = noArgFuncInfoRes.result;
+
+            const noArgCode = new C.CallUserFunc(src, noArgFuncInfo, []);
+
+            this.#env.addCode(noArgCode);
+            this.#env.findName(funcName)!.incrementCounter();
+
+            log.dump("src", Token.lineToString, src);
+            log.debug("PARSED call. [unknown no arg user func]");
+
+            return Result.ok(undefined);
+        }
 
         while (line.len) {
             const token = line.front;
@@ -2856,6 +2886,8 @@ export class Parser {
         const code = new C.CallUserFunc(src, funcInfo, args);
 
         this.#env.addCode(code);
+
+        this.#env.findName(funcName)!.incrementCounter();
 
         log.dump("src", Token.lineToString, src);
 
