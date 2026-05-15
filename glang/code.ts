@@ -8,6 +8,8 @@ import { Token } from "scanner";
 import { Result } from "utils";
 import * as U from "utils";
 
+export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
+
 export enum Vtype {
     NONE            = 0,
     VOID            = 1 << 0,
@@ -167,6 +169,7 @@ export class NameInfo {
     #written: number = 0;
     #lastWritten: number = 0;
     #unused: number[] = [];
+    #typedSrc: Token | Readonly<Token[]> | undefined;
 
     constructor(src: Token[], name: string, vtype: Vtype, varId: number, blockId: number, blockVarId: number, isLoopCounter?: boolean) {
         this.src = src;
@@ -177,6 +180,7 @@ export class NameInfo {
         this.blockVarId = blockVarId;
         this.isLoopCounter = isLoopCounter === true;
         U.assert(!isLoopCounter || vtype === Vtype.INTEGER);
+        this.#typedSrc = (vtype & Vtype.INFER) !== Vtype.INFER ? src : undefined;
     }
 
     suck(garbage: NameInfo): void {
@@ -224,11 +228,15 @@ export class NameInfo {
         }
     }
 
+    get typedSrc(): Token | Readonly<Token[]> | undefined {
+        return this.#typedSrc;
+    }
+
     /**
      * 変数の型にINFERが含まれている場合で型を特定できるときに呼び出す.
      * @param vtype 特定した型.
      */
-    updateType(vtype: Vtype): void {
+    updateType(vtype: Vtype, typedSrc: Token | Readonly<Token[]>): void {
         const res = inferVtype(vtype, this.#vtype);
         if (res.isErr) {
             log.dump("vtype", vtype);
@@ -237,6 +245,7 @@ export class NameInfo {
             throw new Error("BUG");
         }
         this.#vtype = res.result;
+        this.#typedSrc = typedSrc;
     }
 
     /**
@@ -330,15 +339,60 @@ export class RetArg {
         return this.args.length === 0;
     }
 
+    /**
+     * INFER属性が付いてるものは全部共通の型になることを前提に型検査&型決定を行う.
+     * @param ret 
+     * @param args 
+     * @returns 
+     */
+    inferTypes(ret: Vtype, ...args: Vtype[]): Result<{ ret: Vtype; args: Vtype[]; }, string> {
+        U.assert(args.length === this.args.length);
+        const retRes = inferVtype(this.ret, ret);
+        if (retRes.isErr) {
+            return Result.err(`戻り値の型が一致しません. [ ${retRes.error} ]`);
+        }
+        ret = retRes.result;
+        let vtype: Vtype | undefined = (this.ret & Vtype.INFER) ? ret : undefined;
+        for (let i = 0; i < args.length; i++) {
+            const argRes = inferVtype(args[i], this.args[i]);
+            if (argRes.isErr) {
+                return Result.err(`${i+1}番目の引数の型が一致しません. [ ${argRes.error} ]`);
+            }
+            args[i] = argRes.result;
+            if (this.args[i] & Vtype.INFER) {
+                if (vtype !== undefined) {
+                    const res = inferVtype(vtype, args[i]);
+                    if (res.isErr) {
+                        return Result.err(`${i+1}番目の引数の型が一致しません. [ ${res.error} ]`);
+                    }
+                    vtype = res.result;
+                } else {
+                    vtype = args[i];
+                }
+            }
+        }
+        if (vtype !== undefined) {
+            if (this.ret & Vtype.INFER) {
+                ret = vtype;
+            }
+            for (let i = 0; i < args.length; i++) {
+                if (this.args[i] & Vtype.INFER) {
+                    args[i] = vtype;
+                }
+            }
+        }
+        return Result.ok({ ret: ret, args: args });
+    }
+
     toString(): string {
         return `RetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
     }
 }
 
 export enum SideEffect {
-    NONE,
-    WRITE_GLOBAL_VAR,
-    ACCESS_IO,
+    NONE = 0,
+    WRITE_GLOBAL_VAR = 1,
+    ACCESS_IO = 2,
     ALL = WRITE_GLOBAL_VAR | ACCESS_IO
 }
 
@@ -532,7 +586,7 @@ export enum ExprKind {
     BRACKET
 }
 
-export class Expr {
+export abstract class Expr {
     readonly kind: ExprKind;
     readonly vtype: Vtype;
     readonly src: Token;
@@ -542,6 +596,8 @@ export class Expr {
         this.vtype = vtype;
         this.src = src;
     }
+
+    abstract rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr, sideEffect: SideEffect }, RebuildError>;
 }
 
 export class ExprLitInt extends Expr {
@@ -552,6 +608,10 @@ export class ExprLitInt extends Expr {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
         this.unaryOp = unaryOp;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });        
     }
 
     toString(): string {
@@ -573,6 +633,10 @@ export class ExprLitFloat extends Expr {
         this.unaryOp = unaryOp;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });        
+    }
+
     toString(): string {
         if (this.unaryOp) {
             return `LitFloat{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
@@ -592,6 +656,10 @@ export class ExprLitBoolean extends Expr {
         this.unaryOp = unaryOp;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });        
+    }
+
     toString(): string {
         if (this.unaryOp) {
             return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
@@ -609,6 +677,10 @@ export class ExprLitString extends Expr {
         this.value = value;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });        
+    }
+
     toString(): string {
         return `LitString{ value: "${this.value.replaceAll('"', '""')}" }`;
     }
@@ -622,6 +694,20 @@ export class ExprUnaryOp extends Expr {
         super(ExprKind.UNARY_OP, vtype, src);
         this.op = op;
         this.term = term;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const res = this.term.rebuild(findUserFunc);
+        if (res.isErr) {
+            return res;
+        }
+        const newTerm = res.result.expr;
+        const vtypeRes = inferVtype(this.op.vtype, newTerm.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: vtypeRes.error, src: this.src });
+        }
+        const newExpr = new ExprUnaryOp(this.src, vtypeRes.result, this.op, newTerm);
+        return Result.ok({ expr: newExpr, sideEffect: res.result.sideEffect });
     }
 
     toString(): string {
@@ -641,6 +727,27 @@ export class ExprBinOp extends Expr {
         this.termR = termR;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const resL = this.termL.rebuild(findUserFunc);
+        if (resL.isErr) {
+            return resL;
+        }
+        const newTermL = resL.result.expr;
+        const resR = this.termR.rebuild(findUserFunc);
+        if (resR.isErr) {
+            return resR;
+        }
+        const newTermR = resR.result.expr;
+        const vtypeRes = this.op.retArg.inferTypes(this.op.retArg.ret, newTermL.vtype, newTermR.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: vtypeRes.error, src: this.src });
+        }
+        const retVtype = vtypeRes.result.ret;
+        const newExpr = new ExprBinOp(this.src, retVtype, this.op, newTermL, newTermR);
+        const sideEffect = resL.result.sideEffect | resR.result.sideEffect;
+        return Result.ok({ expr: newExpr, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `BinanyOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
     }
@@ -648,12 +755,21 @@ export class ExprBinOp extends Expr {
 
 export class ExprBracket extends Expr {
     readonly expr: Expr;
-    readonly rightBracket: Token;
+    readonly rightBracket: Token; // leftBracketはsrcのほう.
 
     constructor(src: Token, expr: Expr, rightBracket: Token) {
         super(ExprKind.BRACKET, expr.vtype, src);
         this.expr = expr;
         this.rightBracket = rightBracket;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return res;
+        }
+        const newExpr = new ExprBracket(this.src, res.result.expr, this.rightBracket);
+        return Result.ok({ expr: newExpr, sideEffect: res.result.sideEffect });
     }
 
     toString(): string {
@@ -671,6 +787,29 @@ export class ExprStdFunc extends Expr {
         this.args = args;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const retType = res.result.ret;
+        const expr = new ExprStdFunc(this.src, retType, this.funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -686,6 +825,29 @@ export class ExprMemberStdFunc extends Expr {
         this.args = args;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const retType = res.result.ret;
+        const expr = new ExprMemberStdFunc(this.src, retType, this.funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -699,6 +861,29 @@ export class ExprUserFunc extends Expr {
         super(ExprKind.USER_FUNC, funcInfo.retArg.ret, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const expr = new ExprUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -717,6 +902,29 @@ export class ExprMemberUserFunc extends Expr {
         this.args = args;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const expr = new ExprMemberUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `MemberUserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -728,6 +936,10 @@ export class ExprVarVal extends Expr {
     constructor(src: Token, nameInfo: NameInfo) {
         super(ExprKind.VARIABLE, nameInfo.vtype, src);
         this.nameInfo = nameInfo;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
     }
 
     toString(): string {
@@ -745,6 +957,25 @@ export class ExprArrayVarVal extends Expr {
         this.indexes = indexes;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        const newIndexes: Expr[] = [];
+        let sideEffect = SideEffect.NONE;
+        for (let i = 0; i < this.indexes.length; i++) {
+            const indexRes = this.indexes[i].rebuild(findUserFunc);
+            if (indexRes.isErr) {
+                return indexRes;
+            }
+            sideEffect |= indexRes.result.sideEffect;
+            const index = indexRes.result.expr;
+            if (index.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: `${i+1}番目の添え字の型が不正です.`, src: this.src });
+            }
+            newIndexes.push(index);
+        }
+        const expr = new ExprArrayVarVal(this.src, this.nameInfo, newIndexes);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `ArrayVarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ") } )) }`;
     }
@@ -756,6 +987,10 @@ export class ExprArrayRef extends Expr {
     constructor(src: Token, nameInfo: NameInfo) {
         super(ExprKind.VARIABLE, nameInfo.vtype, src);
         this.nameInfo = nameInfo;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
     }
 
     toString(): string {
@@ -781,7 +1016,7 @@ export enum CodeKind {
     RETURN
 }
 
-export class Code {
+export abstract class Code {
     readonly kind: CodeKind;
     readonly src: Readonly<Token[]>;
 
@@ -789,6 +1024,8 @@ export class Code {
         this.kind = kind;
         this.src = src;
     }
+
+    abstract rebuild(findUserFunc: (name: string) => FuncInfo): Result<{code: Code; sideEffect: SideEffect; },RebuildError>;
 }
 
 export enum BlockEndKind {
@@ -816,6 +1053,21 @@ export class BlockInfo {
         this.blockEnd = blockEnd;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ blockInfo: BlockInfo; sideEffect: SideEffect; }, RebuildError> {
+        const body: Code[] = [];
+        let sideEffect = SideEffect.NONE;
+        for (const c of this.body) {
+            const res = c.rebuild(findUserFunc);
+            if (res.isErr) {
+                return Result.err(res.error);
+            }            
+            body.push(res.result.code);
+            sideEffect |= res.result.sideEffect;
+        }
+        const blockInfo = new BlockInfo(this.src, this.id, this.parentId, this.varList, body, this.blockEnd);
+        return Result.ok({ blockInfo: blockInfo, sideEffect: sideEffect });
+    }
+
     toString(): string {
         return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
@@ -827,6 +1079,15 @@ export class Block extends Code {
     constructor(blockInfo: BlockInfo) {
         super(CodeKind.BLOCK, blockInfo.src);
         this.blockInfo = blockInfo;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code, sideEffect: SideEffect }, RebuildError> {
+        const res = this.blockInfo.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const code = new Block(res.result.blockInfo);
+        return Result.ok({ code: code, sideEffect: res.result.sideEffect });
     }
 
     toString(): string {
@@ -844,6 +1105,18 @@ export class DefineUserFunc extends Code {
         this.blockInfo = blockInfo;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const res = this.blockInfo.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        if (res.result.sideEffect !== SideEffect.NONE) {
+            this.funcInfo.addSideEffect(res.result.sideEffect);
+        }
+        const code = new DefineUserFunc(this.funcInfo, res.result.blockInfo);
+        return Result.ok({ code: code, sideEffect: SideEffect.NONE });
+    }
+
     toString(): string {
         return `DefineUserFunc{ funcInfo: ${this.funcInfo}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
     }
@@ -859,6 +1132,10 @@ export class Dim extends Code {
         this.dims = dims;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
+
     toString(): string {
         return `Dim{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.nameInfo.vtype]}, dims: [ ${this.dims} ] }`;
     }
@@ -868,10 +1145,31 @@ export class Let extends Code {
     readonly nameInfo: NameInfo;
     readonly expr: Expr;
 
-    constructor(src: Token[], nameInfo: NameInfo, expr: Expr) {
+    constructor(src: Readonly<Token[]>, nameInfo: NameInfo, expr: Expr) {
         super(CodeKind.LET, src);
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const newExpr = res.result.expr;
+        const vtypeRes = inferVtype(this.nameInfo.vtype, newExpr.vtype);
+        if (vtypeRes.isErr) {
+            // エラーメッセージが意味不明だが.
+            // letの位置では変数の型が確定してない状況で、変数を参照する式で変数の型の推論で型決定されてしまったケースに該当.
+            // 初期値の式内に型が特定されていない変数の参照や戻り値の型が特定されてないユーザ関数の呼び出しで生じる.
+            // TODO: もっとマシなエラーメッセージを考える.
+            return Result.err({ msg: "変数の型と一致しません.", src: this.nameInfo.typedSrc ?? this.src });
+        }
+        if (this.nameInfo.hasType(Vtype.INFER)) {
+            this.nameInfo.updateType(vtypeRes.result, this.src);
+        }
+        const newCode = new Let(this.src, this.nameInfo, newExpr);
+        return Result.ok({ code: newCode, sideEffect: res.result.sideEffect });
     }
 
     toString(): string {
@@ -884,11 +1182,28 @@ export class AssignVar extends Code {
     readonly nameInfo: NameInfo;
     readonly expr: Expr;
 
-    constructor(src: Token[], op: AssignOpInfo, nameInfo: NameInfo, expr: Expr) {
+    constructor(src: Readonly<Token[]>, op: AssignOpInfo, nameInfo: NameInfo, expr: Expr) {
         super(CodeKind.ASSIGN_VAR, src);
         this.op = op;
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const vtypeRes = inferVtype(this.op.vtype, this.nameInfo.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: `変数の型と代入演算子の型が一致しません. [ ${vtypeRes.error} ]`, src: this.src });
+        }
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const newExpr = res.result.expr;
+        if (this.nameInfo.vtype !== newExpr.vtype) {
+            return Result.err({ msg: "代入の型が不正です.", src: this.src });
+        }
+        const newCode = new AssignVar(this.src, this.op, this.nameInfo, newExpr);
+        return Result.ok({ code: newCode, sideEffect: res.result.sideEffect });
     }
 
     toString(): string {
@@ -902,12 +1217,40 @@ export class AssignArray extends Code {
     readonly indexes: Readonly<Expr[]>;
     readonly expr: Expr;
 
-    constructor(src: Token[], op: AssignOpInfo, nameInfo: NameInfo, indexes: Expr[], expr: Expr) {
+    constructor(src: Readonly<Token[]>, op: AssignOpInfo, nameInfo: NameInfo, indexes: Expr[], expr: Expr) {
         super(CodeKind.ASSIGN_ARRAY, src);
         this.op = op;
         this.nameInfo = nameInfo;
         this.indexes = indexes;
         this.expr = expr;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const newIndexes: Expr[] = [];
+        let sideEffect = SideEffect.NONE;
+        for (let i = 0; i < this.indexes.length; i++) {
+            const indexRes = this.indexes[i].rebuild(findUserFunc);
+            if (indexRes.isErr) {
+                return Result.err(indexRes.error);
+            }
+            sideEffect |= indexRes.result.sideEffect;
+            const index = indexRes.result.expr;
+            if (index.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: `${i+1}番目の添え字の型が不正です.`, src: this.src });
+            }
+            newIndexes.push(index);
+        }
+        const newExprRes = this.expr.rebuild(findUserFunc);
+        if (newExprRes.isErr) {
+            return Result.err(newExprRes.error);
+        }
+        sideEffect |= newExprRes.result.sideEffect;
+        const newExpr = newExprRes.result.expr;
+        if ((this.nameInfo.vtype & Vtype.PRIMITIVE_TYPE) !== newExpr.vtype) {
+            return Result.err({ msg: "代入の型が不正です.", src: this.src });
+        }
+        const newCode = new AssignArray(this.src, this.op, this.nameInfo, newIndexes, newExpr);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -916,15 +1259,43 @@ export class AssignArray extends Code {
 }
 
 export class If extends Code {
-    readonly srcList: Readonly<Token[][]>;
+    readonly srcList: Readonly<Readonly<Token[]>[]>;
     readonly testExprList: Readonly<Expr[]>;
     readonly blockInfoList: Readonly<BlockInfo[]>;
 
-    constructor(srcList: Token[][], testExprList: Expr[], blockInfoList: BlockInfo[]) {
+    constructor(srcList: Readonly<Readonly<Token[]>[]>, testExprList: Expr[], blockInfoList: BlockInfo[]) {
         super(CodeKind.IF, srcList[0]);
         this.srcList = srcList;
         this.testExprList = testExprList;
         this.blockInfoList = blockInfoList;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        let sideEffect = SideEffect.NONE;
+        const newTestExprList: Expr[] = [];
+        const newBlockInfoList: BlockInfo[] = [];
+        for (let i = 0; i < this.testExprList.length; i++) {
+            const testExprRes = this.testExprList[i].rebuild(findUserFunc);
+            if (testExprRes.isErr) {
+                return Result.err(testExprRes.error);
+            }
+            sideEffect |= testExprRes.result.sideEffect;
+            const testExpr = testExprRes.result.expr;
+            if (testExpr.vtype !== Vtype.BOOLEAN) {
+                return Result.err({ msg: "条件式の型が不正です.", src: this.srcList[i] });
+            }
+            newTestExprList.push(testExpr);
+        }
+        for (let i = 0; i < this.blockInfoList.length; i++) {
+            const blockInfoRes = this.blockInfoList[i].rebuild(findUserFunc);
+            if (blockInfoRes.isErr) {
+                return Result.err(blockInfoRes.error);
+            }
+            sideEffect |= blockInfoRes.result.sideEffect;
+            newBlockInfoList.push(blockInfoRes.result.blockInfo);
+        }
+        const newCode = new If(this.srcList, newTestExprList, newBlockInfoList);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -936,10 +1307,32 @@ export class CallStdFunc extends Code {
     readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
 
-    constructor(src: Token[], funcInfo: StdFuncInfo, args: Expr[]) {
+    constructor(src: Readonly<Token[]>, funcInfo: StdFuncInfo, args: Expr[]) {
         super(CodeKind.CALL_STD_FUNC, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const newCode = new CallStdFunc(this.src, this.funcInfo, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -951,10 +1344,33 @@ export class CallUserFunc extends Code {
     readonly funcInfo: FuncInfo;
     readonly args: Readonly<Expr[]>;
 
-    constructor(src: Token[], funcInfo: FuncInfo, args: Expr[]) {
+    constructor(src: Readonly<Token[]>, funcInfo: FuncInfo, args: Expr[]) {
         super(CodeKind.CALL_USER_FUNC, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs: Expr[] = [];
+        const types: Vtype[] = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg)
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const newCode = new CallUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -969,13 +1385,55 @@ export class For extends Code {
     readonly endValue: Readonly<{ nameInfo: NameInfo, expr: Expr }>;
     readonly stepValue: Readonly<{ nameInfo: NameInfo, expr: Expr | null }>;
 
-    constructor(src: Token[], loopCounter: NameInfo, blockInfo: BlockInfo, initValue: { nameInfo: NameInfo, expr: Expr }, endValue: { nameInfo: NameInfo, expr: Expr }, stepValue: { nameInfo: NameInfo, expr: Expr | null }) {
+    constructor(src: Readonly<Token[]>, loopCounter: NameInfo, blockInfo: BlockInfo, initValue: { nameInfo: NameInfo, expr: Expr }, endValue: { nameInfo: NameInfo, expr: Expr }, stepValue: { nameInfo: NameInfo, expr: Expr | null }) {
         super(CodeKind.FOR, src);
         this.loopCounter = loopCounter;
         this.blockInfo = blockInfo;
         this.initValue = initValue;
         this.endValue = endValue;
         this.stepValue = stepValue;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const blockInfoRes = this.blockInfo.rebuild(findUserFunc);
+        if (blockInfoRes.isErr) {
+            return Result.err(blockInfoRes.error);
+        }
+        let sideEffect = blockInfoRes.result.sideEffect;
+        const blockInfo = blockInfoRes.result.blockInfo;
+        const initExprRes = this.initValue.expr.rebuild(findUserFunc);
+        if (initExprRes.isErr) {
+            return Result.err(initExprRes.error);
+        }
+        sideEffect |= initExprRes.result.sideEffect;
+        const initValue = { nameInfo: this.initValue.nameInfo, expr: initExprRes.result.expr };
+        if (initValue.expr.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "初期値の型が不正です.", src: this.src });
+        }
+        const endExprRes = this.endValue.expr.rebuild(findUserFunc);
+        if (endExprRes.isErr) {
+            return Result.err(endExprRes.error);
+        }
+        sideEffect |= endExprRes.result.sideEffect;
+        const endValue = { nameInfo: this.endValue.nameInfo, expr: endExprRes.result.expr };
+        if (endValue.expr.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "終端値の型が不正です.", src: this.src });
+        }
+        let stepExpr: Expr | null = null;
+        if (this.stepValue.expr !== null) {
+            const stepExprRes = this.stepValue.expr.rebuild(findUserFunc);
+            if (stepExprRes.isErr) {
+                return Result.err(stepExprRes.error);
+            }
+            sideEffect |= stepExprRes.result.sideEffect;
+            stepExpr = stepExprRes.result.expr;
+            if (stepExpr.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: "増減値の型が不正です.", src: this.src });
+            }
+        }
+        const stepValue = { nameInfo: this.stepValue.nameInfo, expr: stepExpr };
+        const newCode = new For(this.src, this.loopCounter, blockInfo, initValue, endValue, stepValue);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -987,10 +1445,30 @@ export class DoWhile extends Code {
     readonly testExpr: Expr;
     readonly blockInfo: BlockInfo;
 
-    constructor(src: Token[], testExpr: Expr, blockInfo: BlockInfo) {
+    constructor(src: Readonly<Token[]>, testExpr: Expr, blockInfo: BlockInfo) {
         super(CodeKind.DO_WHILE, src);
         this.testExpr = testExpr;
         this.blockInfo = blockInfo;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const testExprRes = this.testExpr.rebuild(findUserFunc);
+        if (testExprRes.isErr) {
+            return Result.err(testExprRes.error);
+        }
+        let sideEffect = testExprRes.result.sideEffect;
+        const testExpr = testExprRes.result.expr;
+        if (testExpr.vtype !== Vtype.BOOLEAN) {
+            return Result.err({ msg: "条件式の型が不正です.", src: this.src });
+        }
+        const blockInfoRes = this.blockInfo.rebuild(findUserFunc);
+        if (blockInfoRes.isErr) {
+            return Result.err(blockInfoRes.error);
+        }
+        sideEffect |= blockInfoRes.result.sideEffect;
+        const blockInfo = blockInfoRes.result.blockInfo;
+        const newCode = new DoWhile(this.src, testExpr, blockInfo);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -1006,6 +1484,10 @@ export class Break extends Code {
         super(CodeKind.BREAK, src);
         this.blockId = blockId;
         this.blockSrc = blockSrc;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
     }
 
     toString(): string {
@@ -1024,6 +1506,10 @@ export class Continue extends Code {
         this.blockSrc = blockSrc;
     }
 
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
+
     toString(): string {
         return `Continue{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
     }
@@ -1033,7 +1519,7 @@ export class Return extends Code {
     readonly funcInfo: FuncInfo;
     readonly value: Expr | null;
 
-    constructor(src: Token[], funcInfo: FuncInfo, value?: Expr) {
+    constructor(src: Readonly<Token[]>, funcInfo: FuncInfo, value?: Expr) {
         super(CodeKind.RETURN, src);
         this.funcInfo = funcInfo;
         if (funcInfo.retArg.ret === Vtype.VOID) {
@@ -1043,6 +1529,24 @@ export class Return extends Code {
             U.assert(value !== undefined);
             this.value = value;
         }
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        if (this.value === null) {
+            // sub
+            return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+        }
+        const valueRes = this.value.rebuild(findUserFunc);
+        if (valueRes.isErr) {
+            return Result.err(valueRes.error);
+        }
+        const sideEffect = valueRes.result.sideEffect;
+        const newValue = valueRes.result.expr;
+        if (this.funcInfo.retArg.ret !== newValue.vtype) {
+            return Result.err({ msg: "戻り値の型が不正です.", src: this.src });
+        }
+        const newCode = new Return(this.src, this.funcInfo, newValue);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
@@ -1055,11 +1559,26 @@ export class Return extends Code {
 }
 
 export class Print extends Code {
-    readonly args: Expr[];
+    readonly args: Readonly<Expr[]>;
 
-    constructor(src: Token[], args: Expr[]) {
+    constructor(src: Readonly<Token[]>, args: Expr[]) {
         super(CodeKind.PRINT, src);
         this.args = args;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        let sideEffect = SideEffect.NONE;
+        const newArgs: Expr[] = [];
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            newArgs.push(argRes.result.expr);
+        }
+        const newCode = new Print(this.src, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {

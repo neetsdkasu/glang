@@ -52,8 +52,8 @@ export function popCount(n: number): number {
 
 /**
  * 一度だけ値を書き込めてその値を保持する.
- * constの初期化を条件分岐で変えたくて後回しにしたいときに使う.
- * 値がオブジェクトの場合はそのままではオブジェクトの中身の変更を制限しないためReadonlyを使いOnce< Readonly< T > >にすれば中身をtypescript的に保護できる.
+ * constの初期化を条件分岐で変えたくて後回しにしたいときに使う.要するにうっかりミスの再代入を回避したい.
+ * 値がオブジェクトの場合はそのままではオブジェクトの中身の変更を制限しないためReadonlyを使いOnce< Readonly< T > >にすれば中身をtypescriptの範囲で保護できる(ホンマか？).
  */
 export class Once<T = any> {
     #written: boolean = false;
@@ -77,6 +77,16 @@ export class Once<T = any> {
     }
 }
 
+/**
+ * 現状、let v: T | undefined = foo; で事足りてるよね.
+ * let v: utils.Option<T> = utils.Option.some(foo); したい状況は発生してない.
+ * typescriptの if (v !== undefined) { ... } での静的検査のほうが信頼性高い.
+ * メモリコストからしてもこのOption<T>使う理由が薄い.コスト高すぎる.
+ * .getOr()相当は ??演算子 、.map()/.then()に近い処理は .?演算子 、 .value() 相当は !演算子 がjavascriptで用意されているし、このOption<T>は冗長すぎる.
+ * 強いて用途を考えるならTにundefinedを含めることができる？、Option.some(undefined)とOption.none()は異なる.
+ * どうでもいいけど、javascriptかtypescriptでOptionという名前が定義済みぽそう？ type Option = any; で定義されているぽい？.
+ * 名前はOption/Some/NoneではなくHaskellぽくMaybe/Just/Nothingにでもすればよかったか？.
+ */
 export class Option<V> {
     #hasValue: boolean;
     #value: V | undefined;
@@ -88,6 +98,10 @@ export class Option<V> {
         } else {
             this.#value = undefined;
         }
+    }
+
+    get valueOrUndefined(): V | undefined {
+        return this.#value;
     }
 
     get value(): V {
@@ -155,6 +169,12 @@ export class Option<V> {
     }
 }
 
+/**
+ * 現状、let v: T | E = foo; してからの型ごとにチェック分岐コード書くのがだるい.静的な型検査が入るのはメリットなのだが.
+ * let v: Result<T, E> = Result.ok(foo); の isOk,isErr での分岐では静的検査がないのが欠点.
+ * 一方をエラー型の扱いにしてるため単純に２つの型のいずれかを返すという用途では使えない(必要ならHaskellのEitherみたいなの作ればよいがLeft/Rightでは文脈が意味不明すぎるのでそれならtypescriptの X | Y で型並べるほうが健全).
+ * まぁ、メモリコストがバカ高いので多用するのはよくないかも.すでに多用しまくっているけれども.
+ */
 export class Result<R,E> {
     #ok: boolean;
     #result: R | undefined;
@@ -188,6 +208,18 @@ export class Result<R,E> {
         } else {
             return this.#error!;
         }
+    }
+
+    get valueOrError(): R | E {
+        if (this.#ok) {
+            return this.#result!;
+        } else {
+            return this.#error!;
+        }
+    }
+
+    get valueOrUndefined(): R | undefined {
+        return this.#result;
     }
 
     static ok<R,E>(result: R): Result<R,E> {

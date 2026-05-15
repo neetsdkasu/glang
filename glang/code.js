@@ -173,6 +173,7 @@ export class NameInfo {
     #written = 0;
     #lastWritten = 0;
     #unused = [];
+    #typedSrc;
     constructor(src, name, vtype, varId, blockId, blockVarId, isLoopCounter) {
         this.src = src;
         this.name = name;
@@ -182,6 +183,7 @@ export class NameInfo {
         this.blockVarId = blockVarId;
         this.isLoopCounter = isLoopCounter === true;
         U.assert(!isLoopCounter || vtype === Vtype.INTEGER);
+        this.#typedSrc = (vtype & Vtype.INFER) !== Vtype.INFER ? src : undefined;
     }
     suck(garbage) {
         this.#count = garbage.#count;
@@ -223,11 +225,14 @@ export class NameInfo {
             return this.#unused;
         }
     }
+    get typedSrc() {
+        return this.#typedSrc;
+    }
     /**
      * 変数の型にINFERが含まれている場合で型を特定できるときに呼び出す.
      * @param vtype 特定した型.
      */
-    updateType(vtype) {
+    updateType(vtype, typedSrc) {
         const res = inferVtype(vtype, this.#vtype);
         if (res.isErr) {
             log.dump("vtype", vtype);
@@ -236,6 +241,7 @@ export class NameInfo {
             throw new Error("BUG");
         }
         this.#vtype = res.result;
+        this.#typedSrc = typedSrc;
     }
     /**
      * 変数の読み込み回数をインクリメント.
@@ -319,6 +325,51 @@ export class RetArg {
     }
     get hasNoArg() {
         return this.args.length === 0;
+    }
+    /**
+     * INFER属性が付いてるものは全部共通の型になることを前提に型検査&型決定を行う.
+     * @param ret
+     * @param args
+     * @returns
+     */
+    inferTypes(ret, ...args) {
+        U.assert(args.length === this.args.length);
+        const retRes = inferVtype(this.ret, ret);
+        if (retRes.isErr) {
+            return Result.err(`戻り値の型が一致しません. [ ${retRes.error} ]`);
+        }
+        ret = retRes.result;
+        let vtype = (this.ret & Vtype.INFER) ? ret : undefined;
+        for (let i = 0; i < args.length; i++) {
+            const argRes = inferVtype(args[i], this.args[i]);
+            if (argRes.isErr) {
+                return Result.err(`${i + 1}番目の引数の型が一致しません. [ ${argRes.error} ]`);
+            }
+            args[i] = argRes.result;
+            if (this.args[i] & Vtype.INFER) {
+                if (vtype !== undefined) {
+                    const res = inferVtype(vtype, args[i]);
+                    if (res.isErr) {
+                        return Result.err(`${i + 1}番目の引数の型が一致しません. [ ${res.error} ]`);
+                    }
+                    vtype = res.result;
+                }
+                else {
+                    vtype = args[i];
+                }
+            }
+        }
+        if (vtype !== undefined) {
+            if (this.ret & Vtype.INFER) {
+                ret = vtype;
+            }
+            for (let i = 0; i < args.length; i++) {
+                if (this.args[i] & Vtype.INFER) {
+                    args[i] = vtype;
+                }
+            }
+        }
+        return Result.ok({ ret: ret, args: args });
     }
     toString() {
         return `RetArg{ ret: ${Vtype[this.ret]}, args: [[ ${this.args.map(t => Vtype[t])} ]] }`;
@@ -520,6 +571,9 @@ export class ExprLitInt extends Expr {
         this.value = value;
         this.unaryOp = unaryOp;
     }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
+    }
     toString() {
         if (this.unaryOp) {
             return `LitInt{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
@@ -536,6 +590,9 @@ export class ExprLitFloat extends Expr {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
         this.unaryOp = unaryOp;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
     }
     toString() {
         if (this.unaryOp) {
@@ -554,6 +611,9 @@ export class ExprLitBoolean extends Expr {
         this.value = value;
         this.unaryOp = unaryOp;
     }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
+    }
     toString() {
         if (this.unaryOp) {
             return `LitBoolean{ value: ${this.value}, unaryOp: ${this.unaryOp} }`;
@@ -569,6 +629,9 @@ export class ExprLitString extends Expr {
         super(ExprKind.LITERAL, Vtype.STRING, src);
         this.value = value;
     }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
+    }
     toString() {
         return `LitString{ value: "${this.value.replaceAll('"', '""')}" }`;
     }
@@ -580,6 +643,19 @@ export class ExprUnaryOp extends Expr {
         super(ExprKind.UNARY_OP, vtype, src);
         this.op = op;
         this.term = term;
+    }
+    rebuild(findUserFunc) {
+        const res = this.term.rebuild(findUserFunc);
+        if (res.isErr) {
+            return res;
+        }
+        const newTerm = res.result.expr;
+        const vtypeRes = inferVtype(this.op.vtype, newTerm.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: vtypeRes.error, src: this.src });
+        }
+        const newExpr = new ExprUnaryOp(this.src, vtypeRes.result, this.op, newTerm);
+        return Result.ok({ expr: newExpr, sideEffect: res.result.sideEffect });
     }
     toString() {
         return `UnaryOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, term: [[ ${this.term} ]] }`;
@@ -595,17 +671,45 @@ export class ExprBinOp extends Expr {
         this.termL = termL;
         this.termR = termR;
     }
+    rebuild(findUserFunc) {
+        const resL = this.termL.rebuild(findUserFunc);
+        if (resL.isErr) {
+            return resL;
+        }
+        const newTermL = resL.result.expr;
+        const resR = this.termR.rebuild(findUserFunc);
+        if (resR.isErr) {
+            return resR;
+        }
+        const newTermR = resR.result.expr;
+        const vtypeRes = this.op.retArg.inferTypes(this.op.retArg.ret, newTermL.vtype, newTermR.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: vtypeRes.error, src: this.src });
+        }
+        const retVtype = vtypeRes.result.ret;
+        const newExpr = new ExprBinOp(this.src, retVtype, this.op, newTermL, newTermR);
+        const sideEffect = resL.result.sideEffect | resR.result.sideEffect;
+        return Result.ok({ expr: newExpr, sideEffect: sideEffect });
+    }
     toString() {
         return `BinanyOp{ op: ${this.op}, vtype: ${Vtype[this.vtype]}, termL: [[ ${this.termL} ]], termR: [[ ${this.termR} ]] }`;
     }
 }
 export class ExprBracket extends Expr {
     expr;
-    rightBracket;
+    rightBracket; // leftBracketはsrcのほう.
     constructor(src, expr, rightBracket) {
         super(ExprKind.BRACKET, expr.vtype, src);
         this.expr = expr;
         this.rightBracket = rightBracket;
+    }
+    rebuild(findUserFunc) {
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return res;
+        }
+        const newExpr = new ExprBracket(this.src, res.result.expr, this.rightBracket);
+        return Result.ok({ expr: newExpr, sideEffect: res.result.sideEffect });
     }
     toString() {
         return `Bracket{ vtype: ${Vtype[this.vtype]}, expr: ( ${this.expr} ) }`;
@@ -618,6 +722,28 @@ export class ExprStdFunc extends Expr {
         super(ExprKind.STD_FUNC, vtype, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+    rebuild(findUserFunc) {
+        const newArgs = [];
+        const types = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const retType = res.result.ret;
+        const expr = new ExprStdFunc(this.src, retType, this.funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
     }
     toString() {
         return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
@@ -632,6 +758,28 @@ export class ExprMemberStdFunc extends Expr {
         ;
         this.args = args;
     }
+    rebuild(findUserFunc) {
+        const newArgs = [];
+        const types = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const retType = res.result.ret;
+        const expr = new ExprMemberStdFunc(this.src, retType, this.funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
     toString() {
         return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -643,6 +791,28 @@ export class ExprUserFunc extends Expr {
         super(ExprKind.USER_FUNC, funcInfo.retArg.ret, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+    rebuild(findUserFunc) {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs = [];
+        const types = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const expr = new ExprUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
     }
     toString() {
         return `UserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
@@ -656,6 +826,28 @@ export class ExprMemberUserFunc extends Expr {
         this.funcInfo = funcInfo;
         this.args = args;
     }
+    rebuild(findUserFunc) {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs = [];
+        const types = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return argRes;
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const expr = new ExprMemberUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
     toString() {
         return `MemberUserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -665,6 +857,9 @@ export class ExprVarVal extends Expr {
     constructor(src, nameInfo) {
         super(ExprKind.VARIABLE, nameInfo.vtype, src);
         this.nameInfo = nameInfo;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
     }
     toString() {
         return `VarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
@@ -678,6 +873,24 @@ export class ExprArrayVarVal extends Expr {
         this.nameInfo = nameInfo;
         this.indexes = indexes;
     }
+    rebuild(findUserFunc) {
+        const newIndexes = [];
+        let sideEffect = SideEffect.NONE;
+        for (let i = 0; i < this.indexes.length; i++) {
+            const indexRes = this.indexes[i].rebuild(findUserFunc);
+            if (indexRes.isErr) {
+                return indexRes;
+            }
+            sideEffect |= indexRes.result.sideEffect;
+            const index = indexRes.result.expr;
+            if (index.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: `${i + 1}番目の添え字の型が不正です.`, src: this.src });
+            }
+            newIndexes.push(index);
+        }
+        const expr = new ExprArrayVarVal(this.src, this.nameInfo, newIndexes);
+        return Result.ok({ expr: expr, sideEffect: sideEffect });
+    }
     toString() {
         return `ArrayVarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -687,6 +900,9 @@ export class ExprArrayRef extends Expr {
     constructor(src, nameInfo) {
         super(ExprKind.VARIABLE, nameInfo.vtype, src);
         this.nameInfo = nameInfo;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
     }
     toString() {
         return `ArrayRef{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.vtype]} }`;
@@ -741,6 +957,20 @@ export class BlockInfo {
         this.body = body;
         this.blockEnd = blockEnd;
     }
+    rebuild(findUserFunc) {
+        const body = [];
+        let sideEffect = SideEffect.NONE;
+        for (const c of this.body) {
+            const res = c.rebuild(findUserFunc);
+            if (res.isErr) {
+                return Result.err(res.error);
+            }
+            body.push(res.result.code);
+            sideEffect |= res.result.sideEffect;
+        }
+        const blockInfo = new BlockInfo(this.src, this.id, this.parentId, this.varList, body, this.blockEnd);
+        return Result.ok({ blockInfo: blockInfo, sideEffect: sideEffect });
+    }
     toString() {
         return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
@@ -750,6 +980,14 @@ export class Block extends Code {
     constructor(blockInfo) {
         super(CodeKind.BLOCK, blockInfo.src);
         this.blockInfo = blockInfo;
+    }
+    rebuild(findUserFunc) {
+        const res = this.blockInfo.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const code = new Block(res.result.blockInfo);
+        return Result.ok({ code: code, sideEffect: res.result.sideEffect });
     }
     toString() {
         return `Block{ id: ${this.blockInfo.id}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
@@ -763,6 +1001,17 @@ export class DefineUserFunc extends Code {
         this.funcInfo = funcInfo;
         this.blockInfo = blockInfo;
     }
+    rebuild(findUserFunc) {
+        const res = this.blockInfo.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        if (res.result.sideEffect !== SideEffect.NONE) {
+            this.funcInfo.addSideEffect(res.result.sideEffect);
+        }
+        const code = new DefineUserFunc(this.funcInfo, res.result.blockInfo);
+        return Result.ok({ code: code, sideEffect: SideEffect.NONE });
+    }
     toString() {
         return `DefineUserFunc{ funcInfo: ${this.funcInfo}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
     }
@@ -775,6 +1024,9 @@ export class Dim extends Code {
         this.nameInfo = nameInfo;
         this.dims = dims;
     }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
     toString() {
         return `Dim{ name: ${this.nameInfo.name}, vtype: ${Vtype[this.nameInfo.vtype]}, dims: [ ${this.dims} ] }`;
     }
@@ -786,6 +1038,26 @@ export class Let extends Code {
         super(CodeKind.LET, src);
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+    rebuild(findUserFunc) {
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const newExpr = res.result.expr;
+        const vtypeRes = inferVtype(this.nameInfo.vtype, newExpr.vtype);
+        if (vtypeRes.isErr) {
+            // エラーメッセージが意味不明だが.
+            // letの位置では変数の型が確定してない状況で、変数を参照する式で変数の型の推論で型決定されてしまったケースに該当.
+            // 初期値の式内に型が特定されていない変数の参照や戻り値の型が特定されてないユーザ関数の呼び出しで生じる.
+            // TODO: もっとマシなエラーメッセージを考える.
+            return Result.err({ msg: "変数の型と一致しません.", src: this.nameInfo.typedSrc ?? this.src });
+        }
+        if (this.nameInfo.hasType(Vtype.INFER)) {
+            this.nameInfo.updateType(vtypeRes.result, this.src);
+        }
+        const newCode = new Let(this.src, this.nameInfo, newExpr);
+        return Result.ok({ code: newCode, sideEffect: res.result.sideEffect });
     }
     toString() {
         return `Let{ name: ${this.nameInfo.name}, vtype: ${this.nameInfo.vtype}, expr: (( ${this.expr} ))`;
@@ -800,6 +1072,22 @@ export class AssignVar extends Code {
         this.op = op;
         this.nameInfo = nameInfo;
         this.expr = expr;
+    }
+    rebuild(findUserFunc) {
+        const vtypeRes = inferVtype(this.op.vtype, this.nameInfo.vtype);
+        if (vtypeRes.isErr) {
+            return Result.err({ msg: `変数の型と代入演算子の型が一致しません. [ ${vtypeRes.error} ]`, src: this.src });
+        }
+        const res = this.expr.rebuild(findUserFunc);
+        if (res.isErr) {
+            return Result.err(res.error);
+        }
+        const newExpr = res.result.expr;
+        if (this.nameInfo.vtype !== newExpr.vtype) {
+            return Result.err({ msg: "代入の型が不正です.", src: this.src });
+        }
+        const newCode = new AssignVar(this.src, this.op, this.nameInfo, newExpr);
+        return Result.ok({ code: newCode, sideEffect: res.result.sideEffect });
     }
     toString() {
         return `AssignVar{ name: ${this.nameInfo.name}, op: "${this.op.op}", expr: (( ${this.expr} )) }`;
@@ -817,6 +1105,33 @@ export class AssignArray extends Code {
         this.indexes = indexes;
         this.expr = expr;
     }
+    rebuild(findUserFunc) {
+        const newIndexes = [];
+        let sideEffect = SideEffect.NONE;
+        for (let i = 0; i < this.indexes.length; i++) {
+            const indexRes = this.indexes[i].rebuild(findUserFunc);
+            if (indexRes.isErr) {
+                return Result.err(indexRes.error);
+            }
+            sideEffect |= indexRes.result.sideEffect;
+            const index = indexRes.result.expr;
+            if (index.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: `${i + 1}番目の添え字の型が不正です.`, src: this.src });
+            }
+            newIndexes.push(index);
+        }
+        const newExprRes = this.expr.rebuild(findUserFunc);
+        if (newExprRes.isErr) {
+            return Result.err(newExprRes.error);
+        }
+        sideEffect |= newExprRes.result.sideEffect;
+        const newExpr = newExprRes.result.expr;
+        if ((this.nameInfo.vtype & Vtype.PRIMITIVE_TYPE) !== newExpr.vtype) {
+            return Result.err({ msg: "代入の型が不正です.", src: this.src });
+        }
+        const newCode = new AssignArray(this.src, this.op, this.nameInfo, newIndexes, newExpr);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
     toString() {
         return `AssignArray{ name: ${this.nameInfo.name}, op: "${this.op.op}", indexes: (( ${this.indexes.map(e => `[[ ${e} ]]`).join(", ")} )) expr: (( ${this.expr} )) }`;
     }
@@ -831,6 +1146,33 @@ export class If extends Code {
         this.testExprList = testExprList;
         this.blockInfoList = blockInfoList;
     }
+    rebuild(findUserFunc) {
+        let sideEffect = SideEffect.NONE;
+        const newTestExprList = [];
+        const newBlockInfoList = [];
+        for (let i = 0; i < this.testExprList.length; i++) {
+            const testExprRes = this.testExprList[i].rebuild(findUserFunc);
+            if (testExprRes.isErr) {
+                return Result.err(testExprRes.error);
+            }
+            sideEffect |= testExprRes.result.sideEffect;
+            const testExpr = testExprRes.result.expr;
+            if (testExpr.vtype !== Vtype.BOOLEAN) {
+                return Result.err({ msg: "条件式の型が不正です.", src: this.srcList[i] });
+            }
+            newTestExprList.push(testExpr);
+        }
+        for (let i = 0; i < this.blockInfoList.length; i++) {
+            const blockInfoRes = this.blockInfoList[i].rebuild(findUserFunc);
+            if (blockInfoRes.isErr) {
+                return Result.err(blockInfoRes.error);
+            }
+            sideEffect |= blockInfoRes.result.sideEffect;
+            newBlockInfoList.push(blockInfoRes.result.blockInfo);
+        }
+        const newCode = new If(this.srcList, newTestExprList, newBlockInfoList);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
     toString() {
         return `If{ [[ ${this.blockInfoList.map((bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}`).join(", ")} ]] }`;
     }
@@ -843,6 +1185,27 @@ export class CallStdFunc extends Code {
         this.funcInfo = funcInfo;
         this.args = args;
     }
+    rebuild(findUserFunc) {
+        const newArgs = [];
+        const types = [];
+        let sideEffect = this.funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = this.funcInfo.retArg.inferTypes(this.funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const newCode = new CallStdFunc(this.src, this.funcInfo, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
     toString() {
         return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
@@ -854,6 +1217,28 @@ export class CallUserFunc extends Code {
         super(CodeKind.CALL_USER_FUNC, src);
         this.funcInfo = funcInfo;
         this.args = args;
+    }
+    rebuild(findUserFunc) {
+        const funcInfo = findUserFunc(this.funcInfo.name);
+        const newArgs = [];
+        const types = [];
+        let sideEffect = funcInfo.sideEffect;
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            const arg = argRes.result.expr;
+            newArgs.push(arg);
+            types.push(arg.vtype);
+        }
+        const res = funcInfo.retArg.inferTypes(funcInfo.retArg.ret, ...types);
+        if (res.isErr) {
+            return Result.err({ msg: res.error, src: this.src });
+        }
+        const newCode = new CallUserFunc(this.src, funcInfo, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
     toString() {
         return `CallUserFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
@@ -873,6 +1258,47 @@ export class For extends Code {
         this.endValue = endValue;
         this.stepValue = stepValue;
     }
+    rebuild(findUserFunc) {
+        const blockInfoRes = this.blockInfo.rebuild(findUserFunc);
+        if (blockInfoRes.isErr) {
+            return Result.err(blockInfoRes.error);
+        }
+        let sideEffect = blockInfoRes.result.sideEffect;
+        const blockInfo = blockInfoRes.result.blockInfo;
+        const initExprRes = this.initValue.expr.rebuild(findUserFunc);
+        if (initExprRes.isErr) {
+            return Result.err(initExprRes.error);
+        }
+        sideEffect |= initExprRes.result.sideEffect;
+        const initValue = { nameInfo: this.initValue.nameInfo, expr: initExprRes.result.expr };
+        if (initValue.expr.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "初期値の型が不正です.", src: this.src });
+        }
+        const endExprRes = this.endValue.expr.rebuild(findUserFunc);
+        if (endExprRes.isErr) {
+            return Result.err(endExprRes.error);
+        }
+        sideEffect |= endExprRes.result.sideEffect;
+        const endValue = { nameInfo: this.endValue.nameInfo, expr: endExprRes.result.expr };
+        if (endValue.expr.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "終端値の型が不正です.", src: this.src });
+        }
+        let stepExpr = null;
+        if (this.stepValue.expr !== null) {
+            const stepExprRes = this.stepValue.expr.rebuild(findUserFunc);
+            if (stepExprRes.isErr) {
+                return Result.err(stepExprRes.error);
+            }
+            sideEffect |= stepExprRes.result.sideEffect;
+            stepExpr = stepExprRes.result.expr;
+            if (stepExpr.vtype !== Vtype.INTEGER) {
+                return Result.err({ msg: "増減値の型が不正です.", src: this.src });
+            }
+        }
+        const stepValue = { nameInfo: this.stepValue.nameInfo, expr: stepExpr };
+        const newCode = new For(this.src, this.loopCounter, blockInfo, initValue, endValue, stepValue);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
     toString() {
         return `For{ loopCounter: ${this.loopCounter.name}, init: (( ${this.initValue.expr} )), end: (( ${this.endValue.expr} )), step: (( ${this.stepValue.expr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
     }
@@ -884,6 +1310,25 @@ export class DoWhile extends Code {
         super(CodeKind.DO_WHILE, src);
         this.testExpr = testExpr;
         this.blockInfo = blockInfo;
+    }
+    rebuild(findUserFunc) {
+        const testExprRes = this.testExpr.rebuild(findUserFunc);
+        if (testExprRes.isErr) {
+            return Result.err(testExprRes.error);
+        }
+        let sideEffect = testExprRes.result.sideEffect;
+        const testExpr = testExprRes.result.expr;
+        if (testExpr.vtype !== Vtype.BOOLEAN) {
+            return Result.err({ msg: "条件式の型が不正です.", src: this.src });
+        }
+        const blockInfoRes = this.blockInfo.rebuild(findUserFunc);
+        if (blockInfoRes.isErr) {
+            return Result.err(blockInfoRes.error);
+        }
+        sideEffect |= blockInfoRes.result.sideEffect;
+        const blockInfo = blockInfoRes.result.blockInfo;
+        const newCode = new DoWhile(this.src, testExpr, blockInfo);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
     toString() {
         return `DoWhile{ test: (( ${this.testExpr} )), code: {{ ${this.blockInfo.body.map(c => `${c}`).join(", ")} }} }`;
@@ -897,6 +1342,9 @@ export class Break extends Code {
         this.blockId = blockId;
         this.blockSrc = blockSrc;
     }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
     toString() {
         return `Break{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
     }
@@ -908,6 +1356,9 @@ export class Continue extends Code {
         super(CodeKind.BREAK, src);
         this.blockId = blockId;
         this.blockSrc = blockSrc;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
     }
     toString() {
         return `Continue{ blockId: ${this.blockId}, blockSrc: ${Token.lineToString(this.blockSrc)} }`;
@@ -928,6 +1379,23 @@ export class Return extends Code {
             this.value = value;
         }
     }
+    rebuild(findUserFunc) {
+        if (this.value === null) {
+            // sub
+            return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+        }
+        const valueRes = this.value.rebuild(findUserFunc);
+        if (valueRes.isErr) {
+            return Result.err(valueRes.error);
+        }
+        const sideEffect = valueRes.result.sideEffect;
+        const newValue = valueRes.result.expr;
+        if (this.funcInfo.retArg.ret !== newValue.vtype) {
+            return Result.err({ msg: "戻り値の型が不正です.", src: this.src });
+        }
+        const newCode = new Return(this.src, this.funcInfo, newValue);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
     toString() {
         if (this.value === null) {
             return `Return{ sub: ${this.funcInfo.name} }`;
@@ -942,6 +1410,20 @@ export class Print extends Code {
     constructor(src, args) {
         super(CodeKind.PRINT, src);
         this.args = args;
+    }
+    rebuild(findUserFunc) {
+        let sideEffect = SideEffect.NONE;
+        const newArgs = [];
+        for (let i = 0; i < this.args.length; i++) {
+            const argRes = this.args[i].rebuild(findUserFunc);
+            if (argRes.isErr) {
+                return Result.err(argRes.error);
+            }
+            sideEffect |= argRes.result.sideEffect;
+            newArgs.push(argRes.result.expr);
+        }
+        const newCode = new Print(this.src, newArgs);
+        return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
     toString() {
         return `Print{ args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;

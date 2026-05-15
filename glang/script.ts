@@ -8,6 +8,7 @@ const log = new Logger("main", LogLevel.ALL);
 import CharReader from "charreader";
 import Scanner from "scanner";
 import Parser from "parser";
+import * as U from "utils";
 
 /**
  * UI

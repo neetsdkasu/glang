@@ -480,6 +480,35 @@ class Env {
         return undefined;
     }
 
+    findUndefinedUserFuncs(): C.FuncInfo[] {
+        const ret: C.FuncInfo[] = [];
+        for (const fiList of this.#userFuncMap.values()) {
+            U.assert(fiList.length > 0);
+            if (fiList.some( fi => fi.definition )) {
+                continue;
+            }
+            ret.push(fiList[0]);
+        }
+        return ret;
+    }
+
+    rebuild(): Result<undefined,ParserError> {
+        const n = this.#codeBodyStack.length;
+        const before: C.Code[] = this.#codeBodyStack[n-1];
+        const after: C.Code[] = [];
+        const fuf = (name: string) => this.#userFuncMap.get(name)!.find( fi => fi.definition )!;
+        for (const code of before) {
+            const newCodeRes = code.rebuild(fuf);
+            if (newCodeRes.isErr) {
+                const err = newCodeRes.error;
+                return syntaxError(err.msg, err.src);
+            }
+            after.push(newCodeRes.result.code);
+        }
+        this.#codeBodyStack[n-1] = after;
+        return Result.ok(undefined);
+    }
+
     isGlobalBlockId(blockId: number): boolean {
         U.assert(this.#nameMapStack.length > 0);
         return this.#nameMapStack[0].blockId === blockId;
@@ -858,14 +887,25 @@ export class Parser {
             }
         }
 
-        const mainSub = this.#env.findUserFunc(Keyword.MAIN);
-        if (mainSub === undefined || !mainSub[0].definition) {
-            return syntaxError(`${Keyword.MAIN}関数を定義する必要があります.`, "");
+        const mainSub = this.#env.findUserFunc(Keyword.MAIN)?.find( fi => fi.definition );
+        if (mainSub === undefined) {
+            return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, this.#scanner);
         }
 
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
-            throw new Unimplemented();
+            return syntaxError("ここでソースコードの末尾は不正です.", this.#scanner);
+        }
+
+        const undefinedUserFuncList = this.#env.findUndefinedUserFuncs();
+        if (undefinedUserFuncList.length > 0) {
+            const fi = undefinedUserFuncList[0];
+            return syntaxError(`${fi.name}が定義されてません.`, Token.lineToString(fi.src));
+        }
+
+        const rebuildRes = this.#env.rebuild();
+        if (rebuildRes.isErr) {
+            return Result.err(rebuildRes.error);
         }
 
         log.debug("END PARSE.");
@@ -958,6 +998,7 @@ export class Parser {
                     const nameInfo = this.#env.findName(cmd);
                     if (nameInfo !== undefined) {
                         if (nameInfo.vtype & C.Vtype.REFERENCE_VAR) {
+                            // 現時点で実装の予定なし.
                             throw new Unimplemented(line.front);
                         } else if (nameInfo.vtype & C.Vtype.ARRAY_TYPE) {
                             res = this.#parseAssignArray(line);
@@ -1411,35 +1452,11 @@ export class Parser {
                 const opX = ops.pop()!;
                 const termR = terms.pop()!;
                 const termL = terms.pop()!;
-                const vtypeLRes = C.inferVtype(opX.op.retArg.args[0], termL.vtype);
-                if (vtypeLRes.isErr) {
-                    return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
+                const vtypeRes = opX.op.retArg.inferTypes(opX.op.retArg.ret, termL.vtype, termR.vtype);
+                if (vtypeRes.isErr) {
+                    return syntaxError(vtypeRes.error, opX.src);
                 }
-                const vtypeL = vtypeLRes.result;
-                const vtypeRRes = C.inferVtype(opX.op.retArg.args[1], termR.vtype);
-                if (vtypeRRes.isErr) {
-                    return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
-                }
-                const vtypeR = vtypeRRes.result;
-                let vtypeX = opX.op.retArg.ret;
-                if (vtypeX & C.Vtype.INFER) {
-                    if (opX.op.retArg.args[0] & C.Vtype.INFER) {
-                        const vtypeXLRes = C.inferVtype(vtypeX, vtypeL);
-                        if (vtypeXLRes.isErr) {
-                            return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
-                        } else {
-                            vtypeX = vtypeXLRes.result;
-                        }
-                    }
-                    if (opX.op.retArg.args[1] & C.Vtype.INFER) {
-                        const vtypeXRRes = C.inferVtype(vtypeX, vtypeR);
-                        if (vtypeXRRes.isErr) {
-                            return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
-                        } else {
-                            vtypeX = vtypeXRRes.result;
-                        }
-                    }
-                }
+                const vtypeX = vtypeRes.result.ret;
                 const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
                 terms.push(termX);
             }
@@ -1452,35 +1469,11 @@ export class Parser {
             const opX = ops.pop()!;
             const termR = terms.pop()!;
             const termL = terms.pop()!;
-            const vtypeLRes = C.inferVtype(opX.op.retArg.args[0], termL.vtype);
-            if (vtypeLRes.isErr) {
-                return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
+            const vtypeRes = opX.op.retArg.inferTypes(opX.op.retArg.ret, termL.vtype, termR.vtype);
+            if (vtypeRes.isErr) {
+                return syntaxError(vtypeRes.error, opX.src);
             }
-            const vtypeL = vtypeLRes.result;
-            const vtypeRRes = C.inferVtype(opX.op.retArg.args[1], termR.vtype);
-            if (vtypeRRes.isErr) {
-                return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
-            }
-            const vtypeR = vtypeRRes.result;
-            let vtypeX = opX.op.retArg.ret;
-            if (vtypeX & C.Vtype.INFER) {
-                if (opX.op.retArg.args[0] & C.Vtype.INFER) {
-                    const vtypeXLRes = C.inferVtype(vtypeX, vtypeL);
-                    if (vtypeXLRes.isErr) {
-                        return syntaxError("左オペランドの型と演算子が対応してません.", opX.src);
-                    } else {
-                        vtypeX = vtypeXLRes.result;
-                    }
-                }
-                if (opX.op.retArg.args[1] & C.Vtype.INFER) {
-                    const vtypeXRRes = C.inferVtype(vtypeX, vtypeR);
-                    if (vtypeXRRes.isErr) {
-                        return syntaxError("右オペランドの型と演算子が対応してません.", opX.src);
-                    } else {
-                        vtypeX = vtypeXRRes.result;
-                    }
-                }
-            }
+            const vtypeX = vtypeRes.result.ret;
             const termX = new C.ExprBinOp(opX.src, vtypeX, opX.op, termL, termR);
             terms.push(termX);
         }
@@ -2169,7 +2162,7 @@ export class Parser {
         const vtype = ivt2Res.result;
 
         if (nameInfo.hasType(C.Vtype.INFER)) {
-            nameInfo.updateType(vtype);
+            nameInfo.updateType(vtype, src);
         }
 
         if (line.len > 1) {
