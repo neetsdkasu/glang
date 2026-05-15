@@ -939,8 +939,8 @@ export var BlockEndKind;
     BlockEndKind[BlockEndKind["NONE"] = 0] = "NONE";
     BlockEndKind[BlockEndKind["CONTINUE"] = 1] = "CONTINUE";
     BlockEndKind[BlockEndKind["BREAK"] = 2] = "BREAK";
-    BlockEndKind[BlockEndKind["RETURN"] = 3] = "RETURN";
-    BlockEndKind[BlockEndKind["ALL"] = 3] = "ALL";
+    BlockEndKind[BlockEndKind["RETURN"] = 4] = "RETURN";
+    BlockEndKind[BlockEndKind["ALL"] = 7] = "ALL";
 })(BlockEndKind || (BlockEndKind = {}));
 export class BlockInfo {
     src;
@@ -1365,7 +1365,7 @@ export class Continue extends Code {
     }
 }
 export class Return extends Code {
-    funcInfo;
+    funcInfo; // 定義由来のFuncInfoのはず.
     value;
     constructor(src, funcInfo, value) {
         super(CodeKind.RETURN, src);

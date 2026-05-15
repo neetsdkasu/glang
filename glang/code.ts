@@ -390,9 +390,9 @@ export class RetArg {
 }
 
 export enum SideEffect {
-    NONE = 0,
-    WRITE_GLOBAL_VAR = 1,
-    ACCESS_IO = 2,
+    NONE,
+    WRITE_GLOBAL_VAR = 1 << 0,
+    ACCESS_IO        = 1 << 1,
     ALL = WRITE_GLOBAL_VAR | ACCESS_IO
 }
 
@@ -1030,9 +1030,9 @@ export abstract class Code {
 
 export enum BlockEndKind {
     NONE,
-    CONTINUE,
-    BREAK,
-    RETURN,
+    CONTINUE = 1 << 0,
+    BREAK    = 1 << 1,
+    RETURN   = 1 << 2,
     ALL = CONTINUE | BREAK | RETURN
 }
 
@@ -1516,7 +1516,7 @@ export class Continue extends Code {
 }
 
 export class Return extends Code {
-    readonly funcInfo: FuncInfo;
+    readonly funcInfo: FuncInfo; // 定義由来のFuncInfoのはず.
     readonly value: Expr | null;
 
     constructor(src: Readonly<Token[]>, funcInfo: FuncInfo, value?: Expr) {

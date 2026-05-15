@@ -67,7 +67,7 @@ export class Once {
  * let v: utils.Option<T> = utils.Option.some(foo); したい状況は発生してない.
  * typescriptの if (v !== undefined) { ... } での静的検査のほうが信頼性高い.
  * メモリコストからしてもこのOption<T>使う理由が薄い.コスト高すぎる.
- * .getOr()相当は ??演算子 、.map()/.then()に近い処理は .?演算子 、 .value() 相当は !演算子 がjavascriptで用意されているし、このOption<T>は冗長すぎる.
+ * .getOr()相当は ??演算子がjavascript、.map()/.then()に近い処理は .?演算子 、 .value() 相当は !演算子 がtypescriptで用意されているし、このOption<T>は冗長すぎる.
  * 強いて用途を考えるならTにundefinedを含めることができる？、Option.some(undefined)とOption.none()は異なる.
  * どうでもいいけど、javascriptかtypescriptでOptionという名前が定義済みぽそう？ type Option = any; で定義されているぽい？.
  * 名前はOption/Some/NoneではなくHaskellぽくMaybe/Just/Nothingにでもすればよかったか？.
