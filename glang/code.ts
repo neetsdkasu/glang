@@ -430,6 +430,8 @@ export class FuncInfo {
     readonly outerBlockId: number | undefined;
     readonly innerBlockId: number | undefined;
     #sideEffect: SideEffect = SideEffect.NONE;
+    #dependencies: Set<string> | null;
+    #isRecursive: boolean = false;
 
     constructor(src: Token[], name: string, retArg: RetArg, varId: number, definition?: { argNames: NameInfo[], outerBlockId: number, innerBlockId: number } | undefined) {
         this.src = src;
@@ -441,11 +443,13 @@ export class FuncInfo {
             this.argNames = undefined;
             this.outerBlockId = undefined;
             this.innerBlockId = undefined;
+            this.#dependencies = null;
         } else {
             this.definition = true;
             this.argNames = definition.argNames;
             this.outerBlockId = definition.outerBlockId;
             this.innerBlockId = definition.innerBlockId;
+            this.#dependencies = new Set();
         }
     }
 
@@ -453,8 +457,32 @@ export class FuncInfo {
         return this.#sideEffect;
     }
 
+    get isRecursive(): boolean {
+        return this.#isRecursive;
+    }
+
+    getDependencies(): Readonly<Set<string>> {
+        U.assert(this.definition);
+        U.assert(this.#dependencies !== null);
+        return this.#dependencies;
+    }
+
     addSideEffect(sideEffect: SideEffect) {
         this.#sideEffect |= sideEffect;
+    }
+
+    /**
+     * 内部ブロックから呼び出すユーザ関数名を記録し依存関係を明確にする.
+     * 実在するユーザ関数名かのチェックはしないのでこのメソッドを呼び出す側の責任.
+     * @param userFuncName 
+     */
+    addDependency(userFuncName: string): void {
+        U.assert(this.definition);
+        U.assert(this.#dependencies !== null);
+        this.#dependencies.add(userFuncName);
+        if (userFuncName === this.name) {
+            this.#isRecursive = true;
+        }
     }
 
     validate(other: FuncInfo): Result<boolean,string> {
@@ -1026,6 +1054,8 @@ export abstract class Code {
     }
 
     abstract rebuild(findUserFunc: (name: string) => FuncInfo): Result<{code: Code; sideEffect: SideEffect; },RebuildError>;
+
+    isFinishedWithReturn(): boolean { return false; }
 }
 
 export enum BlockEndKind {
@@ -1068,6 +1098,10 @@ export class BlockInfo {
         return Result.ok({ blockInfo: blockInfo, sideEffect: sideEffect });
     }
 
+    isFinishedWithReturn(): boolean {
+        return this.body.at(-1)?.isFinishedWithReturn() ?? false;
+    }
+
     toString(): string {
         return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
@@ -1088,6 +1122,10 @@ export class Block extends Code {
         }
         const code = new Block(res.result.blockInfo);
         return Result.ok({ code: code, sideEffect: res.result.sideEffect });
+    }
+
+    isFinishedWithReturn(): boolean {
+        return this.blockInfo.isFinishedWithReturn();
     }
 
     toString(): string {
@@ -1296,6 +1334,18 @@ export class If extends Code {
         }
         const newCode = new If(this.srcList, newTestExprList, newBlockInfoList);
         return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
+
+    isFinishedWithReturn(): boolean {
+        if (this.testExprList.length === this.blockInfoList.length) {
+            return false;
+        }
+        for (const bi of this.blockInfoList) {
+            if (!bi.isFinishedWithReturn()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     toString(): string {
@@ -1547,6 +1597,10 @@ export class Return extends Code {
         }
         const newCode = new Return(this.src, this.funcInfo, newValue);
         return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
+
+    isFinishedWithReturn(): boolean {
+        return true;
     }
 
     toString(): string {

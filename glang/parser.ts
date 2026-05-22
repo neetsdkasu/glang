@@ -505,6 +505,20 @@ class Env {
             }
             after.push(newCodeRes.result.code);
         }
+        for (let i = 0; i < this.#userFuncMap.size; i++) {
+            for (const fiList of this.#userFuncMap.values()) {
+                U.assert(fiList.length === 1);
+                const fi = fiList[0];
+                U.assert(fi.definition);
+                for (const name of fi.getDependencies()) {
+                    const dep = this.#userFuncMap.get(name);
+                    U.assert(dep !== undefined);
+                    U.assert(dep.length === 1);
+                    U.assert(dep[0].definition);
+                    fi.addSideEffect(dep[0].sideEffect);
+                }
+            }
+        }
         this.#codeBodyStack[n-1] = after;
         return Result.ok(undefined);
     }
@@ -1806,6 +1820,7 @@ export class Parser {
         }
 
         this.#env.definitionUserFunc.addSideEffect(funcInfo.sideEffect);
+        this.#env.definitionUserFunc.addDependency(name);
 
         const lrbToken = line.dequeue()!;
         if (lrbToken.value !== Symbols.ARGLIST_BEGIN) {
@@ -2005,6 +2020,8 @@ export class Parser {
             return syntaxError("トップレベルの式でユーザー関数を呼び出すことはできません.", memberToken);
         }
 
+        this.#env.definitionUserFunc.addDependency(member);
+
         const userFunc = this.#env.findUserFunc(member)?.find( fi => fi.definition );
 
         if (userFunc !== undefined) {
@@ -2027,6 +2044,7 @@ export class Parser {
                 if (rrbToken_uf1.value !== Symbols.ARGLIST_END) {
                     return syntaxError(`記号 ${Symbols.ARGLIST_END} が必要です.`, rrbToken_uf1);
                 }
+                this.#env.findName(member)!.incrementCounter();
                 return Result.ok(new C.ExprMemberUserFunc(memberToken, userFunc, args));
             }
             for (let i = 1; i < userFunc.retArg.args.length; i++) {
@@ -2069,6 +2087,7 @@ export class Parser {
             if (ufi1Res.isErr) {
                 return Result.err(ufi1Res.error);
             }
+            this.#env.findName(member)!.incrementCounter();
             return Result.ok(new C.ExprMemberUserFunc(memberToken, ufi1Res.result, args));
         }
 
@@ -2735,6 +2754,8 @@ export class Parser {
             return Result.ok(undefined);
         }
 
+        this.#env.definitionUserFunc.addDependency(funcName);
+
         const userFunc = this.#env.findUserFunc(funcName)?.find( fi => fi.definition );
 
         if (userFunc !== undefined) {
@@ -3171,6 +3192,10 @@ export class Parser {
         }
 
         const innerBlockInfo = this.#env.pop();
+
+        if (!innerBlockInfo.isFinishedWithReturn()) {
+            return syntaxError(`${Keyword.RETURN}で戻り値を返す必要があります.`, lastLine.front);
+        }
 
         const innerCode = new C.Block(innerBlockInfo);
 

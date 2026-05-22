@@ -411,6 +411,8 @@ export class FuncInfo {
     outerBlockId;
     innerBlockId;
     #sideEffect = SideEffect.NONE;
+    #dependencies;
+    #isRecursive = false;
     constructor(src, name, retArg, varId, definition) {
         this.src = src;
         this.name = name;
@@ -421,19 +423,42 @@ export class FuncInfo {
             this.argNames = undefined;
             this.outerBlockId = undefined;
             this.innerBlockId = undefined;
+            this.#dependencies = null;
         }
         else {
             this.definition = true;
             this.argNames = definition.argNames;
             this.outerBlockId = definition.outerBlockId;
             this.innerBlockId = definition.innerBlockId;
+            this.#dependencies = new Set();
         }
     }
     get sideEffect() {
         return this.#sideEffect;
     }
+    get isRecursive() {
+        return this.#isRecursive;
+    }
+    getDependencies() {
+        U.assert(this.definition);
+        U.assert(this.#dependencies !== null);
+        return this.#dependencies;
+    }
     addSideEffect(sideEffect) {
         this.#sideEffect |= sideEffect;
+    }
+    /**
+     * 内部ブロックから呼び出すユーザ関数名を記録し依存関係を明確にする.
+     * 実在するユーザ関数名かのチェックはしないのでこのメソッドを呼び出す側の責任.
+     * @param userFuncName
+     */
+    addDependency(userFuncName) {
+        U.assert(this.definition);
+        U.assert(this.#dependencies !== null);
+        this.#dependencies.add(userFuncName);
+        if (userFuncName === this.name) {
+            this.#isRecursive = true;
+        }
     }
     validate(other) {
         if (this.varId !== other.varId || this.name !== other.name) {
@@ -933,6 +958,7 @@ export class Code {
         this.kind = kind;
         this.src = src;
     }
+    isFinishedWithReturn() { return false; }
 }
 export var BlockEndKind;
 (function (BlockEndKind) {
@@ -971,6 +997,9 @@ export class BlockInfo {
         const blockInfo = new BlockInfo(this.src, this.id, this.parentId, this.varList, body, this.blockEnd);
         return Result.ok({ blockInfo: blockInfo, sideEffect: sideEffect });
     }
+    isFinishedWithReturn() {
+        return this.body.at(-1)?.isFinishedWithReturn() ?? false;
+    }
     toString() {
         return `BlockInfo{ id: ${this.id}, parentId: ${this.parentId}, varList: [[ ${this.varList.map(s => `${s}`).join(", ")} ]], src: "${Token.lineToString(this.src)}", blockEnd: ${BlockEndKind[this.blockEnd]} }`;
     }
@@ -988,6 +1017,9 @@ export class Block extends Code {
         }
         const code = new Block(res.result.blockInfo);
         return Result.ok({ code: code, sideEffect: res.result.sideEffect });
+    }
+    isFinishedWithReturn() {
+        return this.blockInfo.isFinishedWithReturn();
     }
     toString() {
         return `Block{ id: ${this.blockInfo.id}, body: {{ ${this.blockInfo.body.map(s => `[ ${s} ]`).join(", ")} }} }`;
@@ -1172,6 +1204,17 @@ export class If extends Code {
         }
         const newCode = new If(this.srcList, newTestExprList, newBlockInfoList);
         return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
+    isFinishedWithReturn() {
+        if (this.testExprList.length === this.blockInfoList.length) {
+            return false;
+        }
+        for (const bi of this.blockInfoList) {
+            if (!bi.isFinishedWithReturn()) {
+                return false;
+            }
+        }
+        return true;
     }
     toString() {
         return `If{ [[ ${this.blockInfoList.map((bi, i) => `testExpr: ${this.testExprList.at(i)}, code: {{ ${bi} }}`).join(", ")} ]] }`;
@@ -1395,6 +1438,9 @@ export class Return extends Code {
         }
         const newCode = new Return(this.src, this.funcInfo, newValue);
         return Result.ok({ code: newCode, sideEffect: sideEffect });
+    }
+    isFinishedWithReturn() {
+        return true;
     }
     toString() {
         if (this.value === null) {
