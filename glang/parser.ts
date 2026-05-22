@@ -2,7 +2,7 @@
 // Parser
 //
 import Logger, { LogLevel } from "logger";
-const log = new Logger("parser", LogLevel.ALL);
+const log = new Logger("parser", LogLevel.ERROR | LogLevel.WARN);
 
 import RQueue from "rqueue";
 import Scanner, { Token, TokenType } from "scanner";
@@ -505,6 +505,7 @@ class Env {
             }
             after.push(newCodeRes.result.code);
         }
+        this.#codeBodyStack[n-1] = after;
         for (let i = 0; i < this.#userFuncMap.size; i++) {
             for (const fiList of this.#userFuncMap.values()) {
                 U.assert(fiList.length === 1);
@@ -519,7 +520,6 @@ class Env {
                 }
             }
         }
-        this.#codeBodyStack[n-1] = after;
         return Result.ok(undefined);
     }
 

@@ -2,7 +2,7 @@
 // Code
 // 
 import Logger, { LogLevel } from "logger";
-const log = new Logger("code", LogLevel.ALL);
+const log = new Logger("code", LogLevel.ERROR | LogLevel.WARN);
 import { Token } from "scanner";
 import { Result } from "utils";
 import * as U from "utils";
