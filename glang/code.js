@@ -6,6 +6,15 @@ const log = new Logger("code", LogLevel.ERROR | LogLevel.WARN);
 import { Token } from "scanner";
 import { Result } from "utils";
 import * as U from "utils";
+export class ParsedSource {
+    blockInfo;
+    constructor(blockInfo) {
+        this.blockInfo = blockInfo;
+    }
+    toString() {
+        return `ParsedSource{ blockInfo: ${this.blockInfo} }`;
+    }
+}
 export var Vtype;
 (function (Vtype) {
     Vtype[Vtype["NONE"] = 0] = "NONE";

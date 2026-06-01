@@ -10,6 +10,18 @@ import * as U from "utils";
 
 export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
 
+export class ParsedSource {
+    readonly blockInfo: BlockInfo;
+
+    constructor(blockInfo: BlockInfo) {
+        this.blockInfo = blockInfo;
+    }
+
+    toString(): string {
+        return `ParsedSource{ blockInfo: ${this.blockInfo} }`;
+    }
+}
+
 export enum Vtype {
     NONE            = 0,
     VOID            = 1 << 0,

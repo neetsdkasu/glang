@@ -769,7 +769,7 @@ class Env {
         return Result.ok(funcInfo);
     }
 }
-export class Parser {
+class Parser {
     #scanner;
     #env = new Env();
     constructor(scanner) {
@@ -2822,4 +2822,8 @@ export class Parser {
         return Result.ok(undefined);
     }
 }
-export default Parser;
+export function parse(scanner) {
+    const parser = new Parser(scanner);
+    return parser.parse().map(bi => new C.ParsedSource(bi));
+}
+export default {};

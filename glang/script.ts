@@ -7,7 +7,8 @@ const log = new Logger("main", LogLevel.ALL);
 
 import CharReader from "charreader";
 import Scanner from "scanner";
-import Parser from "parser";
+import * as parser from "parser";
+import * as compiler from "compiler";
 import * as U from "utils";
 
 /**
@@ -25,10 +26,17 @@ RunButton.addEventListener("click", () => {
     const src = CodeTextarea.value;
     const reader = new CharReader(src);
     const scanner = new Scanner(reader);
-    const parser = new Parser(scanner);
 
-    const res = parser.parse();
-    log.dump("res", res);
+    const parsedResult = parser.parse(scanner);
+    log.dump("parsedResult", parsedResult);
+    if (parsedResult.isErr) {
+        return;
+    }
+    const parsedSrc = parsedResult.result;
+
+    const compiledResult = compiler.compile(parsedSrc);
+
+    log.dump("compiledResult", compiledResult);
 
 });
 

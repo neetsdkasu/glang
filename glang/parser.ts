@@ -820,7 +820,7 @@ class Env {
     }
 }
 
-export class Parser {
+class Parser {
     readonly #scanner: Scanner;
     readonly #env: Env = new Env();
 
@@ -3342,4 +3342,9 @@ export class Parser {
     }
 }
 
-export default Parser;
+export function parse(scanner: Scanner): Result<C.ParsedSource,ParserError> {
+    const parser = new Parser(scanner);
+    return parser.parse().map( bi => new C.ParsedSource(bi) );
+}
+
+export default {};
