@@ -31,6 +31,8 @@
     // "baseUrl": "../",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
         "charreader": ["./charreader.ts"],
+        "command": ["./command.ts"],
+        "compiler": ["./compiler.ts"],
         "code": ["./code.ts"],
         "logger": ["./logger.ts"],
         "parser": ["./parser.ts"],
