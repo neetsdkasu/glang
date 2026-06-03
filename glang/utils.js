@@ -28,8 +28,16 @@ export function assertGE(a, b, msg) {
     assert(a >= b, `assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
 }
 export class Unimplemented extends Error {
-    constructor(obj) {
-        super(`未実装なのでエラー. ( ${obj} )`);
+    constructor(hint) {
+        super(`未実装なのでエラー. ( ${hint} )`);
+    }
+}
+export function unreachable(hint) {
+    if (hint !== undefined) {
+        throw new Error(`Unreachable: ${hint}`);
+    }
+    else {
+        throw new Error("Unreachable");
     }
 }
 export function popCount(n) {

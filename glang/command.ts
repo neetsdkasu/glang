@@ -2,6 +2,20 @@
 // Command
 //
 
+export class Prgoram {
+    readonly program: Readonly<number[]>;
+    readonly litStr: Readonly<string[]>;
+
+    constructor(program: number[], litStr: string[]) {
+        this.program = program;
+        this.litStr = litStr;
+    }
+
+    toString(): string {
+        return `Program{ size: ${this.program.length}, litStr: ${this.litStr.length} }`;
+    }
+}
+
 export enum Cmd {
     NOP,
     IPUSH,
@@ -84,11 +98,37 @@ export enum Cmd {
     SET_SARR2D,
     GET_SARR3D,
     SET_SARR3D,
+    APUSH_BARR1D,
+    APUSH_BARR2D,
+    APUSH_BARR3D,
+    APUSH_FARR1D,
+    APUSH_FARR2D,
+    APUSH_FARR3D,
+    APUSH_IARR1D,
+    APUSH_IARR2D,
+    APUSH_IARR3D,
+    APUSH_SARR1D,
+    APUSH_SARR2D,
+    APUSH_SARR3D,
     JUMP,
     JUMP_IF_TRUE,
     JUMP_IF_FALSE,
     CALL_STDFUNC,
     CALL_USERFUNC,
+    INIT_IARR1D,
+    INIT_IARR2D,
+    INIT_IARR3D,
+    INIT_BARR1D,
+    INIT_BARR2D,
+    INIT_BARR3D,
+    INIT_FARR1D,
+    INIT_FARR2D,
+    INIT_FARR3D,
+    INIT_SARR1D,
+    INIT_SARR2D,
+    INIT_SARR3D,
+    PUSH_BLOCK,
+    POP_BLOCK,
     RET,
 }
 

@@ -20,8 +20,8 @@ export var Vtype;
     Vtype[Vtype["NONE"] = 0] = "NONE";
     Vtype[Vtype["VOID"] = 1] = "VOID";
     Vtype[Vtype["BOOLEAN"] = 2] = "BOOLEAN";
-    Vtype[Vtype["INTEGER"] = 4] = "INTEGER";
-    Vtype[Vtype["FLOATING_POINT"] = 8] = "FLOATING_POINT";
+    Vtype[Vtype["FLOATING_POINT"] = 4] = "FLOATING_POINT";
+    Vtype[Vtype["INTEGER"] = 8] = "INTEGER";
     Vtype[Vtype["STRING"] = 16] = "STRING";
     Vtype[Vtype["ARRAY_TYPE"] = 32] = "ARRAY_TYPE";
     Vtype[Vtype["ARRAY_SIZE_1"] = 64] = "ARRAY_SIZE_1";
@@ -35,25 +35,25 @@ export var Vtype;
     Vtype[Vtype["INFER"] = 2048] = "INFER";
     Vtype[Vtype["PRIMITIVE_TYPE"] = 30] = "PRIMITIVE_TYPE";
     Vtype[Vtype["NUMBER_TYPE"] = 12] = "NUMBER_TYPE";
-    Vtype[Vtype["LOGICAL_TYPE"] = 6] = "LOGICAL_TYPE";
+    Vtype[Vtype["LOGICAL_TYPE"] = 10] = "LOGICAL_TYPE";
     Vtype[Vtype["COMPARE_TYPE"] = 28] = "COMPARE_TYPE";
     Vtype[Vtype["CONCAT_TYPE"] = 28] = "CONCAT_TYPE";
     Vtype[Vtype["NON_PRIMITIVE"] = 1824] = "NON_PRIMITIVE";
     Vtype[Vtype["BOOL_ARRAY"] = 98] = "BOOL_ARRAY";
     Vtype[Vtype["BOOL_ARRAY_2D"] = 162] = "BOOL_ARRAY_2D";
     Vtype[Vtype["BOOL_ARRAY_3D"] = 226] = "BOOL_ARRAY_3D";
-    Vtype[Vtype["INT_ARRAY"] = 100] = "INT_ARRAY";
-    Vtype[Vtype["INT_ARRAY_2D"] = 164] = "INT_ARRAY_2D";
-    Vtype[Vtype["INT_ARRAY_3D"] = 228] = "INT_ARRAY_3D";
-    Vtype[Vtype["FLOAT_ARRAY"] = 104] = "FLOAT_ARRAY";
-    Vtype[Vtype["FLOAT_ARRAY_2D"] = 168] = "FLOAT_ARRAY_2D";
-    Vtype[Vtype["FLOAT_ARRAY_3D"] = 232] = "FLOAT_ARRAY_3D";
+    Vtype[Vtype["FLOAT_ARRAY"] = 100] = "FLOAT_ARRAY";
+    Vtype[Vtype["FLOAT_ARRAY_2D"] = 164] = "FLOAT_ARRAY_2D";
+    Vtype[Vtype["FLOAT_ARRAY_3D"] = 228] = "FLOAT_ARRAY_3D";
+    Vtype[Vtype["INT_ARRAY"] = 104] = "INT_ARRAY";
+    Vtype[Vtype["INT_ARRAY_2D"] = 168] = "INT_ARRAY_2D";
+    Vtype[Vtype["INT_ARRAY_3D"] = 232] = "INT_ARRAY_3D";
     Vtype[Vtype["STR_ARRAY"] = 112] = "STR_ARRAY";
     Vtype[Vtype["STR_ARRAY_2D"] = 176] = "STR_ARRAY_2D";
     Vtype[Vtype["STR_ARRAY_3D"] = 240] = "STR_ARRAY_3D";
     Vtype[Vtype["INFER_PRIMITIVE"] = 2078] = "INFER_PRIMITIVE";
     Vtype[Vtype["INFER_NUMBER"] = 2060] = "INFER_NUMBER";
-    Vtype[Vtype["INFER_LOGICAL"] = 2054] = "INFER_LOGICAL";
+    Vtype[Vtype["INFER_LOGICAL"] = 2058] = "INFER_LOGICAL";
     Vtype[Vtype["INFER_COMPARE"] = 2076] = "INFER_COMPARE";
     Vtype[Vtype["INFER_CONCAT"] = 2076] = "INFER_CONCAT";
     Vtype[Vtype["INFER_ARRAY"] = 2080] = "INFER_ARRAY";
@@ -599,7 +599,7 @@ export class Expr {
 }
 export class ExprLitInt extends Expr {
     value;
-    unaryOp;
+    unaryOp; // valueに適用済みの単項演算子.
     constructor(src, value, unaryOp) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
         this.value = value;
@@ -619,7 +619,7 @@ export class ExprLitInt extends Expr {
 }
 export class ExprLitFloat extends Expr {
     value;
-    unaryOp;
+    unaryOp; // valueに適用済みの単項演算子.
     constructor(src, value, unaryOp) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
@@ -639,7 +639,7 @@ export class ExprLitFloat extends Expr {
 }
 export class ExprLitBoolean extends Expr {
     value;
-    unaryOp;
+    unaryOp; // valueに適用済みの単項演算子.
     constructor(src, value, unaryOp) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
         this.value = value;
@@ -886,11 +886,16 @@ export class ExprMemberUserFunc extends Expr {
         return `MemberUserFunc{ name: ${this.funcInfo.name}, definition: ${this.funcInfo.definition}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
-export class ExprVarVal extends Expr {
+export class ExprVar extends Expr {
     nameInfo;
-    constructor(src, nameInfo) {
-        super(ExprKind.VARIABLE, nameInfo.vtype, src);
+    constructor(src, vtype, nameInfo) {
+        super(ExprKind.VARIABLE, vtype, src);
         this.nameInfo = nameInfo;
+    }
+}
+export class ExprVarVal extends ExprVar {
+    constructor(src, nameInfo) {
+        super(src, nameInfo.vtype, nameInfo);
     }
     rebuild(findUserFunc) {
         return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
@@ -899,12 +904,10 @@ export class ExprVarVal extends Expr {
         return `VarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;
     }
 }
-export class ExprArrayVarVal extends Expr {
-    nameInfo;
+export class ExprArrayVarVal extends ExprVar {
     indexes;
     constructor(src, nameInfo, indexes) {
-        super(ExprKind.VARIABLE, nameInfo.vtype & Vtype.PRIMITIVE_TYPE, src);
-        this.nameInfo = nameInfo;
+        super(src, nameInfo.vtype & Vtype.PRIMITIVE_TYPE, nameInfo);
         this.indexes = indexes;
     }
     rebuild(findUserFunc) {
@@ -929,11 +932,9 @@ export class ExprArrayVarVal extends Expr {
         return `ArrayVarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]}, indexes: (( ${this.indexes.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
     }
 }
-export class ExprArrayRef extends Expr {
-    nameInfo;
+export class ExprArrayRef extends ExprVar {
     constructor(src, nameInfo) {
-        super(ExprKind.VARIABLE, nameInfo.vtype, src);
-        this.nameInfo = nameInfo;
+        super(src, nameInfo.vtype, nameInfo);
     }
     rebuild(findUserFunc) {
         return Result.ok({ expr: this, sideEffect: SideEffect.NONE });

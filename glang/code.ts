@@ -26,8 +26,8 @@ export enum Vtype {
     NONE            = 0,
     VOID            = 1 << 0,
     BOOLEAN         = 1 << 1,
-    INTEGER         = 1 << 2,
-    FLOATING_POINT  = 1 << 3,
+    FLOATING_POINT  = 1 << 2,
+    INTEGER         = 1 << 3,
     STRING          = 1 << 4,
     ARRAY_TYPE      = 1 << 5,
     ARRAY_SIZE_1    = 1 << 6,
@@ -48,12 +48,12 @@ export enum Vtype {
     BOOL_ARRAY      = BOOLEAN | ARRAY_1D,
     BOOL_ARRAY_2D   = BOOLEAN | ARRAY_2D,
     BOOL_ARRAY_3D   = BOOLEAN | ARRAY_3D,
-    INT_ARRAY       = INTEGER | ARRAY_1D,
-    INT_ARRAY_2D    = INTEGER | ARRAY_2D,
-    INT_ARRAY_3D    = INTEGER | ARRAY_3D,
     FLOAT_ARRAY     = FLOATING_POINT | ARRAY_1D,
     FLOAT_ARRAY_2D  = FLOATING_POINT | ARRAY_2D,
     FLOAT_ARRAY_3D  = FLOATING_POINT | ARRAY_3D,
+    INT_ARRAY       = INTEGER | ARRAY_1D,
+    INT_ARRAY_2D    = INTEGER | ARRAY_2D,
+    INT_ARRAY_3D    = INTEGER | ARRAY_3D,
     STR_ARRAY       = STRING | ARRAY_1D,
     STR_ARRAY_2D    = STRING | ARRAY_2D,
     STR_ARRAY_3D    = STRING | ARRAY_3D,
@@ -642,7 +642,7 @@ export abstract class Expr {
 
 export class ExprLitInt extends Expr {
     readonly value: number;
-    readonly unaryOp: UnaryOpInfo | undefined;
+    readonly unaryOp: UnaryOpInfo | undefined; // valueに適用済みの単項演算子.
 
     constructor(src: Token, value: number, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.INTEGER, src);
@@ -665,7 +665,7 @@ export class ExprLitInt extends Expr {
 
 export class ExprLitFloat extends Expr {
     readonly value: number;
-    readonly unaryOp: UnaryOpInfo | undefined;
+    readonly unaryOp: UnaryOpInfo | undefined; // valueに適用済みの単項演算子.
 
     constructor(src: Token, value: number, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
@@ -688,7 +688,7 @@ export class ExprLitFloat extends Expr {
 
 export class ExprLitBoolean extends Expr {
     readonly value: boolean;
-    readonly unaryOp: UnaryOpInfo| undefined;
+    readonly unaryOp: UnaryOpInfo| undefined; // valueに適用済みの単項演算子.
 
     constructor(src: Token, value: boolean, unaryOp?: UnaryOpInfo) {
         super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
@@ -970,12 +970,19 @@ export class ExprMemberUserFunc extends Expr {
     }
 }
 
-export class ExprVarVal extends Expr {
+export abstract class ExprVar extends Expr {
     readonly nameInfo: NameInfo;
+    
+    constructor(src: Token, vtype: Vtype, nameInfo: NameInfo) {
+        super(ExprKind.VARIABLE, vtype, src);
+        this.nameInfo = nameInfo;
+    }
+}
+
+export class ExprVarVal extends ExprVar {
 
     constructor(src: Token, nameInfo: NameInfo) {
-        super(ExprKind.VARIABLE, nameInfo.vtype, src);
-        this.nameInfo = nameInfo;
+        super(src, nameInfo.vtype, nameInfo);
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
@@ -987,13 +994,11 @@ export class ExprVarVal extends Expr {
     }
 }
 
-export class ExprArrayVarVal extends Expr {
-    readonly nameInfo: NameInfo;
+export class ExprArrayVarVal extends ExprVar {
     readonly indexes: Readonly<Expr[]>;
 
     constructor(src: Token, nameInfo: NameInfo, indexes: Expr[]) {
-        super(ExprKind.VARIABLE, nameInfo.vtype & Vtype.PRIMITIVE_TYPE, src);
-        this.nameInfo = nameInfo;
+        super(src, nameInfo.vtype & Vtype.PRIMITIVE_TYPE, nameInfo);
         this.indexes = indexes;
     }
 
@@ -1021,12 +1026,10 @@ export class ExprArrayVarVal extends Expr {
     }
 }
 
-export class ExprArrayRef extends Expr {
-    readonly nameInfo: NameInfo;
+export class ExprArrayRef extends ExprVar {
 
     constructor(src: Token, nameInfo: NameInfo) {
-        super(ExprKind.VARIABLE, nameInfo.vtype, src);
-        this.nameInfo = nameInfo;
+        super(src, nameInfo.vtype, nameInfo);
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {

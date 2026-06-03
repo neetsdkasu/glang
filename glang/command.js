@@ -1,6 +1,17 @@
 //
 // Command
 //
+export class Prgoram {
+    program;
+    litStr;
+    constructor(program, litStr) {
+        this.program = program;
+        this.litStr = litStr;
+    }
+    toString() {
+        return `Program{ size: ${this.program.length}, litStr: ${this.litStr.length} }`;
+    }
+}
 export var Cmd;
 (function (Cmd) {
     Cmd[Cmd["NOP"] = 0] = "NOP";
@@ -84,12 +95,38 @@ export var Cmd;
     Cmd[Cmd["SET_SARR2D"] = 78] = "SET_SARR2D";
     Cmd[Cmd["GET_SARR3D"] = 79] = "GET_SARR3D";
     Cmd[Cmd["SET_SARR3D"] = 80] = "SET_SARR3D";
-    Cmd[Cmd["JUMP"] = 81] = "JUMP";
-    Cmd[Cmd["JUMP_IF_TRUE"] = 82] = "JUMP_IF_TRUE";
-    Cmd[Cmd["JUMP_IF_FALSE"] = 83] = "JUMP_IF_FALSE";
-    Cmd[Cmd["CALL_STDFUNC"] = 84] = "CALL_STDFUNC";
-    Cmd[Cmd["CALL_USERFUNC"] = 85] = "CALL_USERFUNC";
-    Cmd[Cmd["RET"] = 86] = "RET";
+    Cmd[Cmd["APUSH_BARR1D"] = 81] = "APUSH_BARR1D";
+    Cmd[Cmd["APUSH_BARR2D"] = 82] = "APUSH_BARR2D";
+    Cmd[Cmd["APUSH_BARR3D"] = 83] = "APUSH_BARR3D";
+    Cmd[Cmd["APUSH_FARR1D"] = 84] = "APUSH_FARR1D";
+    Cmd[Cmd["APUSH_FARR2D"] = 85] = "APUSH_FARR2D";
+    Cmd[Cmd["APUSH_FARR3D"] = 86] = "APUSH_FARR3D";
+    Cmd[Cmd["APUSH_IARR1D"] = 87] = "APUSH_IARR1D";
+    Cmd[Cmd["APUSH_IARR2D"] = 88] = "APUSH_IARR2D";
+    Cmd[Cmd["APUSH_IARR3D"] = 89] = "APUSH_IARR3D";
+    Cmd[Cmd["APUSH_SARR1D"] = 90] = "APUSH_SARR1D";
+    Cmd[Cmd["APUSH_SARR2D"] = 91] = "APUSH_SARR2D";
+    Cmd[Cmd["APUSH_SARR3D"] = 92] = "APUSH_SARR3D";
+    Cmd[Cmd["JUMP"] = 93] = "JUMP";
+    Cmd[Cmd["JUMP_IF_TRUE"] = 94] = "JUMP_IF_TRUE";
+    Cmd[Cmd["JUMP_IF_FALSE"] = 95] = "JUMP_IF_FALSE";
+    Cmd[Cmd["CALL_STDFUNC"] = 96] = "CALL_STDFUNC";
+    Cmd[Cmd["CALL_USERFUNC"] = 97] = "CALL_USERFUNC";
+    Cmd[Cmd["INIT_IARR1D"] = 98] = "INIT_IARR1D";
+    Cmd[Cmd["INIT_IARR2D"] = 99] = "INIT_IARR2D";
+    Cmd[Cmd["INIT_IARR3D"] = 100] = "INIT_IARR3D";
+    Cmd[Cmd["INIT_BARR1D"] = 101] = "INIT_BARR1D";
+    Cmd[Cmd["INIT_BARR2D"] = 102] = "INIT_BARR2D";
+    Cmd[Cmd["INIT_BARR3D"] = 103] = "INIT_BARR3D";
+    Cmd[Cmd["INIT_FARR1D"] = 104] = "INIT_FARR1D";
+    Cmd[Cmd["INIT_FARR2D"] = 105] = "INIT_FARR2D";
+    Cmd[Cmd["INIT_FARR3D"] = 106] = "INIT_FARR3D";
+    Cmd[Cmd["INIT_SARR1D"] = 107] = "INIT_SARR1D";
+    Cmd[Cmd["INIT_SARR2D"] = 108] = "INIT_SARR2D";
+    Cmd[Cmd["INIT_SARR3D"] = 109] = "INIT_SARR3D";
+    Cmd[Cmd["PUSH_BLOCK"] = 110] = "PUSH_BLOCK";
+    Cmd[Cmd["POP_BLOCK"] = 111] = "POP_BLOCK";
+    Cmd[Cmd["RET"] = 112] = "RET";
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

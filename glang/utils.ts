@@ -37,8 +37,16 @@ export function assertGE<T extends number | string | bigint>(a: T, b: T, msg?: s
 }
 
 export class Unimplemented extends Error {
-    constructor(obj?: any) {
-        super(`未実装なのでエラー. ( ${obj} )`);
+    constructor(hint?: any) {
+        super(`未実装なのでエラー. ( ${hint} )`);
+    }
+}
+
+export function unreachable(hint?: any): never {
+    if (hint !== undefined) {
+        throw new Error(`Unreachable: ${hint}`);
+    } else {
+        throw new Error("Unreachable");
     }
 }
 
