@@ -419,10 +419,11 @@ export class FuncInfo {
     argNames;
     outerBlockId;
     innerBlockId;
+    isMain;
     #sideEffect = SideEffect.NONE;
     #dependencies;
     #isRecursive = false;
-    constructor(src, name, retArg, varId, definition) {
+    constructor(src, name, retArg, varId, definition, isMain) {
         this.src = src;
         this.name = name;
         this.retArg = retArg;
@@ -441,6 +442,7 @@ export class FuncInfo {
             this.innerBlockId = definition.innerBlockId;
             this.#dependencies = new Set();
         }
+        this.isMain = isMain;
     }
     get sideEffect() {
         return this.#sideEffect;
@@ -485,7 +487,7 @@ export class FuncInfo {
         return cal.retArg.checkConsistencyWith(def.retArg);
     }
     toString() {
-        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, sideEffect: ${SideEffect[this.#sideEffect]}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
+        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, sideEffect: ${SideEffect[this.#sideEffect]}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId}, isMain: ${this.isMain} }`;
     }
 }
 export var BinaryOpKind;

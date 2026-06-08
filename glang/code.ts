@@ -441,11 +441,12 @@ export class FuncInfo {
     readonly argNames: Readonly<NameInfo[]> | undefined;
     readonly outerBlockId: number | undefined;
     readonly innerBlockId: number | undefined;
+    readonly isMain: boolean | undefined;
     #sideEffect: SideEffect = SideEffect.NONE;
     #dependencies: Set<string> | null;
     #isRecursive: boolean = false;
 
-    constructor(src: Token[], name: string, retArg: RetArg, varId: number, definition?: { argNames: NameInfo[], outerBlockId: number, innerBlockId: number } | undefined) {
+    constructor(src: Token[], name: string, retArg: RetArg, varId: number, definition?: { argNames: NameInfo[], outerBlockId: number, innerBlockId: number } | undefined, isMain?: boolean | undefined) {
         this.src = src;
         this.name = name;
         this.retArg = retArg;
@@ -463,6 +464,7 @@ export class FuncInfo {
             this.innerBlockId = definition.innerBlockId;
             this.#dependencies = new Set();
         }
+        this.isMain = isMain;
     }
 
     get sideEffect(): SideEffect {
@@ -514,7 +516,7 @@ export class FuncInfo {
     }
 
     toString(): string {
-        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, sideEffect: ${SideEffect[this.#sideEffect]}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId} }`;
+        return `FuncInfo{ src: ${Token.lineToString(this.src)}, name: ${this.name}, retArg: ${this.retArg}, varId: ${this.varId}, definition: ${this.definition}, sideEffect: ${SideEffect[this.#sideEffect]}, argNames: [${this.argNames}], outerBlockId: ${this.outerBlockId}, innerBlockId: ${this.innerBlockId}, isMain: ${this.isMain} }`;
     }
 }
 

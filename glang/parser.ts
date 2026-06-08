@@ -23,6 +23,8 @@ declare global {
 
 export type ParserError = string;
 
+const OK: Result<undefined,ParserError> = Result.ok(undefined);
+
 function syntaxError<R>(msg: string, obj: any): Result<R,ParserError> {
     return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
 }
@@ -520,7 +522,7 @@ class Env {
                 }
             }
         }
-        return Result.ok(undefined);
+        return OK;
     }
 
     isGlobalBlockId(blockId: number): boolean {
@@ -769,6 +771,7 @@ class Env {
             this.#nameMapStack.at(0)!.set(src, name, vtype, varId);
         }
         let argNameAndBlockIds: { argNames: C.NameInfo[], outerBlockId: number, innerBlockId: number} | undefined = undefined;
+        let isMain: boolean | undefined = undefined;
         if (definition) {
             const outerBlockId = this.push(src);
             const args: C.NameInfo[] = [];
@@ -785,8 +788,9 @@ class Env {
                 outerBlockId: outerBlockId,
                 innerBlockId: innerBlockId
             };
+            isMain = name === Keyword.MAIN;
         }
-        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
+        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds, isMain);
         const funcList = this.#userFuncMap.get(name);
         if (funcList) {
             let defined = false;
@@ -905,6 +909,7 @@ class Parser {
         if (mainSub === undefined) {
             return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, this.#scanner);
         }
+        U.assert(mainSub.isMain === true);
 
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
@@ -1174,7 +1179,7 @@ class Parser {
 
         log.debug("PARSED dim.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -1324,7 +1329,7 @@ class Parser {
 
         log.debug("PARSED sub.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -1385,7 +1390,7 @@ class Parser {
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED let.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -2205,7 +2210,7 @@ class Parser {
 
         log.debug("PARSED assign.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -2316,7 +2321,7 @@ class Parser {
 
         log.debug("PARSED assign array.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -2493,7 +2498,7 @@ class Parser {
 
         log.debug("PARSED for.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -2643,7 +2648,7 @@ class Parser {
 
         log.debug("PARSED if.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     /**
@@ -2694,7 +2699,7 @@ class Parser {
                 this.#env.addCode(stdFuncNoArgCode);
                 log.dump("src", Token.lineToString, src);
                 log.debug("PARSED call. [no arg std func]");
-                return Result.ok(undefined);
+                return OK;
             }
 
             const stdFuncArgs: C.Expr[] = [];
@@ -2751,7 +2756,7 @@ class Parser {
             this.#env.addCode(stdFuncCode);
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [std func]");
-            return Result.ok(undefined);
+            return OK;
         }
 
         this.#env.definitionUserFunc.addDependency(funcName);
@@ -2777,7 +2782,7 @@ class Parser {
                 this.#env.findName(funcName)!.incrementCounter();
                 log.dump("src", Token.lineToString, src);
                 log.debug("PARSED call. [no arg user func]");
-                return Result.ok(undefined);
+                return OK;
             }
             
             const userFuncArgs: C.Expr[] = [];
@@ -2824,7 +2829,7 @@ class Parser {
             
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [user func]");
-            return Result.ok(undefined);
+            return OK;
         }
 
         const args: C.Expr[] = [];
@@ -2854,7 +2859,7 @@ class Parser {
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [unknown no arg user func]");
 
-            return Result.ok(undefined);
+            return OK;
         }
 
         while (line.len) {
@@ -2907,7 +2912,7 @@ class Parser {
 
         log.debug("PARSED call. [unknown user func]");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parsePrint(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -2953,7 +2958,7 @@ class Parser {
 
         log.debug("PARSED print.");
         
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parseDoWhile(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -3031,7 +3036,7 @@ class Parser {
 
         log.debug("PARSED do.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parseFunc(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -3209,7 +3214,7 @@ class Parser {
 
         log.debug("PARSED func.");
 
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parseBreak(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -3244,7 +3249,7 @@ class Parser {
 
         log.debug("PARSED break.");
         
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parseContinue(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -3279,7 +3284,7 @@ class Parser {
 
         log.debug("PARSED continue.");
         
-        return Result.ok(undefined);
+        return OK;
     }
 
     #parseReturn(line: RQueue<Token>): Result<undefined,ParserError> {
@@ -3304,7 +3309,7 @@ class Parser {
             this.#env.setBlockEnd(C.BlockEndKind.RETURN);
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED return. [sub]");
-            return Result.ok(undefined);
+            return OK;
         }
 
         const returnValueToken = line.front;
@@ -3338,7 +3343,7 @@ class Parser {
 
         log.debug("PARSED return. [func]");
         
-        return Result.ok(undefined);
+        return OK;
     }
 }
 

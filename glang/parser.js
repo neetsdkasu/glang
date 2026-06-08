@@ -8,6 +8,7 @@ import { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
 import * as U from "utils";
 import * as C from "code";
+const OK = Result.ok(undefined);
 function syntaxError(msg, obj) {
     return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
 }
@@ -483,7 +484,7 @@ class Env {
                 }
             }
         }
-        return Result.ok(undefined);
+        return OK;
     }
     isGlobalBlockId(blockId) {
         U.assert(this.#nameMapStack.length > 0);
@@ -717,6 +718,7 @@ class Env {
             this.#nameMapStack.at(0).set(src, name, vtype, varId);
         }
         let argNameAndBlockIds = undefined;
+        let isMain = undefined;
         if (definition) {
             const outerBlockId = this.push(src);
             const args = [];
@@ -733,8 +735,9 @@ class Env {
                 outerBlockId: outerBlockId,
                 innerBlockId: innerBlockId
             };
+            isMain = name === Keyword.MAIN;
         }
-        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds);
+        const funcInfo = new C.FuncInfo(src, name, retArg, varId, argNameAndBlockIds, isMain);
         const funcList = this.#userFuncMap.get(name);
         if (funcList) {
             let defined = false;
@@ -841,6 +844,7 @@ class Parser {
         if (mainSub === undefined) {
             return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, this.#scanner);
         }
+        U.assert(mainSub.isMain === true);
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
             return syntaxError("ここでソースコードの末尾は不正です.", this.#scanner);
@@ -1066,7 +1070,7 @@ class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED dim.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * 戻り値のないユーザ関数定義のsub文および内部コードブロックを読み取る.
@@ -1179,7 +1183,7 @@ class Parser {
         const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
         this.#env.addCode(defineUserFuncCode);
         log.debug("PARSED sub.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * 変数の宣言と初期化のlet文を読み取る.
@@ -1222,7 +1226,7 @@ class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED let.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * 各命令文の処理内で式をパースする際はこのメソッドを呼び出す.
@@ -1940,7 +1944,7 @@ class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED assign.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * 配列要素への代入文を読み取る.
@@ -2021,7 +2025,7 @@ class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED assign array.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * for文および内部コードブロックを読み取る.
@@ -2153,7 +2157,7 @@ class Parser {
             // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
         }
         log.debug("PARSED for.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * if文およびelse文およびそれらの内部コードブロックを読み取る.
@@ -2276,7 +2280,7 @@ class Parser {
             }
         }
         log.debug("PARSED if.");
-        return Result.ok(undefined);
+        return OK;
     }
     /**
      * call文を読み取る.
@@ -2318,7 +2322,7 @@ class Parser {
                 this.#env.addCode(stdFuncNoArgCode);
                 log.dump("src", Token.lineToString, src);
                 log.debug("PARSED call. [no arg std func]");
-                return Result.ok(undefined);
+                return OK;
             }
             const stdFuncArgs = [];
             for (let i = 0; i < stdFuncInfo.retArg.args.length; i++) {
@@ -2367,7 +2371,7 @@ class Parser {
             this.#env.addCode(stdFuncCode);
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [std func]");
-            return Result.ok(undefined);
+            return OK;
         }
         this.#env.definitionUserFunc.addDependency(funcName);
         const userFunc = this.#env.findUserFunc(funcName)?.find(fi => fi.definition);
@@ -2390,7 +2394,7 @@ class Parser {
                 this.#env.findName(funcName).incrementCounter();
                 log.dump("src", Token.lineToString, src);
                 log.debug("PARSED call. [no arg user func]");
-                return Result.ok(undefined);
+                return OK;
             }
             const userFuncArgs = [];
             for (let i = 0; i < userFunc.retArg.args.length; i++) {
@@ -2428,7 +2432,7 @@ class Parser {
             this.#env.findName(funcName).incrementCounter();
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [user func]");
-            return Result.ok(undefined);
+            return OK;
         }
         const args = [];
         const argTypes = [];
@@ -2452,7 +2456,7 @@ class Parser {
             this.#env.findName(funcName).incrementCounter();
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED call. [unknown no arg user func]");
-            return Result.ok(undefined);
+            return OK;
         }
         while (line.len) {
             const token = line.front;
@@ -2494,7 +2498,7 @@ class Parser {
         this.#env.findName(funcName).incrementCounter();
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED call. [unknown user func]");
-        return Result.ok(undefined);
+        return OK;
     }
     #parsePrint(line) {
         const printToken = line.dequeue();
@@ -2529,7 +2533,7 @@ class Parser {
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED print.");
-        return Result.ok(undefined);
+        return OK;
     }
     #parseDoWhile(line) {
         const doToken = line.dequeue();
@@ -2589,7 +2593,7 @@ class Parser {
             // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
         }
         log.debug("PARSED do.");
-        return Result.ok(undefined);
+        return OK;
     }
     #parseFunc(line) {
         const funcToken = line.dequeue();
@@ -2724,7 +2728,7 @@ class Parser {
         const defineUserFuncCode = new C.DefineUserFunc(funcInfo, outerBlockInfo);
         this.#env.addCode(defineUserFuncCode);
         log.debug("PARSED func.");
-        return Result.ok(undefined);
+        return OK;
     }
     #parseBreak(line) {
         const breakToken = line.dequeue();
@@ -2749,7 +2753,7 @@ class Parser {
         this.#env.setBlockEnd(C.BlockEndKind.BREAK);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED break.");
-        return Result.ok(undefined);
+        return OK;
     }
     #parseContinue(line) {
         const continueToken = line.dequeue();
@@ -2774,7 +2778,7 @@ class Parser {
         this.#env.setBlockEnd(C.BlockEndKind.CONTINUE);
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED continue.");
-        return Result.ok(undefined);
+        return OK;
     }
     #parseReturn(line) {
         const returnToken = line.dequeue();
@@ -2795,7 +2799,7 @@ class Parser {
             this.#env.setBlockEnd(C.BlockEndKind.RETURN);
             log.dump("src", Token.lineToString, src);
             log.debug("PARSED return. [sub]");
-            return Result.ok(undefined);
+            return OK;
         }
         const returnValueToken = line.front;
         const returnValueRes = this.#parseExprTokens(line, src);
@@ -2819,7 +2823,7 @@ class Parser {
         this.#env.addCode(funcReturnCode);
         this.#env.setBlockEnd(C.BlockEndKind.RETURN);
         log.debug("PARSED return. [func]");
-        return Result.ok(undefined);
+        return OK;
     }
 }
 export function parse(scanner) {
