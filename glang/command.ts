@@ -60,7 +60,7 @@ export enum Cmd {
     ISUB,        // ISUB () [..., left-integer, right-integer] => [..., sub-integer] : left - right
     IMUL,        // IMUL () [..., left-integer, right-integer] => [..., mul-integer] : left * right
     IDIV,        // IDIV () [..., left-integer, right-integer] => [..., div-integer] : left \ right
-    IMOD,        // IMOD () [..., left-integer, right-integer] => [..., mod-integer] : left % right
+    IREM,        // IREM () [..., left-integer, right-integer] => [..., mod-integer] : left % right
     INEGA,       // INEGA () [..., value-integer] => [..., negatived-integer] : - value
     IASHIFTL,    // IASHIFTL () [..., left-integer, right-integer] => [..., asl-integer] : left << right (keep sign bit)
     IASHIFTR,    // IASHIFTR () [..., left-integer, right-integer] => [..., asr-integer] : left >> right (keep sign bit and copy sign bit)

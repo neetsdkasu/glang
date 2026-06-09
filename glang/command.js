@@ -57,7 +57,7 @@ export var Cmd;
     Cmd[Cmd["ISUB"] = 40] = "ISUB";
     Cmd[Cmd["IMUL"] = 41] = "IMUL";
     Cmd[Cmd["IDIV"] = 42] = "IDIV";
-    Cmd[Cmd["IMOD"] = 43] = "IMOD";
+    Cmd[Cmd["IREM"] = 43] = "IREM";
     Cmd[Cmd["INEGA"] = 44] = "INEGA";
     Cmd[Cmd["IASHIFTL"] = 45] = "IASHIFTL";
     Cmd[Cmd["IASHIFTR"] = 46] = "IASHIFTR";

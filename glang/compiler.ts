@@ -146,11 +146,17 @@ class Compiler {
 
         for (const code of block) {
             switch (code.kind) {
+                case C.CodeKind.ASSIGN_VAR:
+                    U.assert(code instanceof C.AssignVar);
+                    this.#compileAssignVar(code);
+                    break;
                 case C.CodeKind.DIM:
-                    this.#compileDim(code as C.Dim);
+                    U.assert(code instanceof C.Dim);
+                    this.#compileDim(code);
                     break;
                 case C.CodeKind.LET:
-                    this.#compileLet(code as C.Let);
+                    U.assert(code instanceof C.Let);
+                    this.#compileLet(code);
                     break;
                 default:
                     throw new U.Unimplemented(code);
@@ -200,6 +206,87 @@ class Compiler {
         this.#popBlock(outerBlockInfo);
         this.#addCmd(Cmd.RET);
 
+    }
+
+    #compileAssignVar(code: C.AssignVar): void {
+        if (code.op.kind !== C.AssignKind.ASSIGN) {
+            this.#compileGetVar(code.nameInfo);
+        }
+        
+        this.#compileExpr(code.expr);
+
+        if (code.op.kind !== C.AssignKind.ASSIGN) {
+            let cmd: Cmd;
+            switch (code.op.kind) {
+                case C.AssignKind.ADD:
+                    switch (code.nameInfo.vtype) {
+                        case C.Vtype.FLOATING_POINT: cmd = Cmd.FADD; break;
+                        case C.Vtype.INTEGER:        cmd = Cmd.IADD; break;
+                        case C.Vtype.STRING:         cmd = Cmd.SCONCAT; break;
+                        default: U.unreachable(code);
+                    }
+                    break;
+                case C.AssignKind.SUBTRACT:
+                    switch (code.nameInfo.vtype) {
+                        case C.Vtype.FLOATING_POINT: cmd = Cmd.FSUB; break;
+                        case C.Vtype.INTEGER:        cmd = Cmd.ISUB; break;
+                        default: U.unreachable(code);
+                    }
+                    break;
+                case C.AssignKind.MULTIPLY:
+                    switch (code.nameInfo.vtype) {
+                        case C.Vtype.FLOATING_POINT: cmd = Cmd.FMUL; break;
+                        case C.Vtype.INTEGER:        cmd = Cmd.IMUL; break;
+                        default: U.unreachable(code);
+                    }
+                    break;
+                case C.AssignKind.DIVIDE:
+                    U.assert(code.nameInfo.vtype === C.Vtype.FLOATING_POINT);
+                    cmd = Cmd.FDIV;
+                    break;
+                case C.AssignKind.INT_DIVIDE:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IDIV;
+                    break;
+                case C.AssignKind.INT_REMINDER:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IREM;
+                    break;
+                case C.AssignKind.BITWISE_AND:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IAND;
+                    break;
+                case C.AssignKind.BITWISE_OR:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IOR;
+                    break;
+                case C.AssignKind.BITWISE_XOR:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IXOR;
+                    break;
+                case C.AssignKind.BITWISE_ASHIFT_L:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IASHIFTL;
+                    break;
+                case C.AssignKind.BITWISE_ASHIFT_R:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.IASHIFTR;
+                    break;
+                case C.AssignKind.BITWISE_LSHIFT_L:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.ILSHIFTL;
+                    break;
+                case C.AssignKind.BITWISE_LSHIFT_R:
+                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
+                    cmd = Cmd.ILSHIFTR;
+                    break;
+                default: U.unreachable(code);
+            }
+            
+            this.#addCmd(cmd);
+        }
+
+        this.#compileSetVar(code.nameInfo);
     }
 
     #compileDim(code: C.Dim): void {
@@ -316,13 +403,9 @@ class Compiler {
         }
     }
 
-    #compileExprVar(expr: C.ExprVar): void {
-        if (expr.vtype !== expr.nameInfo.vtype) {
-            this.#compileExprArrayVarVal(expr as C.ExprArrayVarVal);
-            return;
-        }
+    #compileGetVar(nameInfo: C.NameInfo): void {
         let cmd: Cmd;
-        switch (expr.nameInfo.vtype) {
+        switch (nameInfo.vtype) {
             case C.Vtype.BOOLEAN:        cmd = Cmd.GET_BVAR; break;
             case C.Vtype.FLOATING_POINT: cmd = Cmd.GET_FVAR; break;
             case C.Vtype.INTEGER:        cmd = Cmd.GET_IVAR; break;
@@ -339,18 +422,31 @@ class Compiler {
             case C.Vtype.STR_ARRAY:      cmd = Cmd.APUSH_SARR1D; break;
             case C.Vtype.STR_ARRAY_2D:   cmd = Cmd.APUSH_SARR2D; break;
             case C.Vtype.STR_ARRAY_3D:   cmd = Cmd.APUSH_SARR3D; break;
-            default: U.unreachable(expr);
+            default: U.unreachable(nameInfo);
         }
 
-        this.#addCmd(cmd, expr.nameInfo.blockId, expr.nameInfo.blockVarId);
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
 
-    #compileExprArrayVarVal(expr: C.ExprArrayVarVal): void {
-        for (const index of expr.indexes) {
+    #compileSetVar(nameInfo: C.NameInfo): void {
+        let cmd: Cmd;
+        switch (nameInfo.vtype) {
+            case C.Vtype.BOOLEAN:        cmd = Cmd.SET_BVAR; break;
+            case C.Vtype.FLOATING_POINT: cmd = Cmd.SET_FVAR; break;
+            case C.Vtype.INTEGER:        cmd = Cmd.SET_IVAR; break;
+            case C.Vtype.STRING:         cmd = Cmd.SET_SVAR; break;
+            default: U.unreachable(nameInfo);
+        }
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
+    }
+
+
+    #compileGetArrayVarVal(nameInfo: C.NameInfo, indexes: Readonly<C.Expr[]>): void {
+        for (const index of indexes) {
             this.#compileExpr(index);
         }
         let cmd: Cmd;
-        switch (expr.nameInfo.vtype) {
+        switch (nameInfo.vtype) {
             case C.Vtype.BOOL_ARRAY:     cmd = Cmd.GET_BARR1D; break;
             case C.Vtype.BOOL_ARRAY_2D:  cmd = Cmd.GET_BARR2D; break;
             case C.Vtype.BOOL_ARRAY_3D:  cmd = Cmd.GET_BARR3D; break;
@@ -363,9 +459,19 @@ class Compiler {
             case C.Vtype.STR_ARRAY:      cmd = Cmd.GET_SARR1D; break;
             case C.Vtype.STR_ARRAY_2D:   cmd = Cmd.GET_SARR2D; break;
             case C.Vtype.STR_ARRAY_3D:   cmd = Cmd.GET_SARR3D; break;
-            default: U.unreachable(expr);
+            default: U.unreachable(nameInfo);
         }
-        this.#addCmd(cmd, expr.nameInfo.blockId, expr.nameInfo.blockVarId);
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
+
+    }
+
+    #compileExprVar(expr: C.ExprVar): void {
+        if (expr.vtype !== expr.nameInfo.vtype) {
+            U.assert(expr instanceof C.ExprArrayVarVal);
+            this.#compileGetArrayVarVal(expr.nameInfo, expr.indexes);
+            return;
+        }
+        this.#compileGetVar(expr.nameInfo);
     }
 
     #compileExprUnaryOp(expr: C.ExprUnaryOp): void {
@@ -437,7 +543,7 @@ class Compiler {
                 break;
             case C.BinaryOpKind.INT_REMINDER:
                 U.assert(expr.vtype === C.Vtype.INTEGER, expr);
-                cmd = Cmd.IMOD;
+                cmd = Cmd.IREM;
                 break;
             case C.BinaryOpKind.BITWISE_AND:
                 U.assert(expr.vtype === C.Vtype.INTEGER, expr);
@@ -468,7 +574,7 @@ class Compiler {
                 cmd = Cmd.ILSHIFTR;
                 break;
             case C.BinaryOpKind.COMPARE_EQ:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.BOOLEAN:        cmd = Cmd.BEQ; break;
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FEQ; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.IEQ; break;
@@ -477,7 +583,7 @@ class Compiler {
                 }
                 break;
             case C.BinaryOpKind.COMPARE_NE:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.BOOLEAN:        cmd = Cmd.BNE; break;
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FNE; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.INE; break;
@@ -486,7 +592,7 @@ class Compiler {
                 }
                 break;
             case C.BinaryOpKind.COMPARE_LT:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FLT; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.ILT; break;
                     case C.Vtype.STRING:         cmd = Cmd.SLT; break;
@@ -494,7 +600,7 @@ class Compiler {
                 }
                 break;
             case C.BinaryOpKind.COMPARE_LE:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FLE; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.ILE; break;
                     case C.Vtype.STRING:         cmd = Cmd.SLE; break;
@@ -502,7 +608,7 @@ class Compiler {
                 }
                 break;
             case C.BinaryOpKind.COMPARE_GT:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FGT; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.IGT; break;
                     case C.Vtype.STRING:         cmd = Cmd.SGT; break;
@@ -510,7 +616,7 @@ class Compiler {
                 }
                 break;
             case C.BinaryOpKind.COMPARE_GE:
-                switch (expr.vtype) {
+                switch (expr.termL.vtype) {
                     case C.Vtype.FLOATING_POINT: cmd = Cmd.FGE; break;
                     case C.Vtype.INTEGER:        cmd = Cmd.IGE; break;
                     case C.Vtype.STRING:         cmd = Cmd.SGE; break;
