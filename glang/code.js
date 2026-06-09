@@ -657,7 +657,7 @@ export class ExprLitBoolean extends Expr {
     value;
     unaryOp; // valueに適用済みの単項演算子.
     constructor(src, value, unaryOp) {
-        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        super(ExprKind.LITERAL, Vtype.BOOLEAN, src);
         this.value = value;
         this.unaryOp = unaryOp;
     }

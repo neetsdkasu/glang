@@ -90,10 +90,10 @@ class Compiler {
                     dimlet.push(code);
                     break;
                 case C.CodeKind.DEFINE_USER_FUNC:
-                    const dufCode = code;
-                    subfunc.push(dufCode);
-                    if (dufCode.funcInfo.isMain) {
-                        mainSubIdHolder.set(dufCode.funcInfo.varId);
+                    U.assert(code instanceof C.DefineUserFunc);
+                    subfunc.push(code);
+                    if (code.funcInfo.isMain) {
+                        mainSubIdHolder.set(code.funcInfo.varId);
                     }
                     break;
                 default:
@@ -157,8 +157,10 @@ class Compiler {
             }
         }
         U.assert(outerBlockInfo.body.length === 1);
-        U.assert(outerBlockInfo.body[0].kind === C.CodeKind.BLOCK);
-        const innerBlockInfo = outerBlockInfo.body[0].blockInfo;
+        const blockCode = outerBlockInfo.body[0];
+        U.assert(blockCode.kind === C.CodeKind.BLOCK);
+        U.assert(blockCode instanceof C.Block);
+        const innerBlockInfo = blockCode.blockInfo;
         this.#pushBlock(innerBlockInfo);
         this.#compileCodeBlock(innerBlockInfo.body);
         // innnerBlockInfo.bodyがReturnで終わってる場合、以下のコードは実行されない.
@@ -257,12 +259,15 @@ class Compiler {
                 this.#compileExprLiteral(expr);
                 break;
             case C.ExprKind.VARIABLE:
+                U.assert(expr instanceof C.ExprVar);
                 this.#compileExprVar(expr);
                 break;
             case C.ExprKind.UNARY_OP:
+                U.assert(expr instanceof C.ExprUnaryOp);
                 this.#compileExprUnaryOp(expr);
                 break;
             case C.ExprKind.BINARY_OP:
+                U.assert(expr instanceof C.ExprBinOp);
                 this.#compileExprBinOp(expr);
                 break;
             case C.ExprKind.STD_FUNC:
@@ -272,6 +277,7 @@ class Compiler {
                 this.#compileExprCallUserFunc(expr);
                 break;
             case C.ExprKind.BRACKET:
+                U.assert(expr instanceof C.ExprBracket);
                 this.#compileExpr(expr.expr);
                 break;
             default: U.unreachable(expr);
@@ -280,6 +286,7 @@ class Compiler {
     #compileExprLiteral(expr) {
         switch (expr.vtype) {
             case C.Vtype.BOOLEAN:
+                U.assert(expr instanceof C.ExprLitBoolean, expr);
                 if (expr.value) {
                     this.#addCmd(Cmd.BPUSH_TRUE);
                 }
@@ -288,12 +295,15 @@ class Compiler {
                 }
                 break;
             case C.Vtype.FLOATING_POINT:
+                U.assert(expr instanceof C.ExprLitFloat, expr);
                 this.#addCmd(Cmd.FPUSH, expr.value);
                 break;
             case C.Vtype.INTEGER:
+                U.assert(expr instanceof C.ExprLitInt, expr);
                 this.#addCmd(Cmd.IPUSH, expr.value);
                 break;
             case C.Vtype.STRING:
+                U.assert(expr instanceof C.ExprLitString, expr);
                 const litStrId = this.#getLitStrId(expr.value);
                 this.#addCmd(Cmd.SPUSH, litStrId);
                 break;

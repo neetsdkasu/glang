@@ -710,7 +710,7 @@ export class ExprLitBoolean extends Expr {
     readonly unaryOp: UnaryOpInfo| undefined; // valueに適用済みの単項演算子.
 
     constructor(src: Token, value: boolean, unaryOp?: UnaryOpInfo) {
-        super(ExprKind.LITERAL, Vtype.FLOATING_POINT, src);
+        super(ExprKind.LITERAL, Vtype.BOOLEAN, src);
         this.value = value;
         this.unaryOp = unaryOp;
     }
