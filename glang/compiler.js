@@ -226,9 +226,7 @@ class Compiler {
                 U.unreachable(code);
         }
         this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
-        for (const size of code.dims) {
-            this.#addParam(size);
-        }
+        this.#addParams(...code.dims);
     }
     #compileLet(code) {
         this.#compileExpr(code.expr);

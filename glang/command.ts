@@ -18,7 +18,7 @@ export class Prgoram {
 
 export enum Cmd {
     NOP,           // NOP ()
-    END,           // END ()
+    END,           // END () : finish program
     DUP,           // DUP () [..., value1-any] => [..., value1-any, value1-any] : copy value1
     BPUSH_TRUE,    // BPUSH_TRUE () [...] => [..., true]
     BPUSH_FALSE,   // BPUSH_FALSE () [...] => [..., false]
@@ -112,11 +112,6 @@ export enum Cmd {
     APUSH_SARR1D,
     APUSH_SARR2D,
     APUSH_SARR3D,
-    JUMP,           // JUMP ( address )
-    JUMP_IF_TRUE,   // JUMP_IF_TRUE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is true
-    JUMP_IF_FALSE,  // JUMP_IF_FALSE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is false
-    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
-    CALL_USERFUNC,  // CALL_USERFUNC ( userfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
     INIT_BARR1D,    // INIT_BARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill false
     INIT_BARR2D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2 ) : allocate arr[size1][size2] and fill false
     INIT_BARR3D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2, size3 ) : allocate arr[size1][size2][size3] and fill false
@@ -129,9 +124,14 @@ export enum Cmd {
     INIT_SARR1D,    // INIT_SARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill ""
     INIT_SARR2D,
     INIT_SARR3D,
-    PUSH_BLOCK,   // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area
-    POP_BLOCK,    // POP_BLOCK ( blockId ) : pop block from Id's blockStack
-    RET,          // RET ()
+    JUMP,           // JUMP ( address )
+    JUMP_IF_TRUE,   // JUMP_IF_TRUE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is true
+    JUMP_IF_FALSE,  // JUMP_IF_FALSE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is false
+    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
+    CALL_USERFUNC,  // CALL_USERFUNC ( userfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
+    RET,            // RET ()
+    PUSH_BLOCK,     // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area (vars are uninitialied)
+    POP_BLOCK       // POP_BLOCK ( blockId ) : pop block from Id's blockStack
 }
 
 export enum StdFunc {
