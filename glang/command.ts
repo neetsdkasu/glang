@@ -127,9 +127,9 @@ export enum Cmd {
     JUMP,           // JUMP ( address )
     JUMP_IF_TRUE,   // JUMP_IF_TRUE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is true
     JUMP_IF_FALSE,  // JUMP_IF_FALSE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is false
-    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
-    CALL_USERFUNC,  // CALL_USERFUNC ( address ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
-    RET,            // RET ()
+    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call stdfunc(arg1,arg2,... argN). args or retvalue if exists
+    CALL_USERFUNC,  // CALL_USERFUNC ( userfuncAddress ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : push current address to addressStack and jump to userfunc-address as call userfunc(arg1,arg2,... argN). args or retvalue if exists
+    RET,            // RET () : stop userfunc process and pop address from addressStack and jump to the address.
     PUSH_BLOCK,     // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area (vars are uninitialied)
     POP_BLOCK       // POP_BLOCK ( blockId ) : pop block from Id's blockStack
 }
