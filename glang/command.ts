@@ -20,6 +20,7 @@ export enum Cmd {
     NOP,           // NOP ()
     END,           // END () : finish program
     DUP,           // DUP () [..., value1-any] => [..., value1-any, value1-any] : copy value1
+    DUPN,          // DUPN ( N ) [..., value1-any, value2-any, ... valueN-any] => [..., value1-any, value2-any, ... valueN-any, value1-any, value2-any, ... valueN-any] : copy N values
     BPUSH_TRUE,    // BPUSH_TRUE () [...] => [..., true]
     BPUSH_FALSE,   // BPUSH_FALSE () [...] => [..., false]
     BNOT,          // BNOT () [..., value-boolean] => [..., not-boolean] : logical-not value
@@ -30,11 +31,11 @@ export enum Cmd {
     GET_BVAR,      // GET_BVAR ( blockId, blockVarId ) [...] => [..., value-boolean] : load value from var
     SET_BVAR,      // SET_BVAR ( blockId, blockVarId ) [..., value-boolean] => [...] : store value into var
     GET_BARR1D,    // GET_BARR1D ( blockId, blockVarId ) [..., index1-integer] => [..., value-boolean] : load value from arr[index1]
-    SET_BARR1D,    // SET_BARR1D ( blockId, blockVarId ) [..., value-boolean, index1-integer] => [...] : store value into arr[index1]
+    SET_BARR1D,    // SET_BARR1D ( blockId, blockVarId ) [..., index1-integer, value-boolean] => [...] : store value into arr[index1]
     GET_BARR2D,    // GET_BARR2D ( blockId, blockVarId ) [..., index1-integer, index2-integer] => [..., value-boolean] : load value from arr[index1][index2]
-    SET_BARR2D,    // SET_BARR2D ( blockId, blockVarId ) [..., value-boolean, index1-integer, index2-integer] => [...] : store value into arr[index1][index2]
+    SET_BARR2D,    // SET_BARR2D ( blockId, blockVarId ) [..., index1-integer, index2-integer, value-boolean] => [...] : store value into arr[index1][index2]
     GET_BARR3D,    // GET_BARR3D ( blockId, blockVarId ) [..., index1-integer, index2-integer, index3-integer] => [..., value-boolean] : load value from arr[index1][index2][index3]
-    SET_BARR3D,    // SET_BARR3D ( blockId, blockVarId ) [..., value-boolean, index1-integer, index2-integer, index3-integer] => [...] : store value into arr[index1][index2][index3]
+    SET_BARR3D,    // SET_BARR3D ( blockId, blockVarId ) [..., index1-integer, index2-integer, index3-integer, value-boolean] => [...] : store value into arr[index1][index2][index3]
     FPUSH,         // FPUSH ( floatValue ) [...] => [..., floatValue-float]
     FADD,
     FSUB,

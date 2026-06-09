@@ -298,8 +298,13 @@ class Compiler {
     }
 
     #compileAssignArray(code: C.AssignArray): void {
+        for (const index of code.indexes) {
+            this.#compileExpr(index);
+        }
+
         if (code.op.kind !== C.AssignKind.ASSIGN) {
-            this.#compileGetArrayVarVal(code.nameInfo, code.indexes);
+            this.#addCmd(Cmd.DUPN, code.indexes.length);
+            this.#compileGetArrayVarVal(code.nameInfo, []);
         }
 
         this.#compileExpr(code.expr);
@@ -308,7 +313,24 @@ class Compiler {
             this.#compileAssignOp(code.op, code.expr.vtype);
         }
 
-        this.#compileSetArrayVarVal(code.nameInfo, code.indexes);
+        let cmd: Cmd;
+        switch (code.nameInfo.vtype) {
+            case C.Vtype.BOOL_ARRAY:     cmd = Cmd.SET_BARR1D; break;
+            case C.Vtype.BOOL_ARRAY_2D:  cmd = Cmd.SET_BARR2D; break;
+            case C.Vtype.BOOL_ARRAY_3D:  cmd = Cmd.SET_BARR3D; break;
+            case C.Vtype.FLOAT_ARRAY:    cmd = Cmd.SET_FARR1D; break;
+            case C.Vtype.FLOAT_ARRAY_2D: cmd = Cmd.SET_FARR2D; break;
+            case C.Vtype.FLOAT_ARRAY_3D: cmd = Cmd.SET_FARR3D; break;
+            case C.Vtype.INT_ARRAY:      cmd = Cmd.SET_IARR1D; break;
+            case C.Vtype.INT_ARRAY_2D:   cmd = Cmd.SET_IARR2D; break;
+            case C.Vtype.INT_ARRAY_3D:   cmd = Cmd.SET_IARR3D; break;
+            case C.Vtype.STR_ARRAY:      cmd = Cmd.SET_SARR1D; break;
+            case C.Vtype.STR_ARRAY_2D:   cmd = Cmd.SET_SARR2D; break;
+            case C.Vtype.STR_ARRAY_3D:   cmd = Cmd.SET_SARR3D; break;
+            default: U.unreachable(code);
+        }
+
+        this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
     }
 
     #compileDim(code: C.Dim): void {
@@ -462,7 +484,6 @@ class Compiler {
         this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
 
-
     #compileGetArrayVarVal(nameInfo: C.NameInfo, indexes: Readonly<C.Expr[]>): void {
         for (const index of indexes) {
             this.#compileExpr(index);
@@ -484,31 +505,6 @@ class Compiler {
             default: U.unreachable(nameInfo);
         }
         this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
-
-    }
-
-    #compileSetArrayVarVal(nameInfo: C.NameInfo, indexes: Readonly<C.Expr[]>): void {
-        for (const index of indexes) {
-            this.#compileExpr(index);
-        }
-        let cmd: Cmd;
-        switch (nameInfo.vtype) {
-            case C.Vtype.BOOL_ARRAY:     cmd = Cmd.SET_BARR1D; break;
-            case C.Vtype.BOOL_ARRAY_2D:  cmd = Cmd.SET_BARR2D; break;
-            case C.Vtype.BOOL_ARRAY_3D:  cmd = Cmd.SET_BARR3D; break;
-            case C.Vtype.FLOAT_ARRAY:    cmd = Cmd.SET_FARR1D; break;
-            case C.Vtype.FLOAT_ARRAY_2D: cmd = Cmd.SET_FARR2D; break;
-            case C.Vtype.FLOAT_ARRAY_3D: cmd = Cmd.SET_FARR3D; break;
-            case C.Vtype.INT_ARRAY:      cmd = Cmd.SET_IARR1D; break;
-            case C.Vtype.INT_ARRAY_2D:   cmd = Cmd.SET_IARR2D; break;
-            case C.Vtype.INT_ARRAY_3D:   cmd = Cmd.SET_IARR3D; break;
-            case C.Vtype.STR_ARRAY:      cmd = Cmd.SET_SARR1D; break;
-            case C.Vtype.STR_ARRAY_2D:   cmd = Cmd.SET_SARR2D; break;
-            case C.Vtype.STR_ARRAY_3D:   cmd = Cmd.SET_SARR3D; break;
-            default: U.unreachable(nameInfo);
-        }
-        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
-
     }
 
     #compileExprVar(expr: C.ExprVar): void {
