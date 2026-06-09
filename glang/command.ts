@@ -22,9 +22,9 @@ export enum Cmd {
     DUP,           // DUP () [..., value1-any] => [..., value1-any, value1-any] : copy value1
     BPUSH_TRUE,    // BPUSH_TRUE () [...] => [..., true]
     BPUSH_FALSE,   // BPUSH_FALSE () [...] => [..., false]
-    BNOT,          // BNOT () [..., value-boolean] => [..., not-boolean] : not value
-    BAND,          // BAND () [..., left-boolean, right-booloan] => [..., and-boolean] : left and right
-    BOR,           // BOR ()  [..., left-boolean, right-boolean] => [..., or-boolean] : left or right
+    BNOT,          // BNOT () [..., value-boolean] => [..., not-boolean] : logical-not value
+    BAND,          // BAND () [..., left-boolean, right-booloan] => [..., and-boolean] : left logical-and right
+    BOR,           // BOR ()  [..., left-boolean, right-boolean] => [..., or-boolean] : left logical-or right
     BEQ,           // BEQ ()  [..., left-boolean, right-boolean] => [..., eq-boolean] : left == right
     BNE,           // BNE ()  [..., left-boolean, right-boolean] => [..., ne-boolean] : left != right
     GET_BVAR,      // GET_BVAR ( blockId, blockVarId ) [...] => [..., value-boolean] : load value from var
@@ -113,20 +113,20 @@ export enum Cmd {
     APUSH_SARR2D,
     APUSH_SARR3D,
     JUMP,           // JUMP ( address )
-    JUMP_IF_TRUE,   // JUMP_IF_TRUE ( address ) [..., value-boolean] => [...] : consume value
-    JUMP_IF_FALSE,  // JUMP_IF_FALSE ( address ) [..., value-boolean] => [...] : consume value
-    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : args or retvalue if exists
-    CALL_USERFUNC,  // CALL_USERFUNC ( userfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : args or retvalue if exists
-    INIT_BARR1D,    // INIT_BARR1D ( blockId, blockVarId, size1 ) : allocate and fill false
-    INIT_BARR2D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2 ) : allocate and fill false
-    INIT_BARR3D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2, size3 ) : allocate and fill false
-    INIT_FARR1D,
+    JUMP_IF_TRUE,   // JUMP_IF_TRUE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is true
+    JUMP_IF_FALSE,  // JUMP_IF_FALSE ( address ) [..., value-boolean] => [...] : consume value. jump to address if value is false
+    CALL_STDFUNC,   // CALL_STDFUNC ( stdfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
+    CALL_USERFUNC,  // CALL_USERFUNC ( userfuncId ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call func(arg1,arg2,... argN). args or retvalue if exists
+    INIT_BARR1D,    // INIT_BARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill false
+    INIT_BARR2D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2 ) : allocate arr[size1][size2] and fill false
+    INIT_BARR3D,    // INIT_BARR1D ( blockId, blockVarId, size1, size2, size3 ) : allocate arr[size1][size2][size3] and fill false
+    INIT_FARR1D,    // INIT_FARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill 0.0
     INIT_FARR2D,
     INIT_FARR3D,
-    INIT_IARR1D,    // INIT_IARR1D ( blockId, blockVarId, size1 ) : allocate and fill 0
+    INIT_IARR1D,    // INIT_IARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill 0
     INIT_IARR2D,
     INIT_IARR3D,
-    INIT_SARR1D,    // INIT_SARR1D ( blockId, blockVarId, size1 ) : allocate and fill ""
+    INIT_SARR1D,    // INIT_SARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill ""
     INIT_SARR2D,
     INIT_SARR3D,
     PUSH_BLOCK,   // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and preserve var area
