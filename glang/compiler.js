@@ -455,6 +455,158 @@ class Compiler {
                     default: U.unreachable(expr);
                 }
                 break;
+            case C.BinaryOpKind.SUBTRACT:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FSUB;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.ISUB;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.MULTIPLY:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FMUL;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IMUL;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.DIVIDE:
+                U.assert(expr.vtype === C.Vtype.FLOATING_POINT, expr);
+                cmd = Cmd.FDIV;
+                break;
+            case C.BinaryOpKind.INT_DIVIDE:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IDIV;
+                break;
+            case C.BinaryOpKind.INT_REMINDER:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IMOD;
+                break;
+            case C.BinaryOpKind.BITWISE_AND:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IAND;
+                break;
+            case C.BinaryOpKind.BITWISE_OR:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IOR;
+                break;
+            case C.BinaryOpKind.BITWISE_XOR:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IXOR;
+                break;
+            case C.BinaryOpKind.BITWISE_ASHIFT_L:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IASHIFTL;
+                break;
+            case C.BinaryOpKind.BITWISE_ASHIFT_R:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.IASHIFTR;
+                break;
+            case C.BinaryOpKind.BITWISE_LSHIFT_L:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.ILSHIFTL;
+                break;
+            case C.BinaryOpKind.BITWISE_LSHIFT_R:
+                U.assert(expr.vtype === C.Vtype.INTEGER, expr);
+                cmd = Cmd.ILSHIFTR;
+                break;
+            case C.BinaryOpKind.COMPARE_EQ:
+                switch (expr.vtype) {
+                    case C.Vtype.BOOLEAN:
+                        cmd = Cmd.BEQ;
+                        break;
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FEQ;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IEQ;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SEQ;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.COMPARE_NE:
+                switch (expr.vtype) {
+                    case C.Vtype.BOOLEAN:
+                        cmd = Cmd.BNE;
+                        break;
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FNE;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.INE;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SNE;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.COMPARE_LT:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FLT;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.ILT;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SLT;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.COMPARE_LE:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FLE;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.ILE;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SLE;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.COMPARE_GT:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FGT;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IGT;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SGT;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
+            case C.BinaryOpKind.COMPARE_GE:
+                switch (expr.vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FGE;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IGE;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SGE;
+                        break;
+                    default: U.unreachable(expr);
+                }
+                break;
             default: U.unreachable(expr);
         }
         this.#addCmd(cmd);

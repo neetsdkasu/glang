@@ -4,28 +4,28 @@
 export function inRange(min, max, value) {
     return min <= value && value <= max;
 }
-export function assert(test, msg) {
+export function assert(test, hint) {
     if (!test) {
-        throw new Error(`assert error: msg="${msg}"`);
+        throw new Error(`assert error: hint="${hint}"`);
     }
 }
-export function assertEq(a, b, msg) {
-    assert(a === b, `assertEq error: msg="${msg}", not (a=${a}) !== (b=${b})`);
+export function assertEq(a, b, hint) {
+    assert(a === b, `assertEq error: hint="${hint}", not (a=${a}) !== (b=${b})`);
 }
-export function assertNE(a, b, msg) {
-    assert(a !== b, `assertNE error: msg="${msg}", (a=${a}) === (b=${b})`);
+export function assertNE(a, b, hint) {
+    assert(a !== b, `assertNE error: hint="${hint}", (a=${a}) === (b=${b})`);
 }
-export function assertLT(a, b, msg) {
-    assert(a < b, `assertLT error: msg="${msg}", (a=${a}) >= (b=${b})`);
+export function assertLT(a, b, hint) {
+    assert(a < b, `assertLT error: hint="${hint}", (a=${a}) >= (b=${b})`);
 }
-export function assertLE(a, b, msg) {
-    assert(a <= b, `assertLE error: msg="${msg}", (a=${a}) > (b=${b})`);
+export function assertLE(a, b, hint) {
+    assert(a <= b, `assertLE error: hint="${hint}", (a=${a}) > (b=${b})`);
 }
-export function assertGT(a, b, msg) {
-    assert(a > b, `assertGT error: msg="${msg}", (a=${a}) <= (b=${b})`);
+export function assertGT(a, b, hint) {
+    assert(a > b, `assertGT error: hint="${hint}", (a=${a}) <= (b=${b})`);
 }
-export function assertGE(a, b, msg) {
-    assert(a >= b, `assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
+export function assertGE(a, b, hint) {
+    assert(a >= b, `assertGE error: hint="${hint}", (a=${a}) < (b=${b})`);
 }
 export class Unimplemented extends Error {
     constructor(hint) {

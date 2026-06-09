@@ -6,34 +6,34 @@ export function inRange(min: number, max: number, value: number): boolean {
     return min <= value && value <= max;
 }
 
-export function assert(test: boolean, msg?: string): asserts test {
+export function assert(test: boolean, hint?: any): asserts test {
     if (!test) {
-        throw new Error(`assert error: msg="${msg}"`);
+        throw new Error(`assert error: hint="${hint}"`);
     }
 }
 
-export function assertEq<T>(a: T, b: T, msg?: string) {
-    assert(a === b, `assertEq error: msg="${msg}", not (a=${a}) !== (b=${b})`);
+export function assertEq<T>(a: T, b: T, hint?: any) {
+    assert(a === b, `assertEq error: hint="${hint}", not (a=${a}) !== (b=${b})`);
 }
 
-export function assertNE<T>(a: T, b: T, msg?: string) {
-    assert(a !== b, `assertNE error: msg="${msg}", (a=${a}) === (b=${b})`);
+export function assertNE<T>(a: T, b: T, hint?: any) {
+    assert(a !== b, `assertNE error: hint="${hint}", (a=${a}) === (b=${b})`);
 }
 
-export function assertLT<T extends number | string | bigint>(a: T, b: T, msg?: string) {
-    assert(a < b, `assertLT error: msg="${msg}", (a=${a}) >= (b=${b})`);
+export function assertLT<T extends number | string | bigint>(a: T, b: T, hint?: any) {
+    assert(a < b, `assertLT error: hint="${hint}", (a=${a}) >= (b=${b})`);
 }
 
-export function assertLE<T extends number | string | bigint>(a: T, b: T, msg?: string) {
-    assert(a <= b, `assertLE error: msg="${msg}", (a=${a}) > (b=${b})`);
+export function assertLE<T extends number | string | bigint>(a: T, b: T, hint?: any) {
+    assert(a <= b, `assertLE error: hint="${hint}", (a=${a}) > (b=${b})`);
 }
 
-export function assertGT<T extends number | string | bigint>(a: T, b: T, msg?: string) {
-    assert(a > b, `assertGT error: msg="${msg}", (a=${a}) <= (b=${b})`);
+export function assertGT<T extends number | string | bigint>(a: T, b: T, hint?: any) {
+    assert(a > b, `assertGT error: hint="${hint}", (a=${a}) <= (b=${b})`);
 }
 
-export function assertGE<T extends number | string | bigint>(a: T, b: T, msg?: string) {
-    assert(a >= b, `assertGE error: msg="${msg}", (a=${a}) < (b=${b})`);
+export function assertGE<T extends number | string | bigint>(a: T, b: T, hint?: any) {
+    assert(a >= b, `assertGE error: hint="${hint}", (a=${a}) < (b=${b})`);
 }
 
 export class Unimplemented extends Error {
