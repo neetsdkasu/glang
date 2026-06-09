@@ -114,6 +114,10 @@ class Compiler {
     #compileCodeBlock(block) {
         for (const code of block) {
             switch (code.kind) {
+                case C.CodeKind.ASSIGN_ARRAY:
+                    U.assert(code instanceof C.AssignArray);
+                    this.#compileAssignArray(code);
+                    break;
                 case C.CodeKind.ASSIGN_VAR:
                     U.assert(code instanceof C.AssignVar);
                     this.#compileAssignVar(code);
@@ -174,95 +178,108 @@ class Compiler {
         this.#popBlock(outerBlockInfo);
         this.#addCmd(Cmd.RET);
     }
+    #compileAssignOp(op, vtype) {
+        let cmd;
+        switch (op.kind) {
+            case C.AssignKind.ADD:
+                switch (vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FADD;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IADD;
+                        break;
+                    case C.Vtype.STRING:
+                        cmd = Cmd.SCONCAT;
+                        break;
+                    default: U.unreachable(vtype);
+                }
+                break;
+            case C.AssignKind.SUBTRACT:
+                switch (vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FSUB;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.ISUB;
+                        break;
+                    default: U.unreachable(vtype);
+                }
+                break;
+            case C.AssignKind.MULTIPLY:
+                switch (vtype) {
+                    case C.Vtype.FLOATING_POINT:
+                        cmd = Cmd.FMUL;
+                        break;
+                    case C.Vtype.INTEGER:
+                        cmd = Cmd.IMUL;
+                        break;
+                    default: U.unreachable(vtype);
+                }
+                break;
+            case C.AssignKind.DIVIDE:
+                U.assert(vtype === C.Vtype.FLOATING_POINT, vtype);
+                cmd = Cmd.FDIV;
+                break;
+            case C.AssignKind.INT_DIVIDE:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IDIV;
+                break;
+            case C.AssignKind.INT_REMINDER:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IREM;
+                break;
+            case C.AssignKind.BITWISE_AND:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IAND;
+                break;
+            case C.AssignKind.BITWISE_OR:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IOR;
+                break;
+            case C.AssignKind.BITWISE_XOR:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IXOR;
+                break;
+            case C.AssignKind.BITWISE_ASHIFT_L:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IASHIFTL;
+                break;
+            case C.AssignKind.BITWISE_ASHIFT_R:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.IASHIFTR;
+                break;
+            case C.AssignKind.BITWISE_LSHIFT_L:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.ILSHIFTL;
+                break;
+            case C.AssignKind.BITWISE_LSHIFT_R:
+                U.assert(vtype === C.Vtype.INTEGER, vtype);
+                cmd = Cmd.ILSHIFTR;
+                break;
+            default: U.unreachable(op);
+        }
+        this.#addCmd(cmd);
+    }
     #compileAssignVar(code) {
         if (code.op.kind !== C.AssignKind.ASSIGN) {
             this.#compileGetVar(code.nameInfo);
         }
         this.#compileExpr(code.expr);
         if (code.op.kind !== C.AssignKind.ASSIGN) {
-            let cmd;
-            switch (code.op.kind) {
-                case C.AssignKind.ADD:
-                    switch (code.nameInfo.vtype) {
-                        case C.Vtype.FLOATING_POINT:
-                            cmd = Cmd.FADD;
-                            break;
-                        case C.Vtype.INTEGER:
-                            cmd = Cmd.IADD;
-                            break;
-                        case C.Vtype.STRING:
-                            cmd = Cmd.SCONCAT;
-                            break;
-                        default: U.unreachable(code);
-                    }
-                    break;
-                case C.AssignKind.SUBTRACT:
-                    switch (code.nameInfo.vtype) {
-                        case C.Vtype.FLOATING_POINT:
-                            cmd = Cmd.FSUB;
-                            break;
-                        case C.Vtype.INTEGER:
-                            cmd = Cmd.ISUB;
-                            break;
-                        default: U.unreachable(code);
-                    }
-                    break;
-                case C.AssignKind.MULTIPLY:
-                    switch (code.nameInfo.vtype) {
-                        case C.Vtype.FLOATING_POINT:
-                            cmd = Cmd.FMUL;
-                            break;
-                        case C.Vtype.INTEGER:
-                            cmd = Cmd.IMUL;
-                            break;
-                        default: U.unreachable(code);
-                    }
-                    break;
-                case C.AssignKind.DIVIDE:
-                    U.assert(code.nameInfo.vtype === C.Vtype.FLOATING_POINT);
-                    cmd = Cmd.FDIV;
-                    break;
-                case C.AssignKind.INT_DIVIDE:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IDIV;
-                    break;
-                case C.AssignKind.INT_REMINDER:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IREM;
-                    break;
-                case C.AssignKind.BITWISE_AND:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IAND;
-                    break;
-                case C.AssignKind.BITWISE_OR:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IOR;
-                    break;
-                case C.AssignKind.BITWISE_XOR:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IXOR;
-                    break;
-                case C.AssignKind.BITWISE_ASHIFT_L:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IASHIFTL;
-                    break;
-                case C.AssignKind.BITWISE_ASHIFT_R:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.IASHIFTR;
-                    break;
-                case C.AssignKind.BITWISE_LSHIFT_L:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.ILSHIFTL;
-                    break;
-                case C.AssignKind.BITWISE_LSHIFT_R:
-                    U.assert(code.nameInfo.vtype === C.Vtype.INTEGER);
-                    cmd = Cmd.ILSHIFTR;
-                    break;
-                default: U.unreachable(code);
-            }
-            this.#addCmd(cmd);
+            this.#compileAssignOp(code.op, code.expr.vtype);
         }
         this.#compileSetVar(code.nameInfo);
+    }
+    #compileAssignArray(code) {
+        if (code.op.kind !== C.AssignKind.ASSIGN) {
+            this.#compileGetArrayVarVal(code.nameInfo, code.indexes);
+        }
+        this.#compileExpr(code.expr);
+        if (code.op.kind !== C.AssignKind.ASSIGN) {
+            this.#compileAssignOp(code.op, code.expr.vtype);
+        }
+        this.#compileSetArrayVarVal(code.nameInfo, code.indexes);
     }
     #compileDim(code) {
         let cmd;
@@ -522,6 +539,52 @@ class Compiler {
                 break;
             case C.Vtype.STR_ARRAY_3D:
                 cmd = Cmd.GET_SARR3D;
+                break;
+            default: U.unreachable(nameInfo);
+        }
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
+    }
+    #compileSetArrayVarVal(nameInfo, indexes) {
+        for (const index of indexes) {
+            this.#compileExpr(index);
+        }
+        let cmd;
+        switch (nameInfo.vtype) {
+            case C.Vtype.BOOL_ARRAY:
+                cmd = Cmd.SET_BARR1D;
+                break;
+            case C.Vtype.BOOL_ARRAY_2D:
+                cmd = Cmd.SET_BARR2D;
+                break;
+            case C.Vtype.BOOL_ARRAY_3D:
+                cmd = Cmd.SET_BARR3D;
+                break;
+            case C.Vtype.FLOAT_ARRAY:
+                cmd = Cmd.SET_FARR1D;
+                break;
+            case C.Vtype.FLOAT_ARRAY_2D:
+                cmd = Cmd.SET_FARR2D;
+                break;
+            case C.Vtype.FLOAT_ARRAY_3D:
+                cmd = Cmd.SET_FARR3D;
+                break;
+            case C.Vtype.INT_ARRAY:
+                cmd = Cmd.SET_IARR1D;
+                break;
+            case C.Vtype.INT_ARRAY_2D:
+                cmd = Cmd.SET_IARR2D;
+                break;
+            case C.Vtype.INT_ARRAY_3D:
+                cmd = Cmd.SET_IARR3D;
+                break;
+            case C.Vtype.STR_ARRAY:
+                cmd = Cmd.SET_SARR1D;
+                break;
+            case C.Vtype.STR_ARRAY_2D:
+                cmd = Cmd.SET_SARR2D;
+                break;
+            case C.Vtype.STR_ARRAY_3D:
+                cmd = Cmd.SET_SARR3D;
                 break;
             default: U.unreachable(nameInfo);
         }
