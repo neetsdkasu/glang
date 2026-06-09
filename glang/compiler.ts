@@ -294,7 +294,15 @@ class Compiler {
            this.#compileAssignOp(code.op, code.expr.vtype);
         }
 
-        this.#compileSetVar(code.nameInfo);
+        let cmd: Cmd;
+        switch (code.nameInfo.vtype) {
+            case C.Vtype.BOOLEAN:        cmd = Cmd.SET_BVAR; break;
+            case C.Vtype.FLOATING_POINT: cmd = Cmd.SET_FVAR; break;
+            case C.Vtype.INTEGER:        cmd = Cmd.SET_IVAR; break;
+            case C.Vtype.STRING:         cmd = Cmd.SET_SVAR; break;
+            default: U.unreachable(code.nameInfo);
+        }
+        this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
     }
 
     #compileAssignArray(code: C.AssignArray): void {
@@ -469,18 +477,6 @@ class Compiler {
             default: U.unreachable(nameInfo);
         }
 
-        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
-    }
-
-    #compileSetVar(nameInfo: C.NameInfo): void {
-        let cmd: Cmd;
-        switch (nameInfo.vtype) {
-            case C.Vtype.BOOLEAN:        cmd = Cmd.SET_BVAR; break;
-            case C.Vtype.FLOATING_POINT: cmd = Cmd.SET_FVAR; break;
-            case C.Vtype.INTEGER:        cmd = Cmd.SET_IVAR; break;
-            case C.Vtype.STRING:         cmd = Cmd.SET_SVAR; break;
-            default: U.unreachable(nameInfo);
-        }
         this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
 

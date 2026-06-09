@@ -21,6 +21,7 @@ export enum Cmd {
     END,           // END () : finish program
     DUP,           // DUP () [..., value1-any] => [..., value1-any, value1-any] : copy value1
     DUPN,          // DUPN ( N ) [..., value1-any, value2-any, ... valueN-any] => [..., value1-any, value2-any, ... valueN-any, value1-any, value2-any, ... valueN-any] : copy N values
+    SWAP,          // SWAP () [..., value1-any, value2-any] => [..., value2-any, value1-any] : swap values
     BPUSH_TRUE,    // BPUSH_TRUE () [...] => [..., true]
     BPUSH_FALSE,   // BPUSH_FALSE () [...] => [..., false]
     BNOT,          // BNOT () [..., value-boolean] => [..., not-boolean] : logical-not value

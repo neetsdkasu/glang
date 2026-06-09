@@ -269,7 +269,23 @@ class Compiler {
         if (code.op.kind !== C.AssignKind.ASSIGN) {
             this.#compileAssignOp(code.op, code.expr.vtype);
         }
-        this.#compileSetVar(code.nameInfo);
+        let cmd;
+        switch (code.nameInfo.vtype) {
+            case C.Vtype.BOOLEAN:
+                cmd = Cmd.SET_BVAR;
+                break;
+            case C.Vtype.FLOATING_POINT:
+                cmd = Cmd.SET_FVAR;
+                break;
+            case C.Vtype.INTEGER:
+                cmd = Cmd.SET_IVAR;
+                break;
+            case C.Vtype.STRING:
+                cmd = Cmd.SET_SVAR;
+                break;
+            default: U.unreachable(code.nameInfo);
+        }
+        this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
     }
     #compileAssignArray(code) {
         for (const index of code.indexes) {
@@ -518,25 +534,6 @@ class Compiler {
                 break;
             case C.Vtype.STR_ARRAY_3D:
                 cmd = Cmd.APUSH_SARR3D;
-                break;
-            default: U.unreachable(nameInfo);
-        }
-        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
-    }
-    #compileSetVar(nameInfo) {
-        let cmd;
-        switch (nameInfo.vtype) {
-            case C.Vtype.BOOLEAN:
-                cmd = Cmd.SET_BVAR;
-                break;
-            case C.Vtype.FLOATING_POINT:
-                cmd = Cmd.SET_FVAR;
-                break;
-            case C.Vtype.INTEGER:
-                cmd = Cmd.SET_IVAR;
-                break;
-            case C.Vtype.STRING:
-                cmd = Cmd.SET_SVAR;
                 break;
             default: U.unreachable(nameInfo);
         }
