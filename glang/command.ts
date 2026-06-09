@@ -129,7 +129,7 @@ export enum Cmd {
     INIT_SARR1D,    // INIT_SARR1D ( blockId, blockVarId, size1 ) : allocate arr[size1] and fill ""
     INIT_SARR2D,
     INIT_SARR3D,
-    PUSH_BLOCK,   // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and preserve var area
+    PUSH_BLOCK,   // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area
     POP_BLOCK,    // POP_BLOCK ( blockId ) : pop block from Id's blockStack
     RET,          // RET ()
 }
