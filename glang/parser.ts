@@ -9,6 +9,7 @@ import Scanner, { Token, TokenType } from "scanner";
 import { Result, Unimplemented } from "utils";
 import * as U from "utils";
 import * as C from "code";
+import { StdFunc } from "command";
 
 /*
 古いtscのせいでArray<T>にfindLastメソッドがないのだけど
@@ -274,23 +275,77 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
  * 標準関数
  */
 const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Map([
-    new C.StdFuncInfo("cbool", new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
-    new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
-    new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
-    new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE),
-    new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
-    new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
-    new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
-    new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]), C.SideEffect.NONE),
-    new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("sin",  new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), C.SideEffect.NONE),
-    new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]), C.SideEffect.NONE),
-    new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]), C.SideEffect.NONE)
+    new C.StdFuncInfo("cbool", new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INFER_PRIMITIVE]),
+    [
+        new C.Overload(StdFunc.CBOOL_FROM_BOOLEAN, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN])),
+        new C.Overload(StdFunc.CBOOL_FROM_FLOAT, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.CBOOL_FROM_INTEGER, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.CBOOL_FROM_STRING, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.STRING]))
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]),
+    [
+        new C.Overload(StdFunc.CFLOAT_FROM_BOOLEAN, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.BOOLEAN])),
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), 
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("sin",  new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]),
+    [
+
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]),
+    [
+        
+    ], C.SideEffect.NONE)
 ].map( fi => [fi.name, fi] )));
 
 enum Symbols {

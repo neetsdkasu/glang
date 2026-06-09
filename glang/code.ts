@@ -6,6 +6,7 @@ const log = new Logger("code", LogLevel.ERROR | LogLevel.WARN);
 
 import { Token } from "scanner";
 import { Result } from "utils";
+import { StdFunc } from "command";
 import * as U from "utils";
 
 export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
@@ -408,14 +409,30 @@ export enum SideEffect {
     ALL = WRITE_GLOBAL_VAR | ACCESS_IO
 }
 
+export class Overload {
+    readonly stdfuncId: StdFunc;
+    readonly retArg: RetArg;
+
+    constructor(stdfuncId: StdFunc, retArg: RetArg) {
+        this.stdfuncId = stdfuncId;
+        this.retArg = retArg;
+    }
+
+    toString(): string {
+        return `Overload{ stdfuncId: ${StdFunc[this.stdfuncId]} }`;
+    }
+}
+
 export class StdFuncInfo {
     readonly name: string;
     readonly retArg: RetArg;
+    readonly overloads: Readonly<Overload[]>;
     readonly sideEffect: SideEffect;
 
-    constructor(name: string, retArg: RetArg, sideEffect: SideEffect) {
+    constructor(name: string, retArg: RetArg, overloads: Overload[], sideEffect: SideEffect) {
         this.name = name;
         this.retArg = retArg;
+        this.overloads = overloads;
         this.sideEffect = sideEffect;
     }
 
