@@ -839,11 +839,13 @@ export class ExprBracket extends Expr {
 export class ExprStdFunc extends Expr {
     readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
+    readonly stdfuncId: StdFunc | undefined;
 
-    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[]) {
+    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[], stdfuncId?: StdFunc) {
         super(ExprKind.STD_FUNC, vtype, src);
         this.funcInfo = funcInfo;
         this.args = args;
+        this.stdfuncId = stdfuncId;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
@@ -865,23 +867,39 @@ export class ExprStdFunc extends Expr {
             return Result.err({ msg: res.error, src: this.src });
         }
         const retType = res.result.ret;
-        const expr = new ExprStdFunc(this.src, retType, this.funcInfo, newArgs);
+        let stdfuncId: StdFunc | undefined = undefined;
+        for (const sf of this.funcInfo.overloads) {
+            if (sf.retArg.inferTypes(retType, ...types).isOk) {
+                stdfuncId = sf.stdfuncId;
+                break;
+            }
+        }
+        if (stdfuncId === undefined) {
+            return Result.err({ msg: `wrong type: ${retType}, ${types}`, src: this.src });
+        }
+        const expr = new ExprStdFunc(this.src, retType, this.funcInfo, newArgs, stdfuncId);
         return Result.ok({ expr: expr, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        if (this.stdfuncId !== undefined) {
+            return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: ${StdFunc[this.stdfuncId]} }`;
+        } else {
+            return `StdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: undefined }`;
+        }
     }
 }
 
 export class ExprMemberStdFunc extends Expr {
     readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
+    readonly stdfuncId: StdFunc | undefined;
 
-    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[]) {
+    constructor(src: Token, vtype: Vtype, funcInfo: StdFuncInfo, args: Expr[], stdfuncId?: StdFunc) {
         super(ExprKind.STD_FUNC, vtype, src);
         this.funcInfo = funcInfo;;
         this.args = args;
+        this.stdfuncId = stdfuncId;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
@@ -903,12 +921,26 @@ export class ExprMemberStdFunc extends Expr {
             return Result.err({ msg: res.error, src: this.src });
         }
         const retType = res.result.ret;
-        const expr = new ExprMemberStdFunc(this.src, retType, this.funcInfo, newArgs);
+        let stdfuncId: StdFunc | undefined = undefined;
+        for (const sf of this.funcInfo.overloads) {
+            if (sf.retArg.inferTypes(retType, ...types).isOk) {
+                stdfuncId = sf.stdfuncId;
+                break;
+            }
+        }
+        if (stdfuncId === undefined) {
+            return Result.err({ msg: `wrong type: ${retType}, ${types}`, src: this.src });
+        }
+        const expr = new ExprMemberStdFunc(this.src, retType, this.funcInfo, newArgs, stdfuncId);
         return Result.ok({ expr: expr, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        if (this.stdfuncId !== undefined) {
+            return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: ${StdFunc[this.stdfuncId]} }`;
+        } else {
+            return `MemberStdFunc{ name: ${this.funcInfo.name}, vtype: ${Vtype[this.vtype]}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: undefined }`;
+        }
     }
 }
 
@@ -1390,11 +1422,13 @@ export class If extends Code {
 export class CallStdFunc extends Code {
     readonly funcInfo: StdFuncInfo;
     readonly args: Readonly<Expr[]>;
+    readonly stdfuncId: StdFunc | undefined = undefined;
 
-    constructor(src: Readonly<Token[]>, funcInfo: StdFuncInfo, args: Expr[]) {
+    constructor(src: Readonly<Token[]>, funcInfo: StdFuncInfo, args: Expr[], stdfuncId?: StdFunc) {
         super(CodeKind.CALL_STD_FUNC, src);
         this.funcInfo = funcInfo;
         this.args = args;
+        this.stdfuncId = stdfuncId;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
@@ -1415,12 +1449,26 @@ export class CallStdFunc extends Code {
         if (res.isErr) {
             return Result.err({ msg: res.error, src: this.src });
         }
-        const newCode = new CallStdFunc(this.src, this.funcInfo, newArgs);
+        let stdfuncId: StdFunc | undefined = undefined;
+        for (const sf of this.funcInfo.overloads) {
+            if (sf.retArg.inferTypes(sf.retArg.ret, ...types).isOk) {
+                stdfuncId = sf.stdfuncId;
+                break;
+            }
+        }
+        if (stdfuncId === undefined) {
+            return Result.err({ msg: `wrong type: ${types}`, src: this.src });
+        }
+        const newCode = new CallStdFunc(this.src, this.funcInfo, newArgs, stdfuncId);
         return Result.ok({ code: newCode, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+        if (this.stdfuncId !== undefined) {
+            return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: ${StdFunc[this.stdfuncId]} }`;
+        } else {
+            return `CallStdFunc{ func: ${this.funcInfo.name}, args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )), stdfuncId: undefined }`;
+        }
     }
 }
 

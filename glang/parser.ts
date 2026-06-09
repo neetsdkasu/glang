@@ -285,66 +285,93 @@ const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Ma
     new C.StdFuncInfo("cfloat", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INFER_PRIMITIVE]),
     [
         new C.Overload(StdFunc.CFLOAT_FROM_BOOLEAN, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.BOOLEAN])),
+        new C.Overload(StdFunc.CFLOAT_FROM_FLOAT, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.CFLOAT_FROM_INTEGER, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.CFLOAT_FROM_STRING, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.STRING]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("cint", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_PRIMITIVE]),
     [
-
+        new C.Overload(StdFunc.CINT_FROM_BOOLEAN, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOLEAN])),
+        new C.Overload(StdFunc.CINT_FROM_FLOAT, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.CINT_FROM_INTEGER, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.CINT_FROM_STRING, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.STRING]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("cstr", new C.RetArg(C.Vtype.STRING, [C.Vtype.INFER_PRIMITIVE]),
     [
-
+        new C.Overload(StdFunc.CSTR_FROM_BOOLEAN, new C.RetArg(C.Vtype.STRING, [C.Vtype.BOOLEAN])),
+        new C.Overload(StdFunc.CSTR_FROM_FLOAT, new C.RetArg(C.Vtype.STRING, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.CSTR_FROM_INTEGER, new C.RetArg(C.Vtype.STRING, [C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.CSTR_FROM_STRING, new C.RetArg(C.Vtype.STRING, [C.Vtype.STRING]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("abs", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]),
     [
-
+        new C.Overload(StdFunc.ABS_FLOAT, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.ABS_INTGER, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INTEGER]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("sign", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER]),
     [
-
+        new C.Overload(StdFunc.SIGN_FLOAT, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.SIGN_INTEGER, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INTEGER]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("max", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]),
     [
-
+        new C.Overload(StdFunc.MAX_FLOAT, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.MAX_INTEGER, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INTEGER]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("min", new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INFER_NUMBER]),
     [
-
+        new C.Overload(StdFunc.MIN_FLOAT, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.MIN_INTEGER, new C.RetArg(C.Vtype.INFER_NUMBER, [C.Vtype.INFER_NUMBER,C.Vtype.INTEGER]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("cos", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), 
     [
-
+        new C.Overload(StdFunc.COS, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("sin",  new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.SIN, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("tan", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.TAN, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("pow", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.POW, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT,C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("sqrt", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.SQRT, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("floor", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.FLOOR, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("ceil", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]),
     [
-
+        new C.Overload(StdFunc.CEIL, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("size", new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INFER_ARRAY, C.Vtype.INTEGER]),
     [
-
+        new C.Overload(StdFunc.SIZE_BARR1D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOL_ARRAY, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_BARR2D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOL_ARRAY_2D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_BARR3D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOL_ARRAY_3D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_FARR1D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.FLOAT_ARRAY, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_FARR2D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.FLOAT_ARRAY_2D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_FARR3D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.FLOAT_ARRAY_3D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_IARR1D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INT_ARRAY, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_IARR2D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INT_ARRAY_2D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_IARR3D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.INT_ARRAY_3D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_SARR1D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.STR_ARRAY, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_SARR2D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.STR_ARRAY_2D, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SIZE_SARR3D, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.STR_ARRAY_3D, C.Vtype.INTEGER]))
     ], C.SideEffect.NONE),
     new C.StdFuncInfo("sel", new C.RetArg(C.Vtype.INFER_PRIMITIVE, [C.Vtype.BOOLEAN, C.Vtype.INFER_PRIMITIVE, C.Vtype.INFER_PRIMITIVE]),
     [
-        
+        new C.Overload(StdFunc.SEL_BOOLEAN, new C.RetArg(C.Vtype.BOOLEAN, [C.Vtype.BOOLEAN, C.Vtype.BOOLEAN, C.Vtype.BOOLEAN])),
+        new C.Overload(StdFunc.SEL_FLOAT, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.BOOLEAN, C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT])),
+        new C.Overload(StdFunc.SEL_INTEGER, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOLEAN, C.Vtype.INTEGER, C.Vtype.INTEGER])),
+        new C.Overload(StdFunc.SEL_STRING, new C.RetArg(C.Vtype.STRING, [C.Vtype.BOOLEAN, C.Vtype.STRING, C.Vtype.STRING])),
     ], C.SideEffect.NONE)
 ].map( fi => [fi.name, fi] )));
 

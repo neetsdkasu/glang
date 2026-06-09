@@ -51,6 +51,9 @@ class Compiler {
     #addCmdCallUserFunc(funcId) {
         this.#userFuncAddressReferrers.push(this.#getNextAddress());
         this.#program.push(funcId);
+        const address = this.#addParam(0);
+        const returnAddress = this.#getNextAddress();
+        this.#setParam(address, returnAddress);
     }
     #pushBlock(bi) {
         this.#blockIdStack.push(bi.id);
@@ -263,8 +266,11 @@ class Compiler {
                 this.#compileExprBinOp(expr);
                 break;
             case C.ExprKind.STD_FUNC:
+                this.#compileExprCallStdFunc(expr);
+                break;
             case C.ExprKind.USER_FUNC:
-                throw new U.Unimplemented(expr);
+                this.#compileExprCallUserFunc(expr);
+                break;
             case C.ExprKind.BRACKET:
                 this.#compileExpr(expr.expr);
                 break;
@@ -628,6 +634,42 @@ class Compiler {
         this.#addCmd(Cmd.BOR);
         const jumpToAddr = this.#getNextAddress();
         this.#setParam(paramAddr, jumpToAddr);
+    }
+    #compileExprCallStdFunc(expr) {
+        let args;
+        let stdfuncId;
+        if (expr instanceof C.ExprStdFunc) {
+            U.assert(expr.stdfuncId !== undefined, expr);
+            args = expr.args;
+            stdfuncId = expr.stdfuncId;
+        }
+        else {
+            U.assert(expr instanceof C.ExprMemberStdFunc, expr);
+            U.assert(expr.stdfuncId !== undefined, expr);
+            args = expr.args;
+            stdfuncId = expr.stdfuncId;
+        }
+        for (const arg of args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
+    }
+    #compileExprCallUserFunc(expr) {
+        let args;
+        let funcInfo;
+        if (expr instanceof C.ExprUserFunc) {
+            args = expr.args;
+            funcInfo = expr.funcInfo;
+        }
+        else {
+            U.assert(expr instanceof C.ExprMemberUserFunc, expr);
+            args = expr.args;
+            funcInfo = expr.funcInfo;
+        }
+        for (const arg of args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmdCallUserFunc(funcInfo.varId);
     }
 }
 export function compile(src) {

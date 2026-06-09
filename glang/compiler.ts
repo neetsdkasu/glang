@@ -5,7 +5,7 @@ import Logger, { LogLevel } from "logger";
 const log = new Logger("compiler", LogLevel.ALL);
 
 import * as C from "code";
-import { Cmd, Program } from "command";
+import { Cmd, Program, StdFunc } from "command";
 import { Result } from "utils";
 import * as U from "utils";
 
@@ -65,6 +65,9 @@ class Compiler {
     #addCmdCallUserFunc(funcId: number): void {
         this.#userFuncAddressReferrers.push(this.#getNextAddress());
         this.#program.push(funcId);
+        const address = this.#addParam(0);
+        const returnAddress = this.#getNextAddress();
+        this.#setParam(address, returnAddress);
     }
 
     #pushBlock(bi: C.BlockInfo): void {
@@ -267,8 +270,11 @@ class Compiler {
                 this.#compileExprBinOp(expr as C.ExprBinOp);
                 break;
             case C.ExprKind.STD_FUNC:
+                this.#compileExprCallStdFunc(expr);
+                break;
             case C.ExprKind.USER_FUNC:
-                throw new U.Unimplemented(expr);
+                this.#compileExprCallUserFunc(expr);
+                break;
             case C.ExprKind.BRACKET:
                 this.#compileExpr((expr as C.ExprBracket).expr);
                 break;
@@ -527,6 +533,42 @@ class Compiler {
         this.#addCmd(Cmd.BOR);
         const jumpToAddr = this.#getNextAddress();
         this.#setParam(paramAddr, jumpToAddr);
+    }
+
+    #compileExprCallStdFunc(expr: C.Expr): void {
+        let args: Readonly<C.Expr[]>;
+        let stdfuncId: StdFunc;
+        if (expr instanceof C.ExprStdFunc) {
+            U.assert(expr.stdfuncId !== undefined, expr);
+            args = expr.args;
+            stdfuncId = expr.stdfuncId;
+        } else {
+            U.assert(expr instanceof C.ExprMemberStdFunc, expr);
+            U.assert(expr.stdfuncId !== undefined, expr);
+            args = expr.args;
+            stdfuncId = expr.stdfuncId;
+        }
+        for (const arg of args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId as number);
+    }
+
+    #compileExprCallUserFunc(expr: C.Expr): void {
+        let args: Readonly<C.Expr[]>;
+        let funcInfo: C.FuncInfo;
+        if (expr instanceof C.ExprUserFunc) {
+            args = expr.args;
+            funcInfo = expr.funcInfo;
+        } else {
+            U.assert(expr instanceof C.ExprMemberUserFunc, expr);
+            args = expr.args;
+            funcInfo = expr.funcInfo;
+        }
+        for (const arg of args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmdCallUserFunc(funcInfo.varId);
     }
 }
 
