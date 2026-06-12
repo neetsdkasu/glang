@@ -1045,7 +1045,8 @@ export class ExprVarVal extends ExprVar {
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ expr: Expr; sideEffect: SideEffect; }, RebuildError> {
-        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
+        const expr = new ExprVarVal(this.src, this.nameInfo);
+        return Result.ok({ expr: expr, sideEffect: SideEffect.NONE });
     }
 
     toString(): string {

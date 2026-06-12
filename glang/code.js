@@ -954,7 +954,8 @@ export class ExprVarVal extends ExprVar {
         super(src, nameInfo.vtype, nameInfo);
     }
     rebuild(findUserFunc) {
-        return Result.ok({ expr: this, sideEffect: SideEffect.NONE });
+        const expr = new ExprVarVal(this.src, this.nameInfo);
+        return Result.ok({ expr: expr, sideEffect: SideEffect.NONE });
     }
     toString() {
         return `VarVal{ name: ${this.nameInfo.name}, varId: ${this.nameInfo.varId}, vtype: ${Vtype[this.vtype]} }`;

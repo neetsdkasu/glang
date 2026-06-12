@@ -134,7 +134,8 @@ export enum Cmd {
     CALL_USERFUNC,  // CALL_USERFUNC ( userfuncAddress, returnAddress ) [..., { arg1-any, arg2-any, ... argN-any } ] => [..., { retvalue-any } ] : call userfunc(arg1,arg2,... argN). push returnAddress to addressStack and jump to userfuncAddress. args or retvalue if exists
     RET,            // RET () : stop userfunc process. pop returnAddress from addressStack and jump to the retrunAddress.
     PUSH_BLOCK,     // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area (vars are uninitialied)
-    POP_BLOCK       // POP_BLOCK ( blockId ) : pop block from Id's blockStack
+    POP_BLOCK,      // POP_BLOCK ( blockId ) : pop block from Id's blockStack
+    PRINT           // PRINT ( N ) [..., value1-any, value2-any, ... valueN-any] => [...] : print N values on stderr
 }
 
 export enum StdFunc {

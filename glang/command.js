@@ -131,7 +131,8 @@ export var Cmd;
     Cmd[Cmd["CALL_USERFUNC"] = 114] = "CALL_USERFUNC";
     Cmd[Cmd["RET"] = 115] = "RET";
     Cmd[Cmd["PUSH_BLOCK"] = 116] = "PUSH_BLOCK";
-    Cmd[Cmd["POP_BLOCK"] = 117] = "POP_BLOCK"; // POP_BLOCK ( blockId ) : pop block from Id's blockStack
+    Cmd[Cmd["POP_BLOCK"] = 117] = "POP_BLOCK";
+    Cmd[Cmd["PRINT"] = 118] = "PRINT"; // PRINT ( N ) [..., value1-any, value2-any, ... valueN-any] => [...] : print N values on stderr
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

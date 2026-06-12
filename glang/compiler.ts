@@ -115,25 +115,7 @@ class Compiler {
         this.#addCmd(Cmd.POP_BLOCK, bi.id);
     }
     
-    /**
-     * Return文のためのブロックスタックを解放ののちRETするコマンドを追加する.
-     * 戻り値が含まれる値スタックはこのメソッドでは操作しない.
-     * 戻り値がある場合はこのメソッドを呼び出す前に戻り値を値スタックに含める必要がある.
-     * @param funcInfo 
-     */
-    #addCmdReturn(funcInfo: C.FuncInfo): void {
-        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
-            const bid = this.#blockIdStack[i];
-            this.#addCmd(Cmd.POP_BLOCK, bid);
-            if (bid === funcInfo.outerBlockId) {
-                break;
-            }
-        }
-        this.#addCmd(Cmd.RET);
-    }
-
-
-    compile(): Program {
+     compile(): Program {
 
         const dimlet: C.Code[] = [];
         const subfunc: C.DefineUserFunc[] = [];
@@ -226,10 +208,12 @@ class Compiler {
                     break;
                 case C.CodeKind.PRINT:
                     U.assert(code instanceof C.Print);
-                    throw new U.Unimplemented(code);
+                    this.#compilePrint(code);
+                    break;
                 case C.CodeKind.RETURN:
                     U.assert(code instanceof C.Return);
-                    throw new U.Unimplemented(code);
+                    this.#compileReturn(code);
+                    break;
                 default:
                     U.unreachable(code);
             }
@@ -712,7 +696,7 @@ class Compiler {
 
     #compileExprVar(expr: C.ExprVar): void {
         if (expr.vtype !== expr.nameInfo.vtype) {
-            U.assert(expr instanceof C.ExprArrayVarVal);
+            U.assert(expr instanceof C.ExprArrayVarVal, expr);
             this.#compileGetArrayVarVal(expr.nameInfo, expr.indexes);
             return;
         }
@@ -951,6 +935,29 @@ class Compiler {
         if (code.funcInfo.isFunc) {
             this.#addCmd(Cmd.POP);
         }
+    }
+
+    #compileReturn(code: C.Return): void {
+        // 戻り値の計算.
+        if (code.value !== null) {
+            this.#compileExpr(code.value);
+        }
+        // Return文のためのブロックスタックを解放ののちRETするコマンドを追加する.
+        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
+            const bid = this.#blockIdStack[i];
+            this.#addCmd(Cmd.POP_BLOCK, bid);
+            if (bid === code.funcInfo.outerBlockId) {
+                break;
+            }
+        }
+        this.#addCmd(Cmd.RET);
+    }
+
+    #compilePrint(code: C.Print): void {
+        for (const arg of code.args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmd(Cmd.PRINT, code.args.length);
     }
 }
 
