@@ -2630,6 +2630,7 @@ class Parser {
         }
         log.dump("src", Token.lineToString, src);
         this.#env.push(src, true);
+        this.#env.push(src);
         const blockRes = this.#parseCodeBlock();
         if (blockRes.isErr) {
             return Result.err(blockRes.error);
@@ -2650,13 +2651,15 @@ class Parser {
         else if (endDoEolToken.tokenType !== TokenType.EOL) {
             return syntaxError("不正な文字(あるいは文字列)です.", endDoEolToken);
         }
-        const blockInfo = this.#env.pop();
-        const code = new C.DoWhile(src, testExpr, blockInfo);
-        this.#env.addCode(code);
-        if (blockInfo.blockEnd & C.BlockEndKind.RETURN) {
+        const innerBlockInfo = this.#env.pop();
+        if (innerBlockInfo.blockEnd & C.BlockEndKind.RETURN) {
             // 条件次第ではループ内が1回も実行されない場合がありend do以降はデッドコードにはならない.
             // this.#env.setBlockEnd(C.BlockEndKind.RETURN);
         }
+        this.#env.addCode(new C.Block(innerBlockInfo));
+        const outerBlockInfo = this.#env.pop();
+        const code = new C.DoWhile(src, testExpr, outerBlockInfo);
+        this.#env.addCode(code);
         log.debug("PARSED do.");
         return OK;
     }

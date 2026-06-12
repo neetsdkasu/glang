@@ -156,7 +156,8 @@ class Compiler {
                     break;
                 case C.CodeKind.CALL_STD_FUNC:
                     U.assert(code instanceof C.CallStdFunc);
-                    throw new U.Unimplemented(code);
+                    this.#compileCallStdFunc(code);
+                    break;
                 case C.CodeKind.CALL_USER_FUNC:
                     U.assert(code instanceof C.CallUserFunc);
                     this.#compileCallUserFunc(code);
@@ -171,7 +172,8 @@ class Compiler {
                     break;
                 case C.CodeKind.DO_WHILE:
                     U.assert(code instanceof C.DoWhile);
-                    throw new U.Unimplemented(code);
+                    this.#compileDoWhile(code);
+                    break;
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
@@ -1075,6 +1077,27 @@ class Compiler {
             }
         }
         this.#addCmd(Cmd.RET);
+    }
+    #compileDoWhile(code) {
+        const outerBlockInfo = code.blockInfo;
+        this.#pushBlock(outerBlockInfo);
+        const continueAddress = this.#getNextAddress();
+        this.#continueAddressMap.set(outerBlockInfo.id, continueAddress);
+        this.#compileExpr(code.testExpr);
+        this.#addCmd(Cmd.JUMP_IF_FALSE);
+        const blockEndReferrer = this.#addParam(0);
+        U.assert(outerBlockInfo.body.length === 1);
+        const blockCode = outerBlockInfo.body[0];
+        U.assert(blockCode.kind === C.CodeKind.BLOCK);
+        U.assert(blockCode instanceof C.Block);
+        const innerBlockInfo = blockCode.blockInfo;
+        this.#pushBlock(innerBlockInfo);
+        this.#compileCodeBlock(innerBlockInfo.body);
+        this.#popBlock(innerBlockInfo);
+        const blockEndAddress = this.#getNextAddress();
+        this.#breakAddressMap.set(outerBlockInfo.id, blockEndAddress);
+        this.#setParam(blockEndReferrer, blockEndAddress);
+        this.#popBlock(outerBlockInfo);
     }
     #compilePrint(code) {
         for (const arg of code.args) {
