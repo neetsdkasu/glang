@@ -19,6 +19,7 @@ export class Prgoram {
 export enum Cmd {
     NOP,           // NOP ()
     END,           // END () : finish program
+    POP,           // POP () [..., value1-any] => [...] : pop a value from valueStack
     DUP,           // DUP () [..., value1-any] => [..., value1-any, value1-any] : copy value1
     DUPN,          // DUPN ( N ) [..., value1-any, value2-any, ... valueN-any] => [..., value1-any, value2-any, ... valueN-any, value1-any, value2-any, ... valueN-any] : copy N values
     SWAP,          // SWAP () [..., value1-any, value2-any] => [..., value2-any, value1-any] : swap values

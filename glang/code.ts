@@ -437,7 +437,7 @@ export class StdFuncInfo {
     }
 
     get isFunc(): boolean {
-        return this.retArg.ret !== Vtype.VOID;
+        return !this.isSub;
     }
 
     get isSub(): boolean {
@@ -490,6 +490,14 @@ export class FuncInfo {
 
     get isRecursive(): boolean {
         return this.#isRecursive;
+    }
+
+    get isFunc(): boolean {
+        return !this.isSub;
+    }
+
+    get isSub(): boolean {
+        return this.retArg.ret === Vtype.VOID;
     }
 
     getDependencies(): Readonly<Set<string>> {
@@ -1633,7 +1641,7 @@ export class Continue extends Code {
     readonly blockSrc: Readonly<Token[]>;
 
     constructor(src: Token[], blockId: number, blockSrc: Readonly<Token[]>) {
-        super(CodeKind.BREAK, src);
+        super(CodeKind.CONTINUE, src);
         this.blockId = blockId;
         this.blockSrc = blockSrc;
     }

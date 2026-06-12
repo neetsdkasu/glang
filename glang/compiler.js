@@ -56,11 +56,10 @@ class Compiler {
         this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
     }
     #addCmdCallUserFunc(funcId) {
-        this.#userFuncAddressReferrers.push(this.#getNextAddress());
-        this.#program.push(funcId);
-        const address = this.#addParam(0);
+        this.#addCmd(Cmd.CALL_USERFUNC, funcId);
+        const returnAddressReferrer = this.#addParam(0);
         const returnAddress = this.#getNextAddress();
-        this.#setParam(address, returnAddress);
+        this.#setParam(returnAddressReferrer, returnAddress);
     }
     #addCmdGetVarVal(nameInfo) {
         let cmd;
@@ -171,6 +170,13 @@ class Compiler {
                     U.assert(code instanceof C.Break);
                     this.#compileBreak(code);
                     break;
+                case C.CodeKind.CALL_STD_FUNC:
+                    U.assert(code instanceof C.CallStdFunc);
+                    throw new U.Unimplemented(code);
+                case C.CodeKind.CALL_USER_FUNC:
+                    U.assert(code instanceof C.CallUserFunc);
+                    this.#compileCallUserFunc(code);
+                    break;
                 case C.CodeKind.CONTINUE:
                     U.assert(code instanceof C.Continue);
                     this.#compileContinue(code);
@@ -179,6 +185,9 @@ class Compiler {
                     U.assert(code instanceof C.Dim);
                     this.#compileDim(code);
                     break;
+                case C.CodeKind.DO_WHILE:
+                    U.assert(code instanceof C.DoWhile);
+                    throw new U.Unimplemented(code);
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
@@ -191,8 +200,14 @@ class Compiler {
                     U.assert(code instanceof C.Let);
                     this.#compileLet(code);
                     break;
-                default:
+                case C.CodeKind.PRINT:
+                    U.assert(code instanceof C.Print);
                     throw new U.Unimplemented(code);
+                case C.CodeKind.RETURN:
+                    U.assert(code instanceof C.Return);
+                    throw new U.Unimplemented(code);
+                default:
+                    U.unreachable(code);
             }
         }
     }
@@ -1040,6 +1055,25 @@ class Compiler {
             this.#compileExpr(arg);
         }
         this.#addCmdCallUserFunc(funcInfo.varId);
+    }
+    #compileCallStdFunc(code) {
+        for (const arg of code.args) {
+            this.#compileExpr(arg);
+        }
+        U.assert(code.stdfuncId !== undefined);
+        this.#addCmdCallStdFunc(code.stdfuncId);
+        if (code.funcInfo.isFunc) {
+            this.#addCmd(Cmd.POP);
+        }
+    }
+    #compileCallUserFunc(code) {
+        for (const arg of code.args) {
+            this.#compileExpr(arg);
+        }
+        this.#addCmdCallStdFunc(code.funcInfo.varId);
+        if (code.funcInfo.isFunc) {
+            this.#addCmd(Cmd.POP);
+        }
     }
 }
 export function compile(src) {

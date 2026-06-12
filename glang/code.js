@@ -415,7 +415,7 @@ export class StdFuncInfo {
         this.sideEffect = sideEffect;
     }
     get isFunc() {
-        return this.retArg.ret !== Vtype.VOID;
+        return !this.isSub;
     }
     get isSub() {
         return this.retArg.ret === Vtype.VOID;
@@ -463,6 +463,12 @@ export class FuncInfo {
     }
     get isRecursive() {
         return this.#isRecursive;
+    }
+    get isFunc() {
+        return !this.isSub;
+    }
+    get isSub() {
+        return this.retArg.ret === Vtype.VOID;
     }
     getDependencies() {
         U.assert(this.definition);
@@ -1473,7 +1479,7 @@ export class Continue extends Code {
     blockId; // ループブロックID.
     blockSrc;
     constructor(src, blockId, blockSrc) {
-        super(CodeKind.BREAK, src);
+        super(CodeKind.CONTINUE, src);
         this.blockId = blockId;
         this.blockSrc = blockSrc;
     }
