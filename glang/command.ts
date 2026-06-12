@@ -2,17 +2,19 @@
 // Command
 //
 
-export class Prgoram {
+export class Program {
     readonly program: Readonly<number[]>;
-    readonly litStr: Readonly<string[]>;
+    readonly litStrPool: Readonly<string[]>;
+    readonly totalBlockCount: number;
 
-    constructor(program: number[], litStr: string[]) {
+    constructor(program: number[], litStrPool: string[], totalBlockCount: number) {
         this.program = program;
-        this.litStr = litStr;
+        this.litStrPool = litStrPool;
+        this.totalBlockCount = totalBlockCount;
     }
 
     toString(): string {
-        return `Program{ size: ${this.program.length}, litStr: ${this.litStr.length} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount} }`;
     }
 }
 
@@ -186,14 +188,6 @@ export enum StdFunc {
     SEL_FLOAT,
     SEL_INTEGER,
     SEL_STRING
-}
-
-export class Program {
-    readonly commands: Readonly<Cmd[]>;
-
-    constructor(commands: Cmd[]) {
-        this.commands = commands;
-    }
 }
 
 export default {};

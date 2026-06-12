@@ -9,11 +9,15 @@ import { StdFunc } from "command";
 import * as U from "utils";
 export class ParsedSource {
     blockInfo;
-    constructor(blockInfo) {
+    totalBlockCount;
+    totalVarCount;
+    constructor(blockInfo, totalBlockCount, totalVarCount) {
         this.blockInfo = blockInfo;
+        this.totalBlockCount = totalBlockCount;
+        this.totalVarCount = totalVarCount;
     }
     toString() {
-        return `ParsedSource{ blockInfo: ${this.blockInfo} }`;
+        return `ParsedSource{ blockInfo: ${this.blockInfo}, totalBlockCount: ${this.totalBlockCount}, totalVarCount: ${this.totalVarCount} }`;
     }
 }
 export var Vtype;

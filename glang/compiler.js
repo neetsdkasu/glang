@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "logger";
 const log = new Logger("compiler", LogLevel.ALL);
 import * as C from "code";
-import { Cmd, StdFunc } from "command";
+import { Cmd, Program, StdFunc } from "command";
 import * as U from "utils";
 class Compiler {
     src;
@@ -137,7 +137,25 @@ class Compiler {
         for (const code of subfunc) {
             this.#compileDefineUserFunc(code);
         }
-        throw new U.Unimplemented();
+        for (const referrer of this.#continueAddressReferrers) {
+            const blockId = this.#program[referrer];
+            const adderss = this.#continueAddressMap.get(blockId);
+            U.assert(adderss !== undefined);
+            this.#program[referrer] = adderss;
+        }
+        for (const referrer of this.#breakAddressReferres) {
+            const blockId = this.#program[referrer];
+            const address = this.#breakAddressMap.get(blockId);
+            U.assert(address !== undefined);
+            this.#program[referrer] = address;
+        }
+        for (const referrer of this.#userFuncAddressReferrers) {
+            const funcId = this.#program[referrer];
+            const address = this.#userFuncAddressMap.get(funcId);
+            U.assert(address !== undefined);
+            this.#program[referrer] = address;
+        }
+        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount);
     }
     #compileCodeBlock(block) {
         for (const code of block) {

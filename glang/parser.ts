@@ -542,6 +542,14 @@ class Env {
         return this.#nameMapStack.length === 1;
     }
 
+    get totalVarCount(): number {
+        return this.#totalBlockCount;
+    }
+
+    get totalBlockCount(): number {
+        return this.#totalBlockCount;
+    }
+
     #newBlockId(): number {
         return this.#totalBlockCount++;
     }
@@ -934,7 +942,7 @@ class Parser {
         return Result.ok(RQueue.wrap(line));
     }
 
-    parse(): Result<C.BlockInfo,ParserError> {
+    parse(): Result<C.ParsedSource,ParserError> {
         log.debug("START PARSE...");
 
         this.#env.reset();
@@ -1011,7 +1019,12 @@ class Parser {
 
         log.debug("END PARSE.");
 
-        return Result.ok(this.#env.pop());
+        const blockInfo = this.#env.pop();
+        const totalBlockCount = this.#env.totalBlockCount;
+        const totalVarCount = this.#env.totalVarCount;
+        const parsedSource = new C.ParsedSource(blockInfo, totalBlockCount, totalVarCount);
+
+        return Result.ok(parsedSource);
     }
 
     /**
@@ -3437,7 +3450,7 @@ class Parser {
 
 export function parse(scanner: Scanner): Result<C.ParsedSource,ParserError> {
     const parser = new Parser(scanner);
-    return parser.parse().map( bi => new C.ParsedSource(bi) );
+    return parser.parse();
 }
 
 export default {};

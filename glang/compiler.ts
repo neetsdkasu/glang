@@ -24,7 +24,7 @@ class Compiler {
     #breakAddressMap: Map<number,number> = new Map();    // ループブロックID => ループ終了処理先頭アドレス.
     #breakAddressReferres: number[] = [];                // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
     #blockIdStack: number[] = [];                        // pushBlockするたびにブロックIDをスタック構造で管理.
- 
+
     constructor(src: C.ParsedSource) {
         this.src = src;
     }
@@ -155,8 +155,28 @@ class Compiler {
             this.#compileDefineUserFunc(code);
         }
 
+        for (const referrer of this.#continueAddressReferrers) {
+            const blockId = this.#program[referrer];
+            const adderss = this.#continueAddressMap.get(blockId);
+            U.assert(adderss !== undefined);
+            this.#program[referrer] = adderss;            
+        }
 
-        throw new U.Unimplemented();
+        for (const referrer of this.#breakAddressReferres) {
+            const blockId = this.#program[referrer];
+            const address = this.#breakAddressMap.get(blockId);
+            U.assert(address !== undefined);
+            this.#program[referrer] = address;
+        }
+
+        for (const referrer of this.#userFuncAddressReferrers) {
+            const funcId = this.#program[referrer];
+            const address = this.#userFuncAddressMap.get(funcId);
+            U.assert(address !== undefined);
+            this.#program[referrer] = address;
+        }
+
+        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount);
     }
 
 
@@ -992,7 +1012,6 @@ class Compiler {
         this.#addCmd(Cmd.PRINT, code.args.length);
     }
 }
-
 
 export function compile(src: C.ParsedSource): Program {
     const compiler = new Compiler(src);

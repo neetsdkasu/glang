@@ -1,15 +1,17 @@
 //
 // Command
 //
-export class Prgoram {
+export class Program {
     program;
-    litStr;
-    constructor(program, litStr) {
+    litStrPool;
+    totalBlockCount;
+    constructor(program, litStrPool, totalBlockCount) {
         this.program = program;
-        this.litStr = litStr;
+        this.litStrPool = litStrPool;
+        this.totalBlockCount = totalBlockCount;
     }
     toString() {
-        return `Program{ size: ${this.program.length}, litStr: ${this.litStr.length} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount} }`;
     }
 }
 export var Cmd;
@@ -184,10 +186,4 @@ export var StdFunc;
     StdFunc[StdFunc["SEL_INTEGER"] = 45] = "SEL_INTEGER";
     StdFunc[StdFunc["SEL_STRING"] = 46] = "SEL_STRING";
 })(StdFunc || (StdFunc = {}));
-export class Program {
-    commands;
-    constructor(commands) {
-        this.commands = commands;
-    }
-}
 export default {};

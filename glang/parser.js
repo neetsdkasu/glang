@@ -492,6 +492,12 @@ class Env {
     get isToplevel() {
         return this.#nameMapStack.length === 1;
     }
+    get totalVarCount() {
+        return this.#totalBlockCount;
+    }
+    get totalBlockCount() {
+        return this.#totalBlockCount;
+    }
     #newBlockId() {
         return this.#totalBlockCount++;
     }
@@ -924,7 +930,11 @@ class Parser {
             return Result.err(rebuildRes.error);
         }
         log.debug("END PARSE.");
-        return Result.ok(this.#env.pop());
+        const blockInfo = this.#env.pop();
+        const totalBlockCount = this.#env.totalBlockCount;
+        const totalVarCount = this.#env.totalVarCount;
+        const parsedSource = new C.ParsedSource(blockInfo, totalBlockCount, totalVarCount);
+        return Result.ok(parsedSource);
     }
     /**
      * コードブロックを読み取る.
@@ -2896,6 +2906,6 @@ class Parser {
 }
 export function parse(scanner) {
     const parser = new Parser(scanner);
-    return parser.parse().map(bi => new C.ParsedSource(bi));
+    return parser.parse();
 }
 export default {};

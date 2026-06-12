@@ -13,13 +13,17 @@ export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
 
 export class ParsedSource {
     readonly blockInfo: BlockInfo;
+    readonly totalBlockCount: number;
+    readonly totalVarCount: number;
 
-    constructor(blockInfo: BlockInfo) {
+    constructor(blockInfo: BlockInfo, totalBlockCount: number, totalVarCount: number) {
         this.blockInfo = blockInfo;
+        this.totalBlockCount = totalBlockCount;
+        this.totalVarCount = totalVarCount;
     }
 
     toString(): string {
-        return `ParsedSource{ blockInfo: ${this.blockInfo} }`;
+        return `ParsedSource{ blockInfo: ${this.blockInfo}, totalBlockCount: ${this.totalBlockCount}, totalVarCount: ${this.totalVarCount} }`;
     }
 }
 
