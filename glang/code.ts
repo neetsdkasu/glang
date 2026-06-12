@@ -1512,7 +1512,7 @@ export class CallUserFunc extends Code {
 
 export class For extends Code {
     readonly loopCounter: NameInfo;
-    readonly blockInfo: BlockInfo;
+    readonly blockInfo: BlockInfo; // ループブロック.
     readonly initValue: Readonly<{ nameInfo: NameInfo, expr: Expr }>;
     readonly endValue: Readonly<{ nameInfo: NameInfo, expr: Expr }>;
     readonly stepValue: Readonly<{ nameInfo: NameInfo, expr: Expr | null }>;
@@ -1575,7 +1575,7 @@ export class For extends Code {
 
 export class DoWhile extends Code {
     readonly testExpr: Expr;
-    readonly blockInfo: BlockInfo;
+    readonly blockInfo: BlockInfo; // ループブロック.
 
     constructor(src: Readonly<Token[]>, testExpr: Expr, blockInfo: BlockInfo) {
         super(CodeKind.DO_WHILE, src);
@@ -1609,7 +1609,7 @@ export class DoWhile extends Code {
 }
 
 export class Break extends Code {
-    readonly blockId: number;
+    readonly blockId: number; // ループブロックID.
     readonly blockSrc: Readonly<Token[]>;
 
     constructor(src: Token[], blockId: number, blockSrc: Readonly<Token[]>) {
@@ -1629,7 +1629,7 @@ export class Break extends Code {
 
 
 export class Continue extends Code {
-    readonly blockId: number;
+    readonly blockId: number; // ループブロックID.
     readonly blockSrc: Readonly<Token[]>;
 
     constructor(src: Token[], blockId: number, blockSrc: Readonly<Token[]>) {

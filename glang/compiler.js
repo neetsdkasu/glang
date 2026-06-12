@@ -4,16 +4,20 @@
 import Logger, { LogLevel } from "logger";
 const log = new Logger("compiler", LogLevel.ALL);
 import * as C from "code";
-import { Cmd } from "command";
+import { Cmd, StdFunc } from "command";
 import * as U from "utils";
 class Compiler {
     src;
     #program = [];
-    #litStrId = new Map();
-    #litStr = [];
-    #userFuncAddressMap = new Map();
-    #userFuncAddressReferrers = [];
-    #blockIdStack = [];
+    #litStrIdMap = new Map(); // 文字列リテラル => 文字列リテラルプールID.
+    #litStrPool = []; // 文字列リテラルプール.
+    #userFuncAddressMap = new Map(); // ユーザ関数ID(ブロック変数ID) => call呼び出し先アドレス.
+    #userFuncAddressReferrers = []; // callオペランド位置アドレス. 仮初期値: #program[address] = ユーザ関数ID.
+    #continueAddressMap = new Map(); // ループブロックID => 継続処理部先頭アドレス.
+    #continueAddressReferrers = []; // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
+    #breakAddressMap = new Map(); // ループブロックID => ループ終了処理先頭アドレス.
+    #breakAddressReferres = []; // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
+    #blockIdStack = []; // pushBlockするたびにブロックIDをスタック構造で管理.
     constructor(src) {
         this.src = src;
     }
@@ -21,12 +25,12 @@ class Compiler {
         return this.#program.length;
     }
     #getLitStrId(s) {
-        if (this.#litStrId.has(s)) {
-            return this.#litStrId.get(s);
+        if (this.#litStrIdMap.has(s)) {
+            return this.#litStrIdMap.get(s);
         }
-        const id = this.#litStr.length;
-        this.#litStr.push(s);
-        this.#litStrId.set(s, id);
+        const id = this.#litStrPool.length;
+        this.#litStrPool.push(s);
+        this.#litStrIdMap.set(s, id);
         return id;
     }
     #addCmd(cmd, ...params) {
@@ -48,12 +52,53 @@ class Compiler {
     #setParam(address, param) {
         this.#program[address] = param;
     }
+    #addCmdCallStdFunc(stdfuncId) {
+        this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
+    }
     #addCmdCallUserFunc(funcId) {
         this.#userFuncAddressReferrers.push(this.#getNextAddress());
         this.#program.push(funcId);
         const address = this.#addParam(0);
         const returnAddress = this.#getNextAddress();
         this.#setParam(address, returnAddress);
+    }
+    #addCmdGetVarVal(nameInfo) {
+        let cmd;
+        switch (nameInfo.vtype) {
+            case C.Vtype.BOOLEAN:
+                cmd = Cmd.GET_BVAR;
+                break;
+            case C.Vtype.FLOATING_POINT:
+                cmd = Cmd.GET_FVAR;
+                break;
+            case C.Vtype.INTEGER:
+                cmd = Cmd.GET_IVAR;
+                break;
+            case C.Vtype.STRING:
+                cmd = Cmd.GET_SVAR;
+                break;
+            default: U.unreachable(nameInfo);
+        }
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
+    }
+    #addCmdSetVarVal(nameInfo) {
+        let cmd;
+        switch (nameInfo.vtype) {
+            case C.Vtype.BOOLEAN:
+                cmd = Cmd.SET_BVAR;
+                break;
+            case C.Vtype.FLOATING_POINT:
+                cmd = Cmd.SET_FVAR;
+                break;
+            case C.Vtype.INTEGER:
+                cmd = Cmd.SET_IVAR;
+                break;
+            case C.Vtype.STRING:
+                cmd = Cmd.SET_SVAR;
+                break;
+            default: U.unreachable(nameInfo);
+        }
+        this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
     #pushBlock(bi) {
         this.#blockIdStack.push(bi.id);
@@ -78,6 +123,38 @@ class Compiler {
             }
         }
         this.#addCmd(Cmd.RET);
+    }
+    /**
+     * ループブロック直前までのブロックスタックを解放しループブロック継続判定処理へジャンプする.
+     * @param loopTrapBlockId
+     */
+    #addCmdContinue(loopTrapBlockId) {
+        for (let i = this.#blockIdStack.length - 1; i >= 0; i--) {
+            const bid = this.#blockIdStack[i];
+            if (bid === loopTrapBlockId) {
+                break;
+            }
+            this.#addCmd(Cmd.POP_BLOCK, bid);
+        }
+        this.#addCmd(Cmd.JUMP);
+        const referrer = this.#addParam(loopTrapBlockId);
+        this.#continueAddressReferrers.push(referrer);
+    }
+    /**
+     * ループブロック直前までのブロックスタックを解放しループブロック終了処理へジャンプする.
+     * @param loopTrapBlockId
+     */
+    #addCmdBreak(loopTrapBlockId) {
+        for (let i = this.#blockIdStack.length - 1; i >= 0; i--) {
+            const bid = this.#blockIdStack[i];
+            if (bid === loopTrapBlockId) {
+                break;
+            }
+            this.#addCmd(Cmd.POP_BLOCK, bid);
+        }
+        this.#addCmd(Cmd.JUMP);
+        const referrer = this.#addParam(loopTrapBlockId);
+        this.#breakAddressReferres.push(referrer);
     }
     compile() {
         const dimlet = [];
@@ -125,6 +202,10 @@ class Compiler {
                 case C.CodeKind.DIM:
                     U.assert(code instanceof C.Dim);
                     this.#compileDim(code);
+                    break;
+                case C.CodeKind.FOR:
+                    U.assert(code instanceof C.For);
+                    this.#compileFor(code);
                     break;
                 case C.CodeKind.LET:
                     U.assert(code instanceof C.Let);
@@ -405,6 +486,70 @@ class Compiler {
         }
         this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
         this.#addParams(...code.dims);
+    }
+    #compileFor(code) {
+        // ループカウンタなどループ処理判定に使う値を保存する領域がouterBlock.
+        const outerBlockInfo = code.blockInfo;
+        this.#pushBlock(outerBlockInfo);
+        // ループカウンタ初期値の計算と保存.
+        this.#compileExpr(code.initValue.expr);
+        this.#addCmd(Cmd.DUP);
+        this.#addCmdSetVarVal(code.initValue.nameInfo); // TODO 初期値を別途保存する意味がないので削除検討.
+        // ループカウンタ終了値の計算と保存.
+        this.#compileExpr(code.endValue.expr);
+        this.#addCmdSetVarVal(code.endValue.nameInfo);
+        // ループカウンタ増減値の計算と保存.
+        if (code.stepValue.expr !== null) {
+            this.#compileExpr(code.stepValue.expr);
+        }
+        else {
+            this.#addCmd(Cmd.IPUSH, 1);
+        }
+        this.#addCmdSetVarVal(code.stepValue.nameInfo);
+        // Cmd.DUPした初期値をループカウンタに保存.
+        // 当初ループカウンタをfor外で定義できる前提で考えてたため終了値や増減値の計算に影響させないための後置保存だったわけだが.
+        // ループカウンタをforで定義に固定した今、この位置で処理する必要は特にない(初期値計算直後で処理してもよい).
+        this.#addCmdSetVarVal(code.loopCounter);
+        // ループ終了条件の判定処理.
+        const condAddress = this.#getNextAddress();
+        // ループカウンタ増減値の正負(-1,0,1)を求める.
+        this.#addCmdGetVarVal(code.stepValue.nameInfo);
+        this.#addCmdCallStdFunc(StdFunc.SIGN_INTEGER);
+        // ループカウンタと終了値の差分の正負(-1,0,1)を求めて増減値の正負と比較し終了判定をする.
+        // 増加の場合: 増減値 > 0 && ループカウンタ > 終了値 は SIGN(ループカウンタ - 終了値) = SIGN(増減値) = 1 となる.
+        // 減少の場合: 増減値 < 0 && ループカウンタ < 終了値 は SIGN(ループカウンタ - 終了値) = SIGN(増減値) = -1 となる.
+        this.#addCmdGetVarVal(code.loopCounter);
+        this.#addCmdGetVarVal(code.endValue.nameInfo);
+        this.#addCmd(Cmd.ISUB);
+        this.#addCmdCallStdFunc(StdFunc.SIGN_INTEGER);
+        this.#addCmd(Cmd.IEQ);
+        this.#addCmd(Cmd.JUMP_IF_TRUE);
+        const blockEndRefferer = this.#addParam(outerBlockInfo.id);
+        this.#breakAddressReferres.push(blockEndRefferer);
+        // outerBlockが内包するinnerBlockがfor文に実行させるコード群を保持している.
+        U.assert(outerBlockInfo.body.length === 1);
+        const blockCode = outerBlockInfo.body[0];
+        U.assert(blockCode.kind === C.CodeKind.BLOCK);
+        U.assert(blockCode instanceof C.Block);
+        const innerBlockInfo = blockCode.blockInfo;
+        this.#pushBlock(innerBlockInfo);
+        this.#compileCodeBlock(innerBlockInfo.body);
+        this.#popBlock(innerBlockInfo);
+        // ループ継続処理開始位置.
+        const continueAddress = this.#getNextAddress();
+        this.#continueAddressMap.set(outerBlockInfo.id, continueAddress);
+        // ループカウンタを増減させる処理.
+        this.#addCmdGetVarVal(code.loopCounter);
+        this.#addCmdGetVarVal(code.stepValue.nameInfo);
+        this.#addCmd(Cmd.IADD);
+        this.#addCmdSetVarVal(code.loopCounter);
+        // ループ終了判定条件処理でジャンプ.
+        this.#addCmd(Cmd.JUMP, condAddress);
+        // ループブロック終了処理開始位置.
+        const breakAddress = this.#getNextAddress();
+        this.#breakAddressMap.set(outerBlockInfo.id, breakAddress);
+        // ループブロック解放処理のみ.
+        this.#popBlock(outerBlockInfo);
     }
     #compileLet(code) {
         this.#compileExpr(code.expr);

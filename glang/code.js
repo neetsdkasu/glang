@@ -1366,7 +1366,7 @@ export class CallUserFunc extends Code {
 }
 export class For extends Code {
     loopCounter;
-    blockInfo;
+    blockInfo; // ループブロック.
     initValue;
     endValue;
     stepValue;
@@ -1425,7 +1425,7 @@ export class For extends Code {
 }
 export class DoWhile extends Code {
     testExpr;
-    blockInfo;
+    blockInfo; // ループブロック.
     constructor(src, testExpr, blockInfo) {
         super(CodeKind.DO_WHILE, src);
         this.testExpr = testExpr;
@@ -1455,7 +1455,7 @@ export class DoWhile extends Code {
     }
 }
 export class Break extends Code {
-    blockId;
+    blockId; // ループブロックID.
     blockSrc;
     constructor(src, blockId, blockSrc) {
         super(CodeKind.BREAK, src);
@@ -1470,7 +1470,7 @@ export class Break extends Code {
     }
 }
 export class Continue extends Code {
-    blockId;
+    blockId; // ループブロックID.
     blockSrc;
     constructor(src, blockId, blockSrc) {
         super(CodeKind.BREAK, src);
