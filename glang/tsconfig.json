@@ -37,6 +37,7 @@
         "logger": ["./logger.ts"],
         "parser": ["./parser.ts"],
         "rqueue": ["./rqueue.ts"],
+        "runner": ["./runner.ts"],
         "scanner": ["./scanner.ts"],
         "utils": ["./utils.ts"]      
     },                                      /* Specify a set of entries that re-map imports to additional lookup locations. */

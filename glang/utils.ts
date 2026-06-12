@@ -113,7 +113,7 @@ export class Option<V> {
     }
 
     get value(): V {
-        if (this.#hasValue) {
+        if (!this.#hasValue) {
             throw new Error("no value");
         }
         return this.#value!;

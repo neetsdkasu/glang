@@ -2,7 +2,7 @@
 // Compiler
 //
 import Logger, { LogLevel } from "logger";
-const log = new Logger("compiler", LogLevel.ALL);
+const log = new Logger("compiler", LogLevel.ERROR | LogLevel.WARN);
 import * as C from "code";
 import { Cmd, Program, StdFunc } from "command";
 import * as U from "utils";
@@ -56,7 +56,9 @@ class Compiler {
         this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
     }
     #addCmdCallUserFunc(funcId) {
-        this.#addCmd(Cmd.CALL_USERFUNC, funcId);
+        this.#addCmd(Cmd.CALL_USERFUNC);
+        const userfuncAddressReferrer = this.#addParam(funcId);
+        this.#userFuncAddressReferrers.push(userfuncAddressReferrer);
         const returnAddressReferrer = this.#addParam(0);
         const returnAddress = this.#getNextAddress();
         this.#setParam(returnAddressReferrer, returnAddress);
