@@ -133,39 +133,6 @@ class Compiler {
         this.#addCmd(Cmd.RET);
     }
 
-    /**
-     * ループブロック直前までのブロックスタックを解放しループブロック継続判定処理へジャンプする.
-     * @param loopTrapBlockId 
-     */
-    #addCmdContinue(loopTrapBlockId: number): void {
-        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
-            const bid = this.#blockIdStack[i];
-            if (bid === loopTrapBlockId) {
-                break;
-            }
-            this.#addCmd(Cmd.POP_BLOCK, bid);
-        }
-        this.#addCmd(Cmd.JUMP);
-        const referrer = this.#addParam(loopTrapBlockId);
-        this.#continueAddressReferrers.push(referrer);
-    }
-
-    /**
-     * ループブロック直前までのブロックスタックを解放しループブロック終了処理へジャンプする.
-     * @param loopTrapBlockId 
-     */
-    #addCmdBreak(loopTrapBlockId: number): void {
-        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
-            const bid = this.#blockIdStack[i];
-            if (bid === loopTrapBlockId) {
-                break;
-            }
-            this.#addCmd(Cmd.POP_BLOCK, bid);
-        }
-        this.#addCmd(Cmd.JUMP);
-        const referrer = this.#addParam(loopTrapBlockId);
-        this.#breakAddressReferres.push(referrer);
-    }
 
     compile(): Program {
 
@@ -224,6 +191,14 @@ class Compiler {
                     U.assert(code instanceof C.AssignVar);
                     this.#compileAssignVar(code);
                     break;
+                case C.CodeKind.BREAK:
+                    U.assert(code instanceof C.Break);
+                    this.#compileBreak(code);
+                    break;
+                case C.CodeKind.CONTINUE:
+                    U.assert(code instanceof C.Continue);
+                    this.#compileContinue(code);
+                    break;
                 case C.CodeKind.DIM:
                     U.assert(code instanceof C.Dim);
                     this.#compileDim(code);
@@ -231,6 +206,10 @@ class Compiler {
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
+                    break;
+                case C.CodeKind.IF:
+                    U.assert(code instanceof C.If);
+                    this.#compileIf(code);
                     break;
                 case C.CodeKind.LET:
                     U.assert(code instanceof C.Let);
@@ -546,6 +525,67 @@ class Compiler {
             default: U.unreachable(code);
         }
         this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
+    }
+
+ 
+    #compileContinue(code: C.Continue): void {
+        // ループブロック直前までのブロックスタックを解放しループブロック継続判定処理へジャンプする.
+        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
+            const bid = this.#blockIdStack[i];
+            if (bid === code.blockId) {
+                break;
+            }
+            this.#addCmd(Cmd.POP_BLOCK, bid);
+        }
+        this.#addCmd(Cmd.JUMP);
+        const referrer = this.#addParam(code.blockId);
+        this.#continueAddressReferrers.push(referrer);
+    }
+
+    #compileBreak(code: C.Break): void {
+        // ループブロック直前までのブロックスタックを解放しループブロック終了処理へジャンプする.
+        for (let i = this.#blockIdStack.length-1; i >= 0; i--) {
+            const bid = this.#blockIdStack[i];
+            if (bid === code.blockId) {
+                break;
+            }
+            this.#addCmd(Cmd.POP_BLOCK, bid);
+        }
+        this.#addCmd(Cmd.JUMP);
+        const referrer = this.#addParam(code.blockId);
+        this.#breakAddressReferres.push(referrer);
+    }
+
+    #compileIf(code: C.If): void {
+        const blockEndReferrers: number[] = [];
+        let nextTestAddressReferrer: number | undefined = undefined;
+        for (let i = 0; i < code.blockInfoList.length; i++) {
+            if (nextTestAddressReferrer !== undefined) {
+                const condAddress = this.#getNextAddress();
+                this.#setParam(nextTestAddressReferrer, condAddress);
+            }
+            if (i < code.testExprList.length) {
+                this.#compileExpr(code.testExprList[i]);
+                this.#addCmd(Cmd.JUMP_IF_FALSE);
+                nextTestAddressReferrer = this.#addParam(0);
+            } else {
+                nextTestAddressReferrer = undefined;
+            }
+            const blockInfo = code.blockInfoList[i];
+            this.#pushBlock(blockInfo);
+            this.#compileCodeBlock(blockInfo.body);
+            this.#popBlock(blockInfo);
+            this.#addCmd(Cmd.JUMP);
+            const blockEndReferrer = this.#addParam(0);
+            blockEndReferrers.push(blockEndReferrer);
+        }
+        const blockEndAddress = this.#getNextAddress();
+        if (nextTestAddressReferrer !== undefined) {
+            this.#setParam(nextTestAddressReferrer, blockEndAddress);
+        }
+        for (const referrer of blockEndReferrers) {
+            this.#setParam(referrer, blockEndAddress);
+        }
     }
 
     #compileExpr(expr: C.Expr): void {
