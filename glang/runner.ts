@@ -351,6 +351,19 @@ export class Runner {
                 }
                 break;
             case Cmd.SET_IARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop() as number;
+                    const index2 = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[][];
+                    if (arr.at(index1)?.at(index2) === undefined) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}][${index2}]`);
+                    }
+                    arr[index1][index2] = value;
+                }
+                break;
             case Cmd.GET_IARR3D:
             case Cmd.SET_IARR3D:
                 throw new U.Unimplemented(Cmd[cmd]);
@@ -496,6 +509,12 @@ export class Runner {
                 }
                 break;
             case Cmd.PRINT:
+                {
+                    const N = this.#program[this.#pos++];
+                    const arr = this.#valueStack.splice(-N).map( e => `${e}` );
+                    this.#io.stderr(arr.join(" "));
+                }
+                break;
             default:
                 throw new U.Unimplemented(Cmd[cmd]);
         }
