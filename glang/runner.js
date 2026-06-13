@@ -492,15 +492,66 @@ export class Runner {
                 }
                 break;
             case Cmd.INEGA:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(-value);
+                }
+                break;
             case Cmd.IASHIFTL:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(0xFFFFFFFF & ((0x80000000 & left) | (left << right)));
+                }
+                break;
             case Cmd.IASHIFTR:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(0xFFFFFFFF & (left >> right));
+                }
+                break;
             case Cmd.ILSHIFTL:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(0xFFFFFFFF & (left << right));
+                }
+                break;
             case Cmd.ILSHIFTR:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(0x7FFFFFFF & (left >> right));
+                }
+                break;
             case Cmd.INOT:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(0xFFFFFFFF & (~value));
+                }
+                break;
             case Cmd.IAND:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left & right);
+                }
+                break;
             case Cmd.IOR:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left | right);
+                }
+                break;
             case Cmd.IXOR:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left ^ right);
+                }
+                break;
             case Cmd.IEQ:
                 {
                     const right = this.#valueStack.pop();
