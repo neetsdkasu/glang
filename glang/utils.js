@@ -40,12 +40,73 @@ export function unreachable(hint) {
         throw new Error("Unreachable");
     }
 }
+export function isInfinityOrNaN(x) {
+    return isNaN(x) || x === Infinity;
+}
 export function popCount(n) {
     n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);
     n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
     n = (n & 0x0F0F0F0F) + ((n >>> 4) & 0x0F0F0F0F);
     n = (n & 0x00FF00FF) + ((n >>> 8) & 0x00FF00FF);
     return (n & 0x0000FFFF) + ((n >>> 16) & 0x0000FFFF);
+}
+/**
+ * 二分探索.
+ * find index -> (index == 0 || test(index-1) == false) && test(index) == true .
+ * @param arr
+ * @param test
+ */
+export function binarySearch(arr, test) {
+    let lower = 0;
+    let upper = arr.length;
+    while (lower + 1 < upper) {
+        const half = (lower + upper) >> 1;
+        if (test(arr[half])) {
+            upper = half;
+        }
+        else {
+            lower = half;
+        }
+    }
+    return upper < arr.length ? upper : undefined;
+}
+export class Range {
+    min;
+    max;
+    constructor(min, max) {
+        this.min = min;
+        this.max = max;
+    }
+    /**
+     * 値がRangeの内側かを判定.
+     * @param value
+     * @returns
+     */
+    include(value) {
+        return inRange(this.min, this.max, value);
+    }
+    /**
+     * 値がRangeの外側かを判定.
+     * @param value
+     * @returns
+     */
+    exclude(value) {
+        return !this.include(value);
+    }
+    cmp(other) {
+        if (this.min < other.min) {
+            return -1;
+        }
+        else if (this.min > other.min) {
+            return 1;
+        }
+        else {
+            return Math.sign(this.max - other.max);
+        }
+    }
+    toString() {
+        return `Range{ min: ${this.min}, max: ${this.max} }`;
+    }
 }
 /**
  * 一度だけ値を書き込めてその値を保持する.

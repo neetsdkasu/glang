@@ -1,17 +1,36 @@
 //
 // Command
 //
+import { Token } from "scanner";
+export class Source {
+    addr;
+    src;
+    constructor(addr, src) {
+        this.addr = addr;
+        this.src = src;
+    }
+    toString() {
+        if (this.src instanceof Token) {
+            return `Source{ addr: ${this.addr}, src: ${this.src} }`;
+        }
+        else {
+            return `Source{ addr: ${this.addr}, src: ${Token.lineToString(this.src)} }`;
+        }
+    }
+}
 export class Program {
     program;
     litStrPool;
     totalBlockCount;
-    constructor(program, litStrPool, totalBlockCount) {
+    sourceMap;
+    constructor(program, litStrPool, totalBlockCount, sourceMap) {
         this.program = program;
         this.litStrPool = litStrPool;
         this.totalBlockCount = totalBlockCount;
+        this.sourceMap = sourceMap;
     }
     toString() {
-        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length} }`;
     }
 }
 export var Cmd;

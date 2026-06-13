@@ -50,12 +50,78 @@ export function unreachable(hint?: any): never {
     }
 }
 
+export function isInfinityOrNaN(x: number): boolean {
+    return isNaN(x) || x ===  Infinity;
+}
+
 export function popCount(n: number): number {
     n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);
     n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);
     n = (n & 0x0F0F0F0F) + ((n >>> 4) & 0x0F0F0F0F);
     n = (n & 0x00FF00FF) + ((n >>> 8) & 0x00FF00FF);
     return (n & 0x0000FFFF) + ((n >>> 16) & 0x0000FFFF);
+}
+
+/**
+ * 二分探索.
+ * find index -> (index == 0 || test(index-1) == false) && test(index) == true .
+ * @param arr 
+ * @param test 
+ */
+export function binarySearch<T>(arr: Readonly<T[]>, test: (target: T) => boolean): number | undefined {
+    let lower: number = 0;
+    let upper: number = arr.length;
+    while (lower + 1 < upper) {
+        const half = (lower + upper) >> 1;
+        if (test(arr[half])) {
+            upper = half;
+        } else {
+            lower = half;
+        }
+    }
+    return upper < arr.length ? upper : undefined;
+}
+
+export class Range {
+    readonly min: number;
+    readonly max: number;
+
+    constructor(min: number, max: number) {
+        this.min = min;
+        this.max = max;
+    }
+
+    /**
+     * 値がRangeの内側かを判定.
+     * @param value 
+     * @returns 
+     */
+    include(value: number): boolean {
+        return inRange(this.min, this.max, value);
+    }
+
+    /**
+     * 値がRangeの外側かを判定.
+     * @param value 
+     * @returns 
+     */
+    exclude(value: number): boolean {
+        return !this.include(value);
+    }
+
+    cmp(other: Range): number {
+        if (this.min < other.min) {
+            return -1;
+        } else if (this.min > other.min) {
+            return 1;
+        } else {
+            return Math.sign(this.max - other.max);
+        }
+    }
+
+    toString(): string {
+        return `Range{ min: ${this.min}, max: ${this.max} }`;
+    }
 }
 
 /**

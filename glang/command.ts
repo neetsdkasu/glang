@@ -2,19 +2,43 @@
 // Command
 //
 
+import { Token } from "scanner";
+import * as U from "utils";
+
+export class Source {
+    readonly addr: U.Range;
+    readonly src: Token | Readonly<Token[]>;
+
+    constructor(addr: U.Range, src: Token | Readonly<Token[]>) {
+        this.addr = addr;
+        this.src = src;
+    }
+
+    toString(): string {
+        if (this.src instanceof Token) {
+            return `Source{ addr: ${this.addr}, src: ${this.src} }`;
+        } else {
+            return `Source{ addr: ${this.addr}, src: ${Token.lineToString(this.src)} }`;
+        }
+    }
+
+}
+
 export class Program {
     readonly program: Readonly<number[]>;
     readonly litStrPool: Readonly<string[]>;
     readonly totalBlockCount: number;
+    readonly sourceMap: Readonly<Source[]>;
 
-    constructor(program: number[], litStrPool: string[], totalBlockCount: number) {
+    constructor(program: number[], litStrPool: string[], totalBlockCount: number, sourceMap: Source[]) {
         this.program = program;
         this.litStrPool = litStrPool;
         this.totalBlockCount = totalBlockCount;
+        this.sourceMap = sourceMap;
     }
 
     toString(): string {
-        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length} }`;
     }
 }
 

@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "logger";
 const log = new Logger("compiler", LogLevel.ERROR | LogLevel.WARN);
 import * as C from "code";
-import { Cmd, Program, StdFunc } from "command";
+import { Cmd, Program, StdFunc, Source } from "command";
 import * as U from "utils";
 class Compiler {
     src;
@@ -18,6 +18,7 @@ class Compiler {
     #breakAddressMap = new Map(); // ループブロックID => ループ終了処理先頭アドレス.
     #breakAddressReferres = []; // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
     #blockIdStack = []; // pushBlockするたびにブロックIDをスタック構造で管理.
+    #sourceMap = [];
     constructor(src) {
         this.src = src;
     }
@@ -109,6 +110,54 @@ class Compiler {
         this.#blockIdStack.pop();
         this.#addCmd(Cmd.POP_BLOCK, bi.id);
     }
+    #handleStdfuncError(stdfuncId, src) {
+        const addr = this.#getNextAddress();
+        switch (stdfuncId) {
+            case StdFunc.CBOOL_FROM_STRING:
+            case StdFunc.CFLOAT_FROM_STRING:
+            case StdFunc.CINT_FROM_STRING:
+            case StdFunc.TAN:
+            case StdFunc.SQRT:
+            case StdFunc.SIZE_BARR1D:
+            case StdFunc.SIZE_BARR2D:
+            case StdFunc.SIZE_BARR3D:
+            case StdFunc.SIZE_FARR1D:
+            case StdFunc.SIZE_FARR2D:
+            case StdFunc.SIZE_FARR3D:
+            case StdFunc.SIZE_IARR1D:
+            case StdFunc.SIZE_IARR2D:
+            case StdFunc.SIZE_IARR3D:
+            case StdFunc.SIZE_SARR1D:
+            case StdFunc.SIZE_SARR2D:
+            case StdFunc.SIZE_SARR3D:
+                const r = new U.Range(addr, addr + 1);
+                const source = new Source(r, src);
+                this.#sourceMap.push(source);
+                break;
+            default:
+                break;
+        }
+    }
+    #handleBinOpError(op, src) {
+        const addr = this.#getNextAddress();
+        switch (op) {
+            case C.BinaryOpKind.DIVIDE:
+            case C.BinaryOpKind.INT_DIVIDE:
+            case C.BinaryOpKind.INT_REMINDER:
+                const r = new U.Range(addr, addr);
+                const source = new Source(r, src);
+                this.#sourceMap.push(source);
+                break;
+            default:
+                break;
+        }
+    }
+    #handleArrayIndexError(src) {
+        const addr = this.#getNextAddress();
+        const r = new U.Range(addr, addr + 2);
+        const source = new Source(r, src);
+        this.#sourceMap.push(source);
+    }
     compile() {
         const dimlet = [];
         const subfunc = [];
@@ -157,7 +206,8 @@ class Compiler {
             U.assert(address !== undefined);
             this.#program[referrer] = address;
         }
-        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount);
+        this.#sourceMap.sort((a, b) => a.addr.cmp(b.addr));
+        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount, this.#sourceMap);
     }
     #compileCodeBlock(block) {
         for (const code of block) {
@@ -377,7 +427,7 @@ class Compiler {
         }
         if (code.op.kind !== C.AssignKind.ASSIGN) {
             this.#addCmd(Cmd.DUPN, code.indexes.length);
-            this.#compileGetArrayVarVal(code.nameInfo, []);
+            this.#compileGetArrayVarVal(code.nameInfo, [], code.src);
         }
         this.#compileExpr(code.expr);
         if (code.op.kind !== C.AssignKind.ASSIGN) {
@@ -423,6 +473,7 @@ class Compiler {
                 break;
             default: U.unreachable(code);
         }
+        this.#handleArrayIndexError(code.src);
         this.#addCmd(cmd, code.nameInfo.blockId, code.nameInfo.blockVarId);
     }
     #compileDim(code) {
@@ -745,7 +796,7 @@ class Compiler {
         }
         this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
-    #compileGetArrayVarVal(nameInfo, indexes) {
+    #compileGetArrayVarVal(nameInfo, indexes, src) {
         for (const index of indexes) {
             this.#compileExpr(index);
         }
@@ -789,12 +840,13 @@ class Compiler {
                 break;
             default: U.unreachable(nameInfo);
         }
+        this.#handleArrayIndexError(src);
         this.#addCmd(cmd, nameInfo.blockId, nameInfo.blockVarId);
     }
     #compileExprVar(expr) {
         if (expr.vtype !== expr.nameInfo.vtype) {
             U.assert(expr instanceof C.ExprArrayVarVal, expr);
-            this.#compileGetArrayVarVal(expr.nameInfo, expr.indexes);
+            this.#compileGetArrayVarVal(expr.nameInfo, expr.indexes, expr.src);
             return;
         }
         this.#compileGetVar(expr.nameInfo);
@@ -1006,6 +1058,7 @@ class Compiler {
                 break;
             default: U.unreachable(expr);
         }
+        this.#handleBinOpError(expr.op.kind, expr.src);
         this.#addCmd(cmd);
     }
     #compileExprBinOpShortcircuitAnd(expr) {
@@ -1045,7 +1098,8 @@ class Compiler {
         for (const arg of args) {
             this.#compileExpr(arg);
         }
-        this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
+        this.#handleStdfuncError(stdfuncId, expr.src);
+        this.#addCmdCallStdFunc(stdfuncId);
     }
     #compileExprCallUserFunc(expr) {
         let args;
@@ -1069,6 +1123,7 @@ class Compiler {
             this.#compileExpr(arg);
         }
         U.assert(code.stdfuncId !== undefined);
+        this.#handleStdfuncError(code.stdfuncId, code.src);
         this.#addCmdCallStdFunc(code.stdfuncId);
         if (code.funcInfo.isFunc) {
             this.#addCmd(Cmd.POP);

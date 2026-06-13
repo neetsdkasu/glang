@@ -43,8 +43,9 @@ function step() {
         timerId = undefined;
         runnerHolder = NO_HOLD;
         if (result.isErr) {
-            log.error(result.error);
-            alert(result.error);
+            const msg = `${result.error}`;
+            log.error(msg);
+            alert(msg);
         }
     }
     catch (e) {
