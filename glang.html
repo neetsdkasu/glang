@@ -36,65 +36,61 @@
 
             <div>
                 <div>
-                    <button id="stop" type="stop">STOP</button>
+                    <button id="stop" type="stop" disabled>STOP</button>
                     <button id="run" type="button">RUN</button>
+                    <label>stepsize: 
+                        <input id="step" type="number" min="1" max="100000" value="10000" />
+                    </label>
+                    <span>status:
+                        <span id="status" class="status">...</span>
+                    </span>
                 </div>
                 <details>
-                    <summary>code</summary>
-                    <textarea id="code" cols="100" rows="40">
-Dim field_XY(10,10) As Integer
-Sub main()
-    Let x = -1 + 2 * 3 \ 4 - (5 + 6) * 7 % 8 + 0xFF + 0b111
-    Let y = x + cint(floor(cfloat(x) * 3.5)) * min(x*10, 10-x) + field_XY(3, (x+10)%10) + field_XY.size(1)
-    Let z = 1.0 - 0.5 / 1.25 * 3.14 - (-1.3).sign()
-    Let ss = "abcd" + fizzbuzz(abs(y * x - 55)+1) + cstr(3.5 + z) + cstr(true) + 5.fizzbuzz() + ""
-    x = x + 1 + sel(x &gt; 4, 10, 20)
-    y += 100 + x
-    z *= 1.5 * z
-    ss += "abcd" + ss
-    x = 0
-    y = 0
-    field_XY(0, 0) = 10
-    For Let i = 0 To 5 Step 1
-        If i % 2 == 0 Then
-            x += 1
-        Else
-            y += 1
-        End If
-        Call add(x, y, 1)
-        For let j = 0 To 3
-            If i &gt; 4 Then
-                Break
-            Else If i &gt; 3 Then
-                Continue
-            End If
-            Call add(x, y, j)
-        End For
-    End For
-    Let s = fizzbuzz(18)
-    Print "abcd", x+y, field_XY(2,2), s
-    Let p = 0
-    Do While p &lt; 10
-        p += 1
-    End Do
-End Sub
-Sub add(x As Integer, y As Integer, v As Integer)
-    field_XY(x, y) += v
-End Sub
-Func fizzbuzz(n As Integer) As String
-    If n % 15 == 0 Then
+                    <summary>source code</summary>
+                    <textarea id="code" cols="100" rows="40">' FizzBuzz
+Func FizzBuzz(i As Integer) As String
+    If i % 15 == 0 Then
         Return "FizzBuzz"
-    Else If n % 5 == 0 Then
+    Else If i % 5 == 0 Then
         Return "Buzz"
-    Else If n % 3 == 0 Then
+    Else If i % 3 == 0 Then
         Return "Fizz"
     Else
-        Return cstr(n)
+        Return cstr(i)
     End If
 End Func
-                    </textarea>
+Sub Main()
+    For let i = 1 To 1000
+        Print i, "->", FizzBuzz(i)
+    End For
+End Sub
+</textarea>
                 </details>
             </div>
+
+            <hr />
+
+            <details>
+                <summary>err,in,out</summary>
+                <div class="indent con">
+                    <details>
+                        <summary>err</summary>
+                        <textarea id="cerr" cols="80" rows="20" readonly></textarea>
+                    </details>
+                </div>
+                <div class="indent con">
+                    <details>
+                        <summary>in</summary>
+                        <textarea id="cin" cols="80" rows="20"></textarea>
+                    </details>
+                </div>
+                <div class="indent con">
+                    <details>
+                        <summary>out</summary>
+                        <textarea id="cout" cols="80" rows="20" readonly></textarea>
+                    </details>
+                </div>
+            </details>
 
         </main>
         
