@@ -194,7 +194,15 @@ export class Runner {
             case Cmd.FGT:
             case Cmd.FGE:
             case Cmd.GET_FVAR:
+                throw new U.Unimplemented(Cmd[cmd]);
             case Cmd.SET_FVAR:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop() as number;
+                    this.#block[blockId][blockVarId] = value;
+                }
+                break;
             case Cmd.GET_FARR1D:
             case Cmd.SET_FARR1D:
             case Cmd.GET_FARR2D:
@@ -279,7 +287,7 @@ export class Runner {
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
-                    const value = this.#valueStack.pop()!;
+                    const value = this.#valueStack.pop() as number;
                     this.#block[blockId][blockVarId] = value;
                 }
                 break;
@@ -303,7 +311,14 @@ export class Runner {
             case Cmd.SET_IARR2D:
             case Cmd.GET_IARR3D:
             case Cmd.SET_IARR3D:
+                throw new U.Unimplemented(Cmd[cmd]);
             case Cmd.SPUSH:
+                {
+                    const litStrId = this.#program[this.#pos++];
+                    const value = this.#litStrPool[litStrId];
+                    this.#valueStack.push(value);
+                }
+                break;
             case Cmd.SCONCAT:
             case Cmd.SEQ:
             case Cmd.SNE:
@@ -397,27 +412,59 @@ export class Runner {
     #callStdfunc(stdfuncId: StdFunc): RunnerResult {
         switch (stdfuncId) {
             case StdFunc.CBOOL_FROM_BOOLEAN:
-                // ok
+                // 処理不要.
                 break;
             case StdFunc.CBOOL_FROM_FLOAT:
+                {
+                    const value = this.#valueStack.pop() as number;
+                    this.#valueStack.push(value != 0.0);
+                }
+                break;
             case StdFunc.CBOOL_FROM_INTEGER:
+                {
+                    const value = this.#valueStack.pop() as number;
+                    this.#valueStack.push(value !== 0);
+                }
+                break;
             case StdFunc.CBOOL_FROM_STRING:
+                {
+                    const value = this.#valueStack.pop() as string;
+                    this.#valueStack.push(value.length > 0);
+                }
+                break;
             case StdFunc.CFLOAT_FROM_BOOLEAN:
-                throw new U.Unimplemented(StdFunc[stdfuncId]);
+                {
+                    const value = this.#valueStack.pop() as boolean;
+                    this.#valueStack.push(value ? 1.0 : 0.0);
+                }
+                break;
             case StdFunc.CFLOAT_FROM_FLOAT:
-                // ok
+                // 処理不要.
                 break;
             case StdFunc.CFLOAT_FROM_INTEGER:
-                // ok
+                // 処理不要.
                 break;
             case StdFunc.CFLOAT_FROM_STRING:
+                {
+                    const strValue = this.#valueStack.pop() as string;
+                    const floatValue = parseFloat(strValue);
+                    if (U.isInfinityOrNaN(floatValue)) {
+                        this.#valueStack.push(0.0);
+                    } else {
+                        this.#valueStack.push(floatValue);
+                    }
+                }
+                break;
             case StdFunc.CINT_FROM_BOOLEAN:
                 throw new U.Unimplemented(StdFunc[stdfuncId]);
             case StdFunc.CINT_FROM_FLOAT:
-                // ok
+                {
+                    const value = this.#valueStack.pop() as number;
+                    this.#valueStack.push(Math.imul(value, 1));
+                }
                 break;
             case StdFunc.CINT_FROM_INTEGER:
-                // ok
+                // 処理不要.
                 break;
             case StdFunc.CINT_FROM_STRING:
             case StdFunc.CSTR_FROM_BOOLEAN:
@@ -425,7 +472,7 @@ export class Runner {
             case StdFunc.CSTR_FROM_INTEGER:
                 throw new U.Unimplemented(StdFunc[stdfuncId]);
             case StdFunc.CSTR_FROM_STRING:
-                // ok
+                // 処理不要.
                 break;
             case StdFunc.SIN:
             case StdFunc.COS:
