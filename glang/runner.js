@@ -611,8 +611,30 @@ export class Runner {
                 }
                 break;
             case Cmd.GET_IARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const index1 = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (!isValidIndex(arr, index1)) {
+                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
+                    this.#valueStack.push(arr[index1]);
+                }
+                break;
             case Cmd.SET_IARR1D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop();
+                    const index1 = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (!isValidIndex(arr, index1)) {
+                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
+                    arr[index1] = value;
+                }
+                break;
             case Cmd.GET_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -641,8 +663,34 @@ export class Runner {
                 }
                 break;
             case Cmd.GET_IARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const index3 = this.#valueStack.pop();
+                    const index2 = this.#valueStack.pop();
+                    const index1 = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (!isValidIndex3(arr, index1, index2, index3)) {
+                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
+                    this.#valueStack.push(arr[index1][index2][index3]);
+                }
+                break;
             case Cmd.SET_IARR3D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop();
+                    const index3 = this.#valueStack.pop();
+                    const index2 = this.#valueStack.pop();
+                    const index1 = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (!isValidIndex3(arr, index1, index2, index3)) {
+                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
+                    arr[index1][index2][index3] = value;
+                }
+                break;
             case Cmd.SPUSH:
                 {
                     const litStrId = this.#program[this.#pos++];
