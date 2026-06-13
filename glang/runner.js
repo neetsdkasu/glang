@@ -171,7 +171,13 @@ export class Runner {
             case Cmd.FGT:
             case Cmd.FGE:
             case Cmd.GET_FVAR:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#block[blockId][blockVarId];
+                    this.#valueStack.push(value);
+                }
+                break;
             case Cmd.SET_FVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -245,13 +251,49 @@ export class Runner {
             case Cmd.IAND:
             case Cmd.IOR:
             case Cmd.IXOR:
-            case Cmd.IEQ:
-            case Cmd.INE:
-            case Cmd.ILT:
-            case Cmd.ILE:
-            case Cmd.IGT:
-            case Cmd.IGE:
                 throw new U.Unimplemented(Cmd[cmd]);
+            case Cmd.IEQ:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left === right);
+                }
+                break;
+            case Cmd.INE:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left !== right);
+                }
+                break;
+            case Cmd.ILT:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left < right);
+                }
+                break;
+            case Cmd.ILE:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left <= right);
+                }
+                break;
+            case Cmd.IGT:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left > right);
+                }
+                break;
+            case Cmd.IGE:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left >= right);
+                }
+                break;
             case Cmd.GET_IVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -297,14 +339,35 @@ export class Runner {
                 }
                 break;
             case Cmd.SCONCAT:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left + right);
+                }
+                break;
             case Cmd.SEQ:
             case Cmd.SNE:
             case Cmd.SLT:
             case Cmd.SLE:
             case Cmd.SGT:
             case Cmd.SGE:
+                throw new U.Unimplemented(Cmd[cmd]);
             case Cmd.GET_SVAR:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#block[blockId][blockVarId];
+                    this.#valueStack.push(value);
+                }
+                break;
             case Cmd.SET_SVAR:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop();
+                    this.#block[blockId][blockVarId] = value;
+                }
+                break;
             case Cmd.GET_SARR1D:
             case Cmd.SET_SARR1D:
             case Cmd.GET_SARR2D:
@@ -351,10 +414,31 @@ export class Runner {
             case Cmd.INIT_SARR1D:
             case Cmd.INIT_SARR2D:
             case Cmd.INIT_SARR3D:
-            case Cmd.JUMP:
-            case Cmd.JUMP_IF_TRUE:
-            case Cmd.JUMP_IF_FALSE:
                 throw new U.Unimplemented(Cmd[cmd]);
+            case Cmd.JUMP:
+                {
+                    const addr = this.#program[this.#pos++];
+                    this.#pos = addr;
+                }
+                break;
+            case Cmd.JUMP_IF_TRUE:
+                {
+                    const addr = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop();
+                    if (value) {
+                        this.#pos = addr;
+                    }
+                }
+                break;
+            case Cmd.JUMP_IF_FALSE:
+                {
+                    const addr = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop();
+                    if (!value) {
+                        this.#pos = addr;
+                    }
+                }
+                break;
             case Cmd.CALL_STDFUNC:
                 {
                     const stdfuncId = this.#program[this.#pos++];
@@ -369,7 +453,11 @@ export class Runner {
                 }
                 break;
             case Cmd.RET:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const addr = this.#addressStack.pop();
+                    this.#pos = addr;
+                }
+                break;
             case Cmd.PUSH_BLOCK:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -379,6 +467,11 @@ export class Runner {
                 }
                 break;
             case Cmd.POP_BLOCK:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    this.#block[blockId] = this.#blockStack[blockId].pop();
+                }
+                break;
             case Cmd.PRINT:
             default:
                 throw new U.Unimplemented(Cmd[cmd]);
@@ -386,6 +479,7 @@ export class Runner {
         return RUNNING;
     }
     #callStdfunc(stdfuncId) {
+        log.dump("stdfuncId", StdFunc[stdfuncId]);
         switch (stdfuncId) {
             case StdFunc.CBOOL_FROM_BOOLEAN:
                 // 処理不要.
@@ -444,19 +538,72 @@ export class Runner {
                 // 処理不要.
                 break;
             case StdFunc.CINT_FROM_STRING:
+                {
+                    const strValue = this.#valueStack.pop();
+                    const intValue = parseInt(strValue);
+                    if (U.isInfinityOrNaN(intValue)) {
+                        this.#valueStack.push(0);
+                    }
+                    else {
+                        this.#valueStack.push(intValue);
+                    }
+                }
+                break;
             case StdFunc.CSTR_FROM_BOOLEAN:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(`${value}`);
+                }
+                break;
             case StdFunc.CSTR_FROM_FLOAT:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(`${value}`);
+                }
+                break;
             case StdFunc.CSTR_FROM_INTEGER:
-                throw new U.Unimplemented(StdFunc[stdfuncId]);
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(`${value}`);
+                }
+                break;
             case StdFunc.CSTR_FROM_STRING:
                 // 処理不要.
                 break;
             case StdFunc.SIN:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(Math.sin(value));
+                }
+                break;
             case StdFunc.COS:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(Math.cos(value));
+                }
+                break;
             case StdFunc.TAN:
+                {
+                    const value = this.#valueStack.pop();
+                    const tanValue = Math.tan(value);
+                    if (U.isInfinityOrNaN(tanValue)) {
+                        return this.#runtimeError(this.#pos - 2, `wrong tan argument: tan(${value})`);
+                    }
+                    this.#valueStack.push(tanValue);
+                }
+                break;
             case StdFunc.ABS_FLOAT:
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(Math.abs(value));
+                }
+                break;
             case StdFunc.ABS_INTGER:
-                throw new U.Unimplemented(StdFunc[stdfuncId]);
+                {
+                    const value = this.#valueStack.pop();
+                    this.#valueStack.push(Math.abs(value));
+                }
+                break;
             case StdFunc.SIGN_FLOAT:
                 {
                     const value = this.#valueStack.pop();
@@ -520,10 +667,39 @@ export class Runner {
             case StdFunc.SIZE_SARR1D:
             case StdFunc.SIZE_SARR2D:
             case StdFunc.SIZE_SARR3D:
+                throw new U.Unimplemented(StdFunc[stdfuncId]);
             case StdFunc.SEL_BOOLEAN:
+                {
+                    const falseValue = this.#valueStack.pop();
+                    const trueValue = this.#valueStack.pop();
+                    const testValue = this.#valueStack.pop();
+                    this.#valueStack.push(testValue ? trueValue : falseValue);
+                }
+                break;
             case StdFunc.SEL_FLOAT:
+                {
+                    const falseValue = this.#valueStack.pop();
+                    const trueValue = this.#valueStack.pop();
+                    const testValue = this.#valueStack.pop();
+                    this.#valueStack.push(testValue ? trueValue : falseValue);
+                }
+                break;
             case StdFunc.SEL_INTEGER:
+                {
+                    const falseValue = this.#valueStack.pop();
+                    const trueValue = this.#valueStack.pop();
+                    const testValue = this.#valueStack.pop();
+                    this.#valueStack.push(testValue ? trueValue : falseValue);
+                }
+                break;
             case StdFunc.SEL_STRING:
+                {
+                    const falseValue = this.#valueStack.pop();
+                    const trueValue = this.#valueStack.pop();
+                    const testValue = this.#valueStack.pop();
+                    this.#valueStack.push(testValue ? trueValue : falseValue);
+                }
+                break;
             default:
                 throw new U.Unimplemented(StdFunc[stdfuncId]);
         }
