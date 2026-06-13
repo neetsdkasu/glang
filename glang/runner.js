@@ -53,6 +53,18 @@ export class Runner {
         this.#isRunning = false;
         return err;
     }
+    run() {
+        while (this.#isRunning) {
+            this.step();
+        }
+        return this.#error.getOr(ENDED);
+    }
+    stepN(n) {
+        for (let i = 1; i < n; i++) {
+            this.step();
+        }
+        return this.step();
+    }
     step() {
         if (!this.#isRunning) {
             return this.#error.getOr(ENDED);

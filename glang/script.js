@@ -35,7 +35,7 @@ function step() {
     try {
         U.assert(timerId !== undefined);
         const runner = runnerHolder.value;
-        const result = runner.step();
+        const result = runner.stepN(10000);
         if (result.isOk && result.result) {
             return;
         }
