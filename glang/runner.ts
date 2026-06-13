@@ -332,11 +332,47 @@ export class Runner {
                 }
                 break;
             case Cmd.FEQ:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left === right);
+                }
+                break;
             case Cmd.FNE:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left !== right);
+                }
+                break;
             case Cmd.FLT:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left < right);
+                }
+                break;
             case Cmd.FLE:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left <= right);
+                }
+                break;
             case Cmd.FGT:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left > right);
+                }
+                break;
             case Cmd.FGE:
+                {
+                    const right = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#valueStack.push(left >= right);
+                }
+                break;
             case Cmd.GET_FVAR:
                 {
                     const blockId = this.#program[this.#pos++];

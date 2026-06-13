@@ -47,6 +47,7 @@ function toggleItemDisabled() {
     StopButton.disabled = !StopButton.disabled;
     StepInput.disabled = !StepInput.disabled;
     CinTextarea.disabled = !CinTextarea.disabled;
+    CodeTextarea.disabled = !CodeTextarea.disabled;
 }
 function step() {
     if (runnerHolder.isNone) {
