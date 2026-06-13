@@ -390,12 +390,86 @@ export class Runner {
                 }
                 break;
             case Cmd.GET_FARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[];
+                    if (!isValidIndex(arr, index1)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}]`);
+                    }
+                    this.#valueStack.push(arr[index1]);
+                }
+                break;
             case Cmd.SET_FARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[];
+                    if (!isValidIndex(arr, index1)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}]`);
+                    }
+                    arr[index1] = value;
+                }
+                break;
             case Cmd.GET_FARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const index2 = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[][];
+                    if (!isValidIndex2(arr, index1, index2)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}][${index2}]`);
+                    }
+                    this.#valueStack.push(arr[index1][index2]);
+                }
+                break;
             case Cmd.SET_FARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop() as number;
+                    const index2 = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[][];
+                    if (!isValidIndex2(arr, index1, index2)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}][${index2}]`);
+                    }
+                    arr[index1][index2] = value;
+                }
+                break;
             case Cmd.GET_FARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const index3 = this.#valueStack.pop() as number;
+                    const index2 = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[][][];
+                    if (!isValidIndex3(arr, index1, index2, index3)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
+                    this.#valueStack.push(arr[index1][index2][index3]);
+                }
+                break;
             case Cmd.SET_FARR3D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const value = this.#valueStack.pop() as number;
+                    const index3 = this.#valueStack.pop() as number;
+                    const index2 = this.#valueStack.pop() as number;
+                    const index1 = this.#valueStack.pop() as number;
+                    const arr = this.#block[blockId][blockVarId] as number[][][];
+                    if (!isValidIndex3(arr, index1, index2, index3)) {
+                        return this.#runtimeError(this.#pos-3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
+                    arr[index1][index2][index3] = value;
+                }
+                break;
             case Cmd.IPUSH:
                 {
                     const intValue = this.#program[this.#pos++];
