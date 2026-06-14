@@ -929,13 +929,69 @@ export class Runner {
                 }
                 break;
             case Cmd.INIT_BARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill(false);
+                }
+                break;
             case Cmd.INIT_BARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(false));
+                }
+                break;
             case Cmd.INIT_BARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    const size3 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([])
+                        .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(false)));
+                }
+                break;
             case Cmd.INIT_FARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill(0.0);
+                }
+                break;
             case Cmd.INIT_FARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(0));
+                }
+                break;
             case Cmd.INIT_FARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    const size3 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([])
+                        .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(0.0)));
+                }
+                break;
             case Cmd.INIT_IARR1D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill(0);
+                }
+                break;
             case Cmd.INIT_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -946,10 +1002,44 @@ export class Runner {
                 }
                 break;
             case Cmd.INIT_IARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    const size3 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([])
+                        .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(0)));
+                }
+                break;
             case Cmd.INIT_SARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill("");
+                }
+                break;
             case Cmd.INIT_SARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(""));
+                }
+                break;
             case Cmd.INIT_SARR3D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    const size1 = this.#program[this.#pos++];
+                    const size2 = this.#program[this.#pos++];
+                    const size3 = this.#program[this.#pos++];
+                    this.#block[blockId][blockVarId] = new Array(size1).fill([])
+                        .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill("")));
+                }
+                break;
             case Cmd.JUMP:
                 {
                     const addr = this.#program[this.#pos++];
