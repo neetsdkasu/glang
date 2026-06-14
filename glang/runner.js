@@ -1309,13 +1309,125 @@ export class Runner {
                 }
                 break;
             case StdFunc.SIZE_BARR1D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (dim === 1) {
+                        this.#valueStack.push(arr.length);
+                    }
+                    else {
+                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_BARR2D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_BARR3D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        case 3:
+                            this.#valueStack.push(arr[0][0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_FARR1D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (dim === 1) {
+                        this.#valueStack.push(arr.length);
+                    }
+                    else {
+                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_FARR2D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_FARR3D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        case 3:
+                            this.#valueStack.push(arr[0][0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_IARR1D:
-                throw new U.Unimplemented(StdFunc[stdfuncId]);
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (dim === 1) {
+                        this.#valueStack.push(arr.length);
+                    }
+                    else {
+                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_IARR2D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1330,15 +1442,84 @@ export class Runner {
                             this.#valueStack.push(arr[0].length);
                             break;
                         default:
-                            return this.#runtimeError(this.#pos - 3, `wrong dimension: size(${dim})`);
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
                 break;
             case StdFunc.SIZE_IARR3D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        case 3:
+                            this.#valueStack.push(arr[0][0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_SARR1D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    if (dim === 1) {
+                        this.#valueStack.push(arr.length);
+                    }
+                    else {
+                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_SARR2D:
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SIZE_SARR3D:
-                throw new U.Unimplemented(StdFunc[stdfuncId]);
+                {
+                    const dim = this.#valueStack.pop();
+                    const blockVarId = this.#valueStack.pop();
+                    const blockId = this.#valueStack.pop();
+                    const arr = this.#block[blockId][blockVarId];
+                    switch (dim) {
+                        case 1:
+                            this.#valueStack.push(arr.length);
+                            break;
+                        case 2:
+                            this.#valueStack.push(arr[0].length);
+                            break;
+                        case 3:
+                            this.#valueStack.push(arr[0][0].length);
+                            break;
+                        default:
+                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                    }
+                }
+                break;
             case StdFunc.SEL_BOOLEAN:
                 {
                     const falseValue = this.#valueStack.pop();
