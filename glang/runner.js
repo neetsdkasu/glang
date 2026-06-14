@@ -522,7 +522,7 @@ export class Runner {
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
-                    this.#valueStack.push(0x7FFFFFFF & (left >> right));
+                    this.#valueStack.push(0xFFFFFFFF & (left >>> right));
                 }
                 break;
             case Cmd.INOT:
@@ -706,12 +706,47 @@ export class Runner {
                 }
                 break;
             case Cmd.SEQ:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left === right);
+                }
+                break;
             case Cmd.SNE:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left !== right);
+                }
+                break;
             case Cmd.SLT:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left < right);
+                }
+                break;
             case Cmd.SLE:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left <= right);
+                }
+                break;
             case Cmd.SGT:
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left > right);
+                }
+                break;
             case Cmd.SGE:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const right = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#valueStack.push(left >= right);
+                }
+                break;
             case Cmd.GET_SVAR:
                 {
                     const blockId = this.#program[this.#pos++];
