@@ -845,13 +845,54 @@ export class Runner {
                 }
                 break;
             case Cmd.APUSH_BARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_BARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_BARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_FARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_FARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_FARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_IARR1D:
-                throw new U.Unimplemented(Cmd[cmd]);
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -860,9 +901,33 @@ export class Runner {
                 }
                 break;
             case Cmd.APUSH_IARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_SARR1D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_SARR2D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.APUSH_SARR3D:
+                {
+                    const blockId = this.#program[this.#pos++];
+                    const blockVarId = this.#program[this.#pos++];
+                    this.#valueStack.push(blockId, blockVarId);
+                }
+                break;
             case Cmd.INIT_BARR1D:
             case Cmd.INIT_BARR2D:
             case Cmd.INIT_BARR3D:
