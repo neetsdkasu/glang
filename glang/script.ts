@@ -6,11 +6,12 @@ import Logger, { LogLevel } from "logger";
 const log = new Logger("main", LogLevel.ALL);
 
 import CharReader from "charreader";
-import Scanner from "scanner";
+import Scanner, { Token } from "scanner";
 import * as parser from "parser";
 import * as compiler from "compiler";
 import Runner, { IO } from "runner";
 import * as U from "utils";
+import { Code } from "code";
 
 /**
  * UI
@@ -62,6 +63,28 @@ function toggleItemDisabled(): void {
     CodeTextarea.disabled = !CodeTextarea.disabled;
 }
 
+function openErrorDetails(msg: string, src: Token | Readonly<Token[]> | null): void {
+    document.querySelectorAll("details.errcatch").forEach( e => void ((e as HTMLDetailsElement).open = true) );
+    if (src !== null) {
+        (document.querySelector("details.srcholder") as HTMLDetailsElement).open = true;
+        CodeTextarea.focus();
+        if (src instanceof Token) {
+            CodeTextarea.setSelectionRange(src.start, src.end);
+            msg += ` ( ${src.row+1}行目 ${src.col}文字目 "${src.value}" )`;
+        } else {
+            CodeTextarea.setSelectionRange(src[0].start, src.at(-1)!.end);
+            msg += ` ( ${src[0].row+1}行目 "${Token.lineToString(src)}" )`;
+        }
+    }
+    const start = CerrTextarea.textLength;
+    CerrTextarea.value += msg;
+    const end = CerrTextarea.textLength-1;
+    if (src === null) {
+        CerrTextarea.focus();
+        CerrTextarea.setSelectionRange(start, end);
+    }
+}
+
 function step(): void {
     if (runnerHolder.isNone) {
         if (timerId) {
@@ -82,8 +105,9 @@ function step(): void {
         timerId = undefined;
         runnerHolder = NO_HOLD;
         if (result.isErr) {
+            const err = result.error;
             updateStatus("RuntimeError");
-            io.cerr(`${result.error}`);
+            openErrorDetails(err.msg, err.src?.src ?? null);
         } else {
             updateStatus("Finished");
         }
@@ -93,8 +117,8 @@ function step(): void {
         timerId = undefined;
         runnerHolder = NO_HOLD;
         updateStatus("UnknownError");
-        io.cerr(`${e}`);
         toggleItemDisabled();
+        openErrorDetails(`${e}`, null);
         throw e;
     }
 }
@@ -131,8 +155,9 @@ RunButton.addEventListener("click", () => {
     const parsedResult = parser.parse(scanner);
     
     if (parsedResult.isErr) {
+        const err = parsedResult.error;
         updateStatus("ParseError");
-        io.cerr(parsedResult.error);
+        openErrorDetails(err.msg, err.src);
         return;
     }
     const parsedSrc = parsedResult.result;
@@ -147,5 +172,32 @@ RunButton.addEventListener("click", () => {
     toggleItemDisabled();
 });
 
+const RE_REMOVE_SP = /^ {1,4}/;
+const RE_NOT_SP = /[^ ]/;
+const REMOVE_SP: (s: string) => string = s => s.replace(RE_REMOVE_SP, "");
+const PAD_SP: (s: string) => string = s => {
+    const p = s.search(RE_NOT_SP);
+    return "    ".repeat(1+(p>>2)) + s.slice(p);
+};
+CodeTextarea.addEventListener("keydown", e => {
+    if (e.key === "Tab" && !e.altKey && !e.ctrlKey) {
+        e.preventDefault();
+        let index1;
+        let index2;
+        if (CodeTextarea.selectionStart === CodeTextarea.selectionEnd) {
+            index2 = CodeTextarea.value.indexOf("\n", Math.max(0, CodeTextarea.selectionEnd));
+            index1 = Math.max(0, CodeTextarea.value.lastIndexOf("\n", Math.max(0, index2-1))+1);
+        } else {
+            index1 = Math.max(0, CodeTextarea.value.lastIndexOf("\n", CodeTextarea.selectionStart)+1);
+            index2 = CodeTextarea.value.indexOf("\n", Math.max(0, CodeTextarea.selectionEnd-1));
+        }
+        if (index1 !== CodeTextarea.selectionStart || index2 !== CodeTextarea.selectionEnd) {
+            CodeTextarea.setSelectionRange(index1, index2);
+            return;
+        }
+        const lines = CodeTextarea.value.slice(index1, index2).split("\n").map(e.shiftKey ? REMOVE_SP : PAD_SP);
+        CodeTextarea.setRangeText(lines.join("\n"), index1, index2, "select");
+    }
+});
 
 export default {};

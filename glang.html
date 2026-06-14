@@ -45,7 +45,7 @@
                         <span id="status" class="status">...</span>
                     </span>
                 </div>
-                <details>
+                <details class="srcholder">
                     <summary>source code</summary>
                     <textarea id="code" cols="100" rows="40">' FizzBuzz
 Func FizzBuzz(i As Integer) As String
@@ -70,21 +70,21 @@ End Sub
 
             <hr />
 
-            <details>
-                <summary>err,in,out</summary>
-                <div class="indent con">
-                    <details>
+            <details class="errcatch">
+                <summary><span class="cerr">err</span><span class="cin">,in</span><span class="cout">,out</span></summary>
+                <div class="indent con cerr">
+                    <details class="errcatch">
                         <summary>err</summary>
                         <textarea id="cerr" cols="80" rows="20" readonly></textarea>
                     </details>
                 </div>
-                <div class="indent con">
+                <div class="indent con cin">
                     <details>
                         <summary>in</summary>
                         <textarea id="cin" cols="80" rows="20"></textarea>
                     </details>
                 </div>
-                <div class="indent con">
+                <div class="indent con cout">
                     <details>
                         <summary>out</summary>
                         <textarea id="cout" cols="80" rows="20" readonly></textarea>

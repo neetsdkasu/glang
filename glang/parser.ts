@@ -22,16 +22,34 @@ declare global {
 }
 */
 
-export type ParserError = string;
+export class ParserError {
+    readonly msg: string;
+    readonly src: Token | Readonly<Token[]> | null;
+
+    constructor(msg: string, src: Token | Readonly<Token[]> | null) {
+        this.msg = msg;
+        this.src = src;
+    }
+
+    toString(): string {
+        if (this.src === null) {
+            return `ParserError{ msg: ${this.msg} }`;
+        } else if (this.src instanceof Token) {
+            return `ParserError{ msg: ${this.msg}, src: ${this.src} "${this.src.value}" }`;
+        } else {
+            return `ParserError{ msg: ${this.msg}, src: ${this.src[0]} "${Token.lineToString(this.src)}" }`;
+        }
+    }
+}
 
 const OK: Result<undefined,ParserError> = Result.ok(undefined);
 
-function syntaxError<R>(msg: string, obj: any): Result<R,ParserError> {
-    return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
+function syntaxError<R>(msg: string, src: Token | Readonly<Token[]> | null): Result<R,ParserError> {
+    return Result.err(new ParserError(`Syntax Error: ${msg}`, src));
 }
 
-function boundaryError<R>(msg: string, obj: any): Result<R,ParserError> {
-    return Result.err(`Boundary Error: ${msg} ( ${obj} )`);
+function boundaryError<R>(msg: string, src: Token | Readonly<Token[]>): Result<R,ParserError> {
+    return Result.err(new ParserError(`Boundary Error: ${msg}`, src));
 }
 
 enum Keyword {
@@ -931,7 +949,7 @@ class Parser {
         for (;;)  {
             const res = this.#scanner.scan();
             if (res.isErr) {
-                return Result.err(res.error);
+                return Result.err(new ParserError(res.error, null));
             }
             const token = this.#scanner.token!;
             line.push(token);
@@ -997,19 +1015,19 @@ class Parser {
 
         const mainSub = this.#env.findUserFunc(Keyword.MAIN)?.find( fi => fi.definition );
         if (mainSub === undefined) {
-            return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, this.#scanner);
+            return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, null);
         }
         U.assert(mainSub.isMain === true);
 
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
-            return syntaxError("ここでソースコードの末尾は不正です.", this.#scanner);
+            return syntaxError("ここでソースコードの末尾は不正です.", null);
         }
 
         const undefinedUserFuncList = this.#env.findUndefinedUserFuncs();
         if (undefinedUserFuncList.length > 0) {
             const fi = undefinedUserFuncList[0];
-            return syntaxError(`${fi.name}が定義されてません.`, Token.lineToString(fi.src));
+            return syntaxError(`${fi.name}が定義されてません.`, fi.src);
         }
 
         const rebuildRes = this.#env.rebuild();
@@ -1257,7 +1275,7 @@ class Parser {
         }
 
         if (line.len > 1) {
-            return syntaxError("不正な文字です.", line.front);
+            return syntaxError("不正な文字です.", line.front!);
         }
 
         const varInfo = this.#env.addName(src, arrName, vtype);
@@ -1407,7 +1425,7 @@ class Parser {
         }
 
         if (lastLine.len > 1) {
-            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front!);
         }
 
         const innerBlockInfo = this.#env.pop();
@@ -1466,7 +1484,7 @@ class Parser {
         log.dump("exprType", C.Vtype[expr.vtype]);
 
         if (line.len > 1) {
-            return syntaxError("不正な文字です.", line.front);
+            return syntaxError("不正な文字です.", line.front!);
         }
 
         const nameInfoRes = this.#env.addName(src, name, expr.vtype);
@@ -1709,7 +1727,7 @@ class Parser {
                     log.dump("litInt", litInt);
                     return Result.ok(new C.ExprLitInt(litIntToken, litInt, unaryOpInfo));
                 } else {
-                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
+                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front!);
                 }
             case TokenType.FLOATING_POINT:
                 if (C.inferVtype(unaryOpInfo.vtype, C.Vtype.FLOATING_POINT).isOk) {
@@ -1722,7 +1740,7 @@ class Parser {
                     log.dump("litFloat", litFloat);
                     return Result.ok(new C.ExprLitFloat(litFloatToken, litFloat, unaryOpInfo));
                 } else {
-                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front);
+                    return syntaxError(`単項演算子( ${unaryOpInfo.op} )を適用できない型です.`, line.front!);
                 }
             case TokenType.WORD:
                 if (unaryOpInfo.kind === C.UnaryOpKind.LOGICAL_NOT) {
@@ -1801,7 +1819,7 @@ class Parser {
                 log.dump("arg", arg);
                 log.dump("funcInro", funcInfo);
                 log.error(argVtypeRes.error);
-                return syntaxError(`標準関数${name}の${i+1}番目の引数の型が不一致です.`, token);
+                return syntaxError(`標準関数${name}の${i+1}番目の引数の型が不一致です.`, token!);
             }
             args.push(arg);
 
@@ -1946,7 +1964,7 @@ class Parser {
             }
             const arg = argRes.result;
             if (C.inferVtype(arg.vtype, funcInfo.retArg.args[i]).isErr) {
-                return syntaxError(`ユーザ関数${nameToken.value}の呼び出しの${i+1}番目の引数の型が不一致です.`, token);
+                return syntaxError(`ユーザ関数${nameToken.value}の呼び出しの${i+1}番目の引数の型が不一致です.`, token!);
             }
             args.push(arg);
 
@@ -1997,7 +2015,7 @@ class Parser {
             }
             const indexTerm = indexTermRes.result;
             if (C.inferVtype(C.Vtype.INTEGER, indexTerm.vtype).isErr) {
-                return syntaxError(`配列${nameToken.value}の${i+1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token);
+                return syntaxError(`配列${nameToken.value}の${i+1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token!);
             }
             indexes.push(indexTerm);
 
@@ -2079,7 +2097,7 @@ class Parser {
                 }
                 const arg_sf = arg_sfRes.result;
                 if (C.inferVtype(stdFunc.retArg.args[i], arg_sf.vtype).isErr) {
-                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_sf);
+                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_sf!);
                 }
                 args.push(arg_sf);
 
@@ -2155,7 +2173,7 @@ class Parser {
                 }
                 const arg_uf = arg_ufRes.result;
                 if (C.inferVtype(userFunc.retArg.args[i], arg_uf.vtype).isErr) {
-                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_uf);
+                    return syntaxError(`メンバー${member}の${i}番目の引数の型が不一致です.`, token_uf!);
                 }
                 args.push(arg_uf);
 
@@ -2285,7 +2303,7 @@ class Parser {
         }
 
         if (line.len > 1) {
-            return syntaxError("不正な文字です.", line.front);
+            return syntaxError("不正な文字です.", line.front!);
         }
 
         if (op.kind !== C.AssignKind.ASSIGN) {
@@ -2350,7 +2368,7 @@ class Parser {
             log.dump("indexTerm", indexTerm);
 
             if (C.inferVtype(indexTerm.vtype,C.Vtype.INTEGER).isErr) {
-                return syntaxError(`配列${nameToken.value}の${i+1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token);
+                return syntaxError(`配列${nameToken.value}の${i+1}番目の添え字の型が整数型(${Keyword.INTEGER})ではありません.`, token!);
             }
             indexes.push(indexTerm);
 
@@ -2396,7 +2414,7 @@ class Parser {
         }
         
         if (line.len > 1) {
-            return syntaxError("不正な文字です.", line.front);
+            return syntaxError("不正な文字です.", line.front!);
         }
 
         if (op.kind !== C.AssignKind.ASSIGN) {
@@ -2468,7 +2486,7 @@ class Parser {
         log.dump("initValue", initValueExpr);
 
         if (initValueExpr.vtype !== C.Vtype.INTEGER) {
-            return syntaxError(`ループカウンタの初期値は整数型(${Keyword.INTEGER})である必要があります.`, initValueToken);
+            return syntaxError(`ループカウンタの初期値は整数型(${Keyword.INTEGER})である必要があります.`, initValueToken!);
         }
         
         const toToken = line.dequeue()!;
@@ -2489,7 +2507,7 @@ class Parser {
         log.dump("endValue", endValueExpr);
 
         if (endValueExpr.vtype !== C.Vtype.INTEGER) {
-            return syntaxError(`ループカウンタの終端値は整数型(${Keyword.INTEGER})である必要があります.`, endValueToken);
+            return syntaxError(`ループカウンタの終端値は整数型(${Keyword.INTEGER})である必要があります.`, endValueToken!);
         }
 
         let  stepValueExpr: C.Expr | null;
@@ -2506,7 +2524,7 @@ class Parser {
             stepValueExpr = stepValueExprRes.result;
 
             if (stepValueExpr.vtype !== C.Vtype.INTEGER) {
-                return syntaxError(`ループカウンタの増減値は整数型(${Keyword.INTEGER})である必要があります.`, stepValueToken);
+                return syntaxError(`ループカウンタの増減値は整数型(${Keyword.INTEGER})である必要があります.`, stepValueToken!);
             }
         } else {
             stepValueExpr = null;
@@ -2615,7 +2633,7 @@ class Parser {
         }
         const testExpr = testExprRes.result;
         if (C.inferVtype(testExpr.vtype, C.Vtype.BOOLEAN).isErr) {
-            return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, testExprToken);
+            return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, testExprToken!);
         }
 
         log.dump("testExpr", testExpr);
@@ -2705,7 +2723,7 @@ class Parser {
             log.dump("elseIfTestExpr", elseIfTestExpr);
 
             if (C.inferVtype(elseIfTestExpr.vtype, C.Vtype.BOOLEAN).isErr) {
-                return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, elseIfTestExprToken);
+                return syntaxError(`条件式は真偽値(${Keyword.BOOLEAN})の式である必要があります.`, elseIfTestExprToken!);
             }
 
             if (lastLine.front!.value.toLowerCase() === Keyword.THEN) {
@@ -2812,7 +2830,7 @@ class Parser {
                 log.dump("stdFuncArg", stdFuncArg);
 
                 if (C.inferVtype(stdFuncInfo.retArg.args[i], stdFuncArg.vtype).isErr) {
-                    return syntaxError(`標準関数${funcName}の${i+1}番目の引数の型が不一致です.`, stdFuncArgToken);
+                    return syntaxError(`標準関数${funcName}の${i+1}番目の引数の型が不一致です.`, stdFuncArgToken!);
                 }
 
                 const stdFuncSymToken = line.dequeue()!;
@@ -2895,7 +2913,7 @@ class Parser {
                 log.dump("userFuncArg", userFuncArg);
 
                 if (C.inferVtype(userFunc.retArg.args[i], userFuncArg.vtype).isErr) {
-                    return syntaxError(`ユーザ関数${funcNameToken.value}の${i+1}番目の引数の型が不一致です.`, userFuncArgToken);
+                    return syntaxError(`ユーザ関数${funcNameToken.value}の${i+1}番目の引数の型が不一致です.`, userFuncArgToken!);
                 }
 
                 const userFuncSymToken = line.dequeue()!;
@@ -3023,7 +3041,7 @@ class Parser {
 
             const argRes = this.#parseExprTokens(line, src);
             if (argRes.isErr) {
-                return syntaxError(argRes.error, token);
+                return Result.err(argRes.error);
             }
             const arg = argRes.result;
             args.push(arg);
@@ -3031,7 +3049,7 @@ class Parser {
             log.dump("arg", arg);
 
             if (C.inferVtype(arg.vtype, C.Vtype.INFER_PRIMITIVE).isErr) {
-                return syntaxError(`${Keyword.PRINT}にはプリミティブ型(${[Keyword.BOOLEAN,Keyword.FLOAT,Keyword.INTEGER,Keyword.STRING].join("/")})のみ渡せます.`, token);
+                return syntaxError(`${Keyword.PRINT}にはプリミティブ型(${[Keyword.BOOLEAN,Keyword.FLOAT,Keyword.INTEGER,Keyword.STRING].join("/")})のみ渡せます.`, token!);
             }
 
             const commaToken = line.dequeue()!;
@@ -3083,7 +3101,7 @@ class Parser {
         log.dump("testExpr", testExpr);
 
         if (C.inferVtype(testExpr.vtype, C.Vtype.BOOLEAN).isErr) {
-            return syntaxError(`条件文は真偽値型(${Keyword.BOOLEAN})の式が必要です.`, testExprToken);
+            return syntaxError(`条件文は真偽値型(${Keyword.BOOLEAN})の式が必要です.`, testExprToken!);
         }
 
         const eolToken = line.dequeue()!;
@@ -3294,13 +3312,13 @@ class Parser {
         }
 
         if (lastLine.len > 1) {
-            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front);
+            return syntaxError("不正な文字(あるいは文字列)です.", lastLine.front!);
         }
 
         const innerBlockInfo = this.#env.pop();
 
         if (!innerBlockInfo.isFinishedWithReturn()) {
-            return syntaxError(`${Keyword.RETURN}で戻り値を返す必要があります.`, lastLine.front);
+            return syntaxError(`${Keyword.RETURN}で戻り値を返す必要があります.`, lastLine.front!);
         }
 
         const innerCode = new C.Block(innerBlockInfo);

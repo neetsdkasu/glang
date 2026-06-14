@@ -16,7 +16,7 @@ class Item {
     }
 }
 
-const BACKUP_SIZE = 5;
+export const BACKUP_SIZE = 5;
 
 export class CharReader {
     readonly #iterator: Iterator<string>;
@@ -31,10 +31,18 @@ export class CharReader {
         this.#last = this.#iterator.next();
     }
 
+    /**
+     * 文書内に未読文字が存在するか.
+     * @returns 存在するならtrue.
+     */
     hasNext(): boolean {
         return this.#rq.len > 0 || !(this.#last.done ?? false);
     }
 
+    /**
+     * 文書から1文字読む.
+     * @returns 読み込んだ文字を返す.
+     */
     next(): string {
         if (this.#rq.len === 0) {
             this.#rq.enqueue(new Item(this.#last.value ?? "", this.#pos, this.#len));
@@ -47,6 +55,11 @@ export class CharReader {
         return this.#consumed;
     }
 
+    /**
+     * 最後に読んだ文字の1文字分を未読に戻す.
+     * 連続でback()することで最大 BACKUP_SIZE 分までを未読に戻せる.
+     * @returns 戻すことに成功したらtrue.失敗したらfalse.
+     */
     back(): boolean {
         if (this.#rq.recover()) {
             const item = this.#rq.front!;
@@ -58,11 +71,18 @@ export class CharReader {
         }
     }
 
-    pos(): number {
+    /**
+     * next()の文字の文書内の位置.
+     */
+    get pos(): number {
         return this.#pos;
     }
 
-    len(): number {
+    /**
+     * next()の文字を含めてこれまで読み込んだ文字の長さの合計.
+     * len-pos でnext()の文字の長さになる.
+     */
+    get len(): number {
         return this.#len;
     }
 }

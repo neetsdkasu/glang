@@ -29,3 +29,7 @@ button {
     height: 1.5em;
     border: 1px dotted black;
 }
+
+.cin, .cout {
+    display: none;
+}

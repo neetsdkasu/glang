@@ -9,12 +9,41 @@ import { Result, Unimplemented } from "utils";
 import * as U from "utils";
 import * as C from "code";
 import { StdFunc } from "command";
-const OK = Result.ok(undefined);
-function syntaxError(msg, obj) {
-    return Result.err(`Syntax Error: ${msg} ( ${obj} )`);
+/*
+古いtscのせいでArray<T>にfindLastメソッドがないのだけど
+これを有効にすればArray<T>にfindLastが追加されるぽい？のだけど、コメントアウトして無効にしてる
+素直にtscのバージョンをアップデートすることを検討したほうがよさそう
+declare global {
+    interface Array<T> {
+        findLast(callbackFn: (element: T, index: number, array: Array<T>) => boolean, thisArg?: object): T | undefined;
+    }
 }
-function boundaryError(msg, obj) {
-    return Result.err(`Boundary Error: ${msg} ( ${obj} )`);
+*/
+export class ParserError {
+    msg;
+    src;
+    constructor(msg, src) {
+        this.msg = msg;
+        this.src = src;
+    }
+    toString() {
+        if (this.src === null) {
+            return `ParserError{ msg: ${this.msg} }`;
+        }
+        else if (this.src instanceof Token) {
+            return `ParserError{ msg: ${this.msg}, src: ${this.src} "${this.src.value}" }`;
+        }
+        else {
+            return `ParserError{ msg: ${this.msg}, src: ${this.src[0]} "${Token.lineToString(this.src)}" }`;
+        }
+    }
+}
+const OK = Result.ok(undefined);
+function syntaxError(msg, src) {
+    return Result.err(new ParserError(`Syntax Error: ${msg}`, src));
+}
+function boundaryError(msg, src) {
+    return Result.err(new ParserError(`Boundary Error: ${msg}`, src));
 }
 var Keyword;
 (function (Keyword) {
@@ -858,7 +887,7 @@ class Parser {
         for (;;) {
             const res = this.#scanner.scan();
             if (res.isErr) {
-                return Result.err(res.error);
+                return Result.err(new ParserError(res.error, null));
             }
             const token = this.#scanner.token;
             line.push(token);
@@ -913,17 +942,17 @@ class Parser {
         }
         const mainSub = this.#env.findUserFunc(Keyword.MAIN)?.find(fi => fi.definition);
         if (mainSub === undefined) {
-            return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, this.#scanner);
+            return syntaxError(`"${Keyword.SUB} ${Keyword.MAIN}"が必要です.`, null);
         }
         U.assert(mainSub.isMain === true);
         if (!this.#env.isToplevel) {
             // ブロックが閉じておらずendが足りてない
-            return syntaxError("ここでソースコードの末尾は不正です.", this.#scanner);
+            return syntaxError("ここでソースコードの末尾は不正です.", null);
         }
         const undefinedUserFuncList = this.#env.findUndefinedUserFuncs();
         if (undefinedUserFuncList.length > 0) {
             const fi = undefinedUserFuncList[0];
-            return syntaxError(`${fi.name}が定義されてません.`, Token.lineToString(fi.src));
+            return syntaxError(`${fi.name}が定義されてません.`, fi.src);
         }
         const rebuildRes = this.#env.rebuild();
         if (rebuildRes.isErr) {
@@ -2584,7 +2613,7 @@ class Parser {
             const token = line.front;
             const argRes = this.#parseExprTokens(line, src);
             if (argRes.isErr) {
-                return syntaxError(argRes.error, token);
+                return Result.err(argRes.error);
             }
             const arg = argRes.result;
             args.push(arg);

@@ -26,17 +26,21 @@ export var TokenType;
 })(TokenType || (TokenType = {}));
 export class Token {
     tokenType;
-    value;
-    col;
-    row;
-    constructor(tokenType, value, col, row) {
+    value; // 文字.
+    col; // 文字の文書内の列位置.
+    row; // 文字の文書内の行位置.
+    start; // 文字の文書先頭からの文字の開始位置.
+    end; // 文字の文書先頭からの文字の終端位置.
+    constructor(tokenType, value, col, row, start, end) {
         this.tokenType = tokenType;
         this.value = value;
         this.col = col;
         this.row = row;
+        this.start = start;
+        this.end = end;
     }
     toString() {
-        return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row} }`;
+        return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row}, start: ${this.start}, end: ${this.end} }`;
     }
     static lineToString(tokens) {
         return tokens.map((token) => {
@@ -135,14 +139,16 @@ export class Scanner {
     scan() {
         if (this.#token?.tokenType === TokenType.EOL) {
             this.#row++;
-            this.#linestart = this.#reader.len();
+            this.#linestart = this.#reader.len;
         }
         this.#token = undefined;
         this.#skipWhitespaces();
         this.#skipComment();
+        const start = this.#reader.len;
         if (!this.#reader.hasNext()) {
-            this.#col = this.#reader.pos() - this.#linestart;
-            this.#token = new Token(TokenType.EOF, "", this.#col, this.#row);
+            const end = this.#reader.len;
+            this.#col = this.#reader.pos - this.#linestart;
+            this.#token = new Token(TokenType.EOF, "", this.#col, this.#row, start, end);
             return Result.ok(false);
         }
         let ch = this.#reader.next();
@@ -180,8 +186,9 @@ export class Scanner {
             }
             ch = wordRes.result;
         }
-        this.#col = this.#reader.pos() - this.#linestart;
-        this.#token = new Token(tokenType, ch, this.#col, this.#row);
+        const end = this.#reader.len;
+        this.#col = this.#reader.pos - this.#linestart;
+        this.#token = new Token(tokenType, ch, this.#col, this.#row, start, end);
         return Result.ok(true);
     }
     #readString() {
