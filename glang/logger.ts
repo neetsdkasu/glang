@@ -42,34 +42,34 @@ export class Logger {
             } else if (args.length > 0) {
                 obj = `[[[ ${obj}, ${[...args].map( e => `${e}`).join(", ")} ]]]`;
             }
-            console.log(`[${this.name}]v: ${msg}: ${obj}`);
+            console.debug(`[${this.name}]v: ${msg}: ${obj}`);
         }
     }
 
     debug(msg: string): void {
         if (this.#level & LogLevel.DEBUG) {
-            console.log(`[${this.name}]d: ${msg}`);
+            console.debug(`[${this.name}]d: ${msg}`);
         }
     }
 
     info(msg: string): void {
         if (this.#level & LogLevel.INFO) {
-            console.log(`[${this.name}]i: ${msg}`);
+            console.info(`[${this.name}]i: ${msg}`);
         }
     }
 
     warn(msg: string): void {
         if (this.#level & LogLevel.WARN) {
-            console.log(`[${this.name}]W: ${msg}`);
+            console.warn(`[${this.name}]W: ${msg}`);
         }
     }
 
     error(msg: string, obj?: object): void {
         if (this.#level & LogLevel.ERROR) {
             if (obj) {
-                console.log(`[${this.name}]E: ${msg}: ${obj}`);
+                console.error(`[${this.name}]E: ${msg}: ${obj}`);
             } else {
-                console.log(`[${this.name}]E: ${msg}`);
+                console.error(`[${this.name}]E: ${msg}`);
             }
         }
     }
