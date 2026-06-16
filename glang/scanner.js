@@ -1,7 +1,7 @@
 //
 // Scanner
 //
-import { Result } from "utils";
+import { Result } from "./utils.js";
 export var TokenType;
 (function (TokenType) {
     TokenType[TokenType["EOF"] = 0] = "EOF";

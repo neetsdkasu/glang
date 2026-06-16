@@ -2,8 +2,8 @@
 // Scanner
 //
 
-import CharReader from "charreader";
-import { Result } from "utils";
+import CharReader from "./charreader.js";
+import { Result } from "./utils.js";
 
 export type ScannerError = string;
 
@@ -29,7 +29,16 @@ export enum TokenType {
     SEMICOLON
 }
 
-export class Token {
+export interface IToken {
+    readonly tokenType: TokenType;
+    readonly value: string;   // 文字.
+    readonly col: number;     // 文字の文書内の列位置.
+    readonly row: number;     // 文字の文書内の行位置.
+    readonly start: number;   // 文字の文書先頭からの文字の開始位置.
+    readonly end: number;     // 文字の文書先頭からの文字の終端位置.
+}
+
+export class Token implements IToken {
     readonly tokenType: TokenType;
     readonly value: string;   // 文字.
     readonly col: number;     // 文字の文書内の列位置.
@@ -50,7 +59,7 @@ export class Token {
         return `Token{ tokenType: ${TokenType[this.tokenType]}, value: "${this.value}", pos: ${this.col}, row: ${this.row}, start: ${this.start}, end: ${this.end} }`;
     }
 
-    static lineToString(tokens: Readonly<Token[]>): string {
+    static lineToString(tokens: Readonly<IToken[]>): string {
         return tokens.map( (token) => {
             if (token.tokenType === TokenType.STRING) {
                 return `"${token.value.replaceAll('"', '""')}"`;

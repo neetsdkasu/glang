@@ -2,8 +2,8 @@
 // Command
 //
 
-import { Token } from "scanner";
-import * as U from "utils";
+import { Token } from "./scanner.js";
+import * as U from "./utils.js";
 
 export class Source {
     readonly addr: U.Range;

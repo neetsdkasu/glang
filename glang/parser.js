@@ -1,14 +1,14 @@
 //
 // Parser
 //
-import Logger, { LogLevel } from "logger";
+import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("parser", LogLevel.ERROR | LogLevel.WARN);
-import RQueue from "rqueue";
-import { Token, TokenType } from "scanner";
-import { Result, Unimplemented } from "utils";
-import * as U from "utils";
-import * as C from "code";
-import { StdFunc } from "command";
+import RQueue from "./rqueue.js";
+import { Token, TokenType } from "./scanner.js";
+import { Result, Unimplemented } from "./utils.js";
+import * as U from "./utils.js";
+import * as C from "./code.js";
+import { StdFunc } from "./command.js";
 /*
 古いtscのせいでArray<T>にfindLastメソッドがないのだけど
 これを有効にすればArray<T>にfindLastが追加されるぽい？のだけど、コメントアウトして無効にしてる

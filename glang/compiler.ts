@@ -1,13 +1,13 @@
 //
 // Compiler
 //
-import Logger, { LogLevel } from "logger";
+import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("compiler", LogLevel.ERROR | LogLevel.WARN);
 
-import * as C from "code";
-import { Cmd, Program, StdFunc, Source } from "command";
-import { Token } from "scanner";
-import * as U from "utils";
+import * as C from "./code.js";
+import { Cmd, Program, StdFunc, Source } from "./command.js";
+import { Token } from "./scanner.js";
+import * as U from "./utils.js";
 
 class Compiler {
     readonly src: C.ParsedSource;

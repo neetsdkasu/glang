@@ -64,7 +64,7 @@ export class Logger {
         }
     }
 
-    error(msg: string, obj?: object): void {
+    error(msg: string, obj?: any): void {
         if (this.#level & LogLevel.ERROR) {
             if (obj) {
                 console.error(`[${this.name}]E: ${msg}: ${obj}`);

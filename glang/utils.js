@@ -4,6 +4,10 @@
 export function inRange(min, max, value) {
     return min <= value && value <= max;
 }
+export function parseIntWithDefault(strValue, defValue) {
+    const intValue = parseInt(strValue);
+    return isNaN(intValue) ? defValue : intValue;
+}
 export function assert(test, hint) {
     if (!test) {
         throw new Error(`assert error: hint="${hint}"`);
@@ -191,7 +195,7 @@ export class Option {
             return defValue;
         }
     }
-    then(f) {
+    andThen(f) {
         if (this.#hasValue) {
             return f(this.value);
         }
@@ -278,7 +282,7 @@ export class Result {
             return defValue;
         }
     }
-    then(f) {
+    andThen(f) {
         if (this.#ok) {
             return f(this.#result);
         }

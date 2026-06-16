@@ -1,13 +1,13 @@
 //
 // Code
 // 
-import Logger, { LogLevel } from "logger";
+import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("code", LogLevel.ERROR | LogLevel.WARN);
 
-import { Token } from "scanner";
-import { Result } from "utils";
-import { StdFunc } from "command";
-import * as U from "utils";
+import { Token } from "./scanner.js";
+import { Result } from "./utils.js";
+import { StdFunc } from "./command.js";
+import * as U from "./utils.js";
 
 export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
 

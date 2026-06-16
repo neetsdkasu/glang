@@ -6,6 +6,11 @@ export function inRange(min: number, max: number, value: number): boolean {
     return min <= value && value <= max;
 }
 
+export function parseIntWithDefault(strValue: string, defValue: number): number {
+    const intValue = parseInt(strValue);
+    return isNaN(intValue) ? defValue : intValue;
+}
+
 export function assert(test: boolean, hint?: any): asserts test {
     if (!test) {
         throw new Error(`assert error: hint="${hint}"`);
@@ -218,7 +223,7 @@ export class Option<V> {
         }
     }
 
-    then<T>(f: (value: V) => Option<T>): Option<T> {
+    andThen<T>(f: (value: V) => Option<T>): Option<T> {
         if (this.#hasValue) {
             return f(this.value!);
         } else {
@@ -250,9 +255,9 @@ export class Option<V> {
  * まぁ、メモリコストがバカ高いので多用するのはよくないかも.すでに多用しまくっているけれども.
  */
 export class Result<R,E> {
-    #ok: boolean;
-    #result: R | undefined;
-    #error: E | undefined;
+    readonly #ok: boolean;
+    readonly #result: R | undefined;
+    readonly #error: E | undefined;
     
     constructor(ok: boolean, result: R | undefined, error: E | undefined) {
         this.#ok = ok;
@@ -312,7 +317,7 @@ export class Result<R,E> {
         }
     }
 
-    then<S>(f: (result: R) => Result<S,E>): Result<S,E> {
+    andThen<S>(f: (result: R) => Result<S,E>): Result<S,E> {
         if (this.#ok) {
             return f(this.#result!);
         } else {

@@ -2,7 +2,7 @@
 // Reader
 //
 
-import RQueue from "rqueue";
+import RQueue from "./rqueue.js";
 
 class Item {
     readonly value: string;

@@ -1,11 +1,11 @@
 //
 // Runner
 // 
-import Logger, { LogLevel } from "logger";
+import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("runner", LogLevel.ALL);
-import { Cmd, StdFunc } from "command";
-import { Result } from "utils";
-import * as U from "utils";
+import { Cmd, StdFunc } from "./command.js";
+import { Result } from "./utils.js";
+import * as U from "./utils.js";
 export class RuntimeError {
     msg;
     src;

@@ -1,7 +1,7 @@
 //
 // Command
 //
-import { Token } from "scanner";
+import { Token } from "./scanner.js";
 export class Source {
     addr;
     src;

@@ -1,14 +1,12 @@
 //
 // script
 //
-import Logger, { LogLevel } from "logger";
+import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("main", LogLevel.ALL);
-import CharReader from "charreader";
-import Scanner, { Token } from "scanner";
-import * as parser from "parser";
-import * as compiler from "compiler";
-import Runner from "runner";
-import * as U from "utils";
+import { Token } from "./scanner.js";
+import * as U from "./utils.js";
+import * as UU from "./uiutils.js";
+import * as M from "./mes.js";
 /**
  * UI
  */
@@ -21,24 +19,10 @@ const CerrTextarea = document.getElementById("cerr");
 const CinTextarea = document.getElementById("cin");
 const CoutTextarea = document.getElementById("cout");
 const StepInput = document.getElementById("step");
-class IOImpl {
-    #input = "";
-    cerr(s) {
-        CerrTextarea.value += s + "\n";
-    }
-    clear() {
-        this.#input = CinTextarea.value;
-        CoutTextarea.value = "";
-        CerrTextarea.value = "";
-    }
-}
-const io = new IOImpl();
-const NO_HOLD = U.Option.none();
-let runnerHolder = NO_HOLD;
-let timerId = undefined;
-const DEFAULT_STEP_SIZE = 10000;
+UU.setEnableTabIndent(CodeTextarea);
+const DEFAULT_STEP_SIZE = 100;
 let stepSize = DEFAULT_STEP_SIZE;
-StepInput.value = `${stepSize}`;
+StepInput.value = `${DEFAULT_STEP_SIZE}`;
 function updateStatus(s) {
     StatusSpan.textContent = s;
 }
@@ -54,13 +38,13 @@ function openErrorDetails(msg, src) {
     if (src !== null) {
         document.querySelector("details.srcholder").open = true;
         CodeTextarea.focus();
-        if (src instanceof Token) {
-            CodeTextarea.setSelectionRange(src.start, src.end);
-            msg += ` ( ${src.row + 1}行目 ${src.col}文字目 "${src.value}" )`;
-        }
-        else {
+        if (M.isITokenList(src)) {
             CodeTextarea.setSelectionRange(src[0].start, src.at(-1).end);
             msg += ` ( ${src[0].row + 1}行目 "${Token.lineToString(src)}" )`;
+        }
+        else {
+            CodeTextarea.setSelectionRange(src.start, src.end);
+            msg += ` ( ${src.row + 1}行目 ${src.col}文字目 "${src.value}" )`;
         }
     }
     const start = CerrTextarea.textLength;
@@ -71,109 +55,75 @@ function openErrorDetails(msg, src) {
         CerrTextarea.setSelectionRange(start, end);
     }
 }
-function step() {
-    if (runnerHolder.isNone) {
-        if (timerId) {
-            clearInterval(timerId);
-            timerId = undefined;
-        }
-        return;
-    }
-    try {
-        U.assert(timerId !== undefined);
-        const runner = runnerHolder.value;
-        const result = runner.stepN(stepSize);
-        if (result.isOk && result.result) {
-            return;
-        }
-        clearInterval(timerId);
-        timerId = undefined;
-        runnerHolder = NO_HOLD;
-        if (result.isErr) {
-            const err = result.error;
+let worker = null;
+function workerOnError(ev) {
+    log.error("Worker.onError", ev);
+}
+function workerOnMessageError(ev) {
+    log.error("Worker.onMessageError", ev);
+}
+function workerOnMessage(ev) {
+    const sd = ev.data;
+    switch (sd.kind) {
+        case "ParseError":
+            updateStatus("ParseError");
+            toggleItemDisabled();
+            openErrorDetails(sd.msg, sd.src);
+            break;
+        case "RuntimeError":
             updateStatus("RuntimeError");
-            openErrorDetails(err.msg, err.src?.src ?? null);
-        }
-        else {
+            toggleItemDisabled();
+            openErrorDetails(sd.msg, sd.src);
+            break;
+        case "Message":
+            updateStatus(sd.message);
+            break;
+        case "Ready":
+            updateStatus("ready");
+            M.send(worker, { kind: "GoRun", stepSize: stepSize });
+            break;
+        case "Finished":
             updateStatus("Finished");
-        }
-        toggleItemDisabled();
-    }
-    catch (e) {
-        clearInterval(timerId);
-        timerId = undefined;
-        runnerHolder = NO_HOLD;
-        updateStatus("UnknownError");
-        toggleItemDisabled();
-        openErrorDetails(`${e}`, null);
-        throw e;
+            toggleItemDisabled();
+            break;
+        case "Stop":
+            updateStatus("Stopped");
+            toggleItemDisabled();
+            break;
+        case "WriteCerr":
+            CerrTextarea.value += sd.text + "\n";
+            break;
     }
 }
+function lunchWorker() {
+    if (worker === null) {
+        const url = new URL("./worker.js", import.meta.url);
+        worker = new Worker(url, { "type": "module" });
+        worker.onerror = workerOnError;
+        worker.onmessageerror = workerOnMessageError;
+        worker.onmessage = workerOnMessage;
+    }
+    return worker;
+}
 StopButton.addEventListener("click", () => {
-    if (timerId) {
-        clearInterval(timerId);
-        timerId = undefined;
+    if (stepSize === 0) {
+        if (worker != null) {
+            worker.terminate();
+            worker = null;
+        }
+        updateStatus("Stopped");
+        toggleItemDisabled();
     }
-    if (runnerHolder.isSome) {
-        runnerHolder = NO_HOLD;
+    else if (worker !== null) {
+        M.send(worker, { kind: "Stop" });
     }
-    updateStatus("Stopped");
-    toggleItemDisabled();
 });
 RunButton.addEventListener("click", () => {
-    if (runnerHolder.isSome) {
-        if (timerId) {
-            clearInterval(timerId);
-            timerId = undefined;
-        }
-        runnerHolder = NO_HOLD;
-    }
-    const _stepSize = parseInt(StepInput.value);
-    stepSize = isNaN(stepSize) ? DEFAULT_STEP_SIZE : Math.max(1, Math.min(parseInt(StepInput.max), Math.imul(_stepSize, 1)));
-    io.clear();
+    CoutTextarea.value = "";
+    CerrTextarea.value = "";
+    stepSize = U.parseIntWithDefault(StepInput.value, DEFAULT_STEP_SIZE);
     const src = CodeTextarea.value;
-    const reader = new CharReader(src);
-    const scanner = new Scanner(reader);
-    const parsedResult = parser.parse(scanner);
-    if (parsedResult.isErr) {
-        const err = parsedResult.error;
-        updateStatus("ParseError");
-        openErrorDetails(err.msg, err.src);
-        return;
-    }
-    const parsedSrc = parsedResult.result;
-    const compiledResult = compiler.compile(parsedSrc);
-    runnerHolder = U.Option.some(new Runner(compiledResult, io));
-    timerId = setInterval(step, 1);
-    updateStatus("Running");
+    M.sendTextSrc(lunchWorker(), src);
     toggleItemDisabled();
-});
-const RE_REMOVE_SP = /^ {1,4}/;
-const RE_NOT_SP = /[^ ]/;
-const REMOVE_SP = s => s.replace(RE_REMOVE_SP, "");
-const PAD_SP = s => {
-    const p = s.search(RE_NOT_SP);
-    return "    ".repeat(1 + (p >> 2)) + s.slice(p);
-};
-CodeTextarea.addEventListener("keydown", e => {
-    if (e.key === "Tab" && !e.altKey && !e.ctrlKey) {
-        e.preventDefault();
-        let index1;
-        let index2;
-        if (CodeTextarea.selectionStart === CodeTextarea.selectionEnd) {
-            index2 = CodeTextarea.value.indexOf("\n", Math.max(0, CodeTextarea.selectionEnd));
-            index1 = Math.max(0, CodeTextarea.value.lastIndexOf("\n", Math.max(0, index2 - 1)) + 1);
-        }
-        else {
-            index1 = Math.max(0, CodeTextarea.value.lastIndexOf("\n", CodeTextarea.selectionStart) + 1);
-            index2 = CodeTextarea.value.indexOf("\n", Math.max(0, CodeTextarea.selectionEnd - 1));
-        }
-        if (index1 !== CodeTextarea.selectionStart || index2 !== CodeTextarea.selectionEnd) {
-            CodeTextarea.setSelectionRange(index1, index2);
-            return;
-        }
-        const lines = CodeTextarea.value.slice(index1, index2).split("\n").map(e.shiftKey ? REMOVE_SP : PAD_SP);
-        CodeTextarea.setRangeText(lines.join("\n"), index1, index2, "select");
-    }
 });
 export default {};

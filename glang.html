@@ -7,16 +7,17 @@
         <script type="importmap">
             {
                 "imports": {
-                    "charreader": "./glang/charreader.js",
-                    "command": "./glang/command.js",
-                    "compiler": "./glang/compiler.js",
-                    "code": "./glang/code.js",
-                    "logger": "./glang/logger.js",
-                    "parser": "./glang/parser.js",
-                    "rqueue": "./glang/rqueue.js",
-                    "runner": "./glang/runner.js",
-                    "scanner": "./glang/scanner.js",
-                    "utils": "./glang/utils.js"
+                    "./charreader.js": "./glang/charreader.js",
+                    "./command.js": "./glang/command.js",
+                    "./compiler.js": "./glang/compiler.js",
+                    "./code.js": "./glang/code.js",
+                    "./logger.js": "./glang/logger.js",
+                    "./parser.js": "./glang/parser.js",
+                    "./rqueue.js": "./glang/rqueue.js",
+                    "./runner.js": "./glang/runner.js",
+                    "./scanner.js": "./glang/scanner.js",
+                    "./uiutils.js": "./glang/uiutils.js",
+                    "./utils.js": "./glang/utils.js"
                 }
             }
         </script>
@@ -38,8 +39,8 @@
                 <div>
                     <button id="stop" type="stop" disabled>STOP</button>
                     <button id="run" type="button">RUN</button>
-                    <label>stepsize: 
-                        <input id="step" type="number" min="1" max="100000" value="10000" />
+                    <label>stepSize: 
+                        <input id="step" type="number" min="0" max="100000" value="100" />
                     </label>
                     <span>status:
                         <span id="status" class="status">...</span>

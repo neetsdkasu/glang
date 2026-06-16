@@ -30,16 +30,19 @@
     // "moduleResolution": "node10",                     /* Specify how TypeScript looks up a file from a given module specifier. */
     // "baseUrl": "../",                                  /* Specify the base directory to resolve non-relative module names. */
     "paths": {
-        "charreader": ["./charreader.ts"],
-        "command": ["./command.ts"],
-        "compiler": ["./compiler.ts"],
-        "code": ["./code.ts"],
-        "logger": ["./logger.ts"],
-        "parser": ["./parser.ts"],
-        "rqueue": ["./rqueue.ts"],
-        "runner": ["./runner.ts"],
-        "scanner": ["./scanner.ts"],
-        "utils": ["./utils.ts"]      
+        "./charreader.js": ["./charreader.ts"],
+        "./command.js": ["./command.ts"],
+        "./compiler.js": ["./compiler.ts"],
+        "./code.js": ["./code.ts"],
+        "./logger.js": ["./logger.ts"],
+        "./mes.js": ["./mes.ts"],
+        "./parser.js": ["./parser.ts"],
+        "./rqueue.js": ["./rqueue.ts"],
+        "./runner.js": ["./runner.ts"],
+        "./scanner.js": ["./scanner.ts"],
+        "./uiutils.js": ["./uiutils.ts"],
+        "./utils.js": ["./utils.ts"],
+        "./worker.js": ["./worker.ts"]
     },                                      /* Specify a set of entries that re-map imports to additional lookup locations. */
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
