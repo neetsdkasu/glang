@@ -48,21 +48,23 @@
                 </div>
                 <details class="srcholder">
                     <summary>source code</summary>
-                    <textarea id="code" cols="100" rows="40">' FizzBuzz
-Func FizzBuzz(i As Integer) As String
-    If i % 15 == 0 Then
-        Return "FizzBuzz"
-    Else If i % 5 == 0 Then
-        Return "Buzz"
-    Else If i % 3 == 0 Then
-        Return "Fizz"
-    Else
-        Return cstr(i)
-    End If
-End Func
+                    <textarea id="code" cols="100" rows="40">' Sample Program
 Sub Main()
-    For let i = 1 To 1000
-        Print i, "-&gt;", FizzBuzz(i)
+    Call DrawStar(60, 100, 100, 0)
+    Call DrawStar(50, 200, 100, 30)
+    Call DrawStar(80, 150, 250, 70)
+End Sub
+Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer)
+    let rf = CFloat(r)
+    let rotf = 2.0 * 3.14 * CFloat(rot) / 360.0
+    For let i = 1 To 5
+        let d1 = 2.0 * 3.14 * CFloat(i - 1) / 5.0 + rotf
+        let x1 = CInt( rf * cos(d1) ) + offx
+        let y1 = CInt( rf * sin(d1) ) + offy
+        let d2 = 2.0 * 3.14 * CFloat((i + 1) % 5) / 5.0 + rotf
+        let x2 = CInt( rf * cos(d2) ) + offx
+        let y2 = CInt( rf * sin(d2) ) + offy
+        DrawLine x1, y1, x2, y2
     End For
 End Sub
 </textarea>

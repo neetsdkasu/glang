@@ -13,10 +13,30 @@ import * as M from "./mes.js";
 let program = null;
 let canvas = null;
 let offCtx = null;
-class IoImpl {
+class GraImpl {
     #ctx;
-    constructor(ctx, cin) {
+    width;
+    height;
+    constructor(ctx, width, height) {
         this.#ctx = ctx;
+        this.width = width;
+        this.height = height;
+    }
+    drawLine(x1, y1, x2, y2) {
+        const ctx = this.#ctx;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+    clear() {
+        this.#ctx.clearRect(0, 0, this.width, this.height);
+    }
+}
+class IoImpl {
+    g;
+    constructor(g, cin) {
+        this.g = g;
     }
     cerr(s) {
         const sd = {
@@ -86,7 +106,9 @@ async function startRunner(cin) {
             return;
         }
     }
-    io = new IoImpl(offCtx, cin);
+    const g = new GraImpl(offCtx, canvas.width, canvas.height);
+    g.clear();
+    io = new IoImpl(g, cin);
     runner = new Runner(program, io);
     if (stepSize === 0) {
         run();

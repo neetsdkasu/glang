@@ -161,7 +161,8 @@ export enum Cmd {
     RET,            // RET () : stop userfunc process. pop returnAddress from addressStack and jump to the retrunAddress.
     PUSH_BLOCK,     // PUSH_BLOCK ( blockId, blockVarCount ) : push new block to Id's blockStack and reserve var area (vars are uninitialied)
     POP_BLOCK,      // POP_BLOCK ( blockId ) : pop block from Id's blockStack
-    PRINT           // PRINT ( N ) [..., value1-any, value2-any, ... valueN-any] => [...] : print N values on stderr
+    PRINT,          // PRINT ( N ) [..., value1-any, value2-any, ... valueN-any] => [...] : print N values on stderr
+    DRAW_LINE       // DRAW_LINE () [..., x1, y1, x2, y2] => [...]
 }
 
 export enum StdFunc {

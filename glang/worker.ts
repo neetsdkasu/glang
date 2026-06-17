@@ -7,7 +7,7 @@ const log = new Logger("worker", LogLevel.ALL);
 import CharReader from "./charreader.js";
 import Scanner, { Token } from "./scanner.js";
 import { Program  } from "./command.js";
-import Runner, { IO } from "./runner.js";
+import Runner, { Gra, IO } from "./runner.js";
 import * as compiler from "./compiler.js";
 import * as parser from "./parser.js";
 import * as U from "./utils.js";
@@ -19,11 +19,36 @@ let program: Program | null = null;
 let canvas: OffscreenCanvas | null = null;
 let offCtx: OffscreenCanvasRenderingContext2D | null = null;
 
-class IoImpl implements IO {
+class GraImpl implements Gra {
     readonly #ctx: OffscreenCanvasRenderingContext2D;
+    readonly width: number;
+    readonly height: number;
 
-    constructor(ctx: OffscreenCanvasRenderingContext2D, cin: string) {
+    constructor(ctx: OffscreenCanvasRenderingContext2D, width: number, height: number) {
         this.#ctx = ctx;
+        this.width = width;
+        this.height = height;
+    }
+
+    drawLine(x1: number, y1: number, x2: number, y2: number): void {
+        const ctx = this.#ctx;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+
+    clear(): void {
+        this.#ctx.clearRect(0, 0, this.width, this.height);
+    }
+}
+
+class IoImpl implements IO {
+
+    readonly g: GraImpl;
+
+    constructor(g: GraImpl, cin: string) {
+        this.g = g;
     }
 
     cerr(s: string): void {
@@ -98,7 +123,9 @@ async function startRunner(cin: string): Promise<undefined> {
             return;
         }
     }
-    io = new IoImpl(offCtx, cin);
+    const g = new GraImpl(offCtx, canvas.width, canvas.height);
+    g.clear();
+    io = new IoImpl(g, cin);
     runner = new Runner(program, io);
     if (stepSize === 0) {
         run();

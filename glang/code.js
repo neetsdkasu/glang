@@ -1016,11 +1016,12 @@ export var CodeKind;
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 7] = "DEFINE_USER_FUNC";
     CodeKind[CodeKind["DIM"] = 8] = "DIM";
     CodeKind[CodeKind["DO_WHILE"] = 9] = "DO_WHILE";
-    CodeKind[CodeKind["FOR"] = 10] = "FOR";
-    CodeKind[CodeKind["IF"] = 11] = "IF";
-    CodeKind[CodeKind["LET"] = 12] = "LET";
-    CodeKind[CodeKind["PRINT"] = 13] = "PRINT";
-    CodeKind[CodeKind["RETURN"] = 14] = "RETURN";
+    CodeKind[CodeKind["DRAW_LINE"] = 10] = "DRAW_LINE";
+    CodeKind[CodeKind["FOR"] = 11] = "FOR";
+    CodeKind[CodeKind["IF"] = 12] = "IF";
+    CodeKind[CodeKind["LET"] = 13] = "LET";
+    CodeKind[CodeKind["PRINT"] = 14] = "PRINT";
+    CodeKind[CodeKind["RETURN"] = 15] = "RETURN";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1561,6 +1562,62 @@ export class Print extends Code {
     }
     toString() {
         return `Print{ args: (( ${this.args.map(a => `[[ ${a} ]]`).join(", ")} )) }`;
+    }
+}
+export class DrawLine extends Code {
+    x1;
+    y1;
+    x2;
+    y2;
+    constructor(src, x1, y1, x2, y2) {
+        super(CodeKind.DRAW_LINE, src);
+        this.x1 = x1;
+        this.y1 = y1;
+        this.x2 = x2;
+        this.y2 = y2;
+    }
+    rebuild(findUserFunc) {
+        const x1Res = this.x1.rebuild(findUserFunc);
+        if (x1Res.isErr) {
+            return Result.err(x1Res.error);
+        }
+        const x1 = x1Res.result.expr;
+        if (x1.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "X1の型が不正です.", src: x1.src });
+        }
+        let sideEffect = x1Res.result.sideEffect;
+        const y1Res = this.y1.rebuild(findUserFunc);
+        if (y1Res.isErr) {
+            return Result.err(y1Res.error);
+        }
+        const y1 = y1Res.result.expr;
+        if (y1.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Y1の型が不正です.", src: y1.src });
+        }
+        sideEffect |= y1Res.result.sideEffect;
+        const x2Res = this.x2.rebuild(findUserFunc);
+        if (x2Res.isErr) {
+            return Result.err(x2Res.error);
+        }
+        const x2 = x2Res.result.expr;
+        if (x2.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "X2の型が不正です.", src: x2.src });
+        }
+        sideEffect |= x2Res.result.sideEffect;
+        const y2Res = this.y2.rebuild(findUserFunc);
+        if (y2Res.isErr) {
+            return Result.err(y2Res.error);
+        }
+        const y2 = y2Res.result.expr;
+        if (y2.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Y2の型が不正です.", src: y2.src });
+        }
+        sideEffect |= y2Res.result.sideEffect;
+        const code = new DrawLine(this.src, x1, y1, x2, y2);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+    toString() {
+        return `DrawLine{ x1: ${this.x1}, y1: ${this.y1}, x2: ${this.x2}, y2: ${this.y2} }`;
     }
 }
 export default {};

@@ -28,7 +28,14 @@ export type RunnerResult = Result<IsRunning,RuntimeError>;
 const RUNNING: RunnerResult = Result.ok(true);
 const ENDED: RunnerResult = Result.ok(false);
 
+export interface Gra {
+    readonly width: number;
+    readonly height: number;
+    drawLine(x1: number, y1: number, x2: number, y2: number): void;
+}
+
 export interface IO {
+    readonly g: Gra;
     cerr(s: string): void;
 }
 
@@ -474,6 +481,7 @@ export class Runner {
                 {
                     const intValue = this.#program[this.#pos++];
                     this.#valueStack.push(intValue);
+                    // log.dump("intValue", intValue);
                 }
                 break;
             case Cmd.IADD:
@@ -1130,6 +1138,15 @@ export class Runner {
                     const N = this.#program[this.#pos++];
                     const arr = this.#valueStack.splice(-N).map( e => `${e}` );
                     this.#io.cerr(arr.join(" "));
+                }
+                break;
+            case Cmd.DRAW_LINE:
+                {
+                    const y2 = this.#valueStack.pop() as number;
+                    const x2 = this.#valueStack.pop() as number;
+                    const y1 = this.#valueStack.pop() as number;
+                    const x1 = this.#valueStack.pop() as number;
+                    this.#io.g.drawLine(x1, y1, x2, y2);
                 }
                 break;
             default:

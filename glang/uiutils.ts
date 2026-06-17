@@ -7,7 +7,11 @@ const RE_NOT_SP = /[^ ]/;
 const REMOVE_SP: (s: string) => string = s => s.replace(RE_REMOVE_SP, "");
 const PAD_SP: (s: string) => string = s => {
     const p = s.search(RE_NOT_SP);
-    return "    ".repeat(1+(p>>2)) + s.slice(p);
+    if (p < 0) {
+        return "    ".repeat(1+(s.length>>2));
+    } else {
+        return "    ".repeat(1+(p>>2)) + s.slice(p);
+    }
 };
 export function setEnableTabIndent(el: HTMLTextAreaElement): void {
     el.addEventListener("keydown", e => {

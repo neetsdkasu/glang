@@ -271,6 +271,10 @@ class Compiler {
                     U.assert(code instanceof C.DoWhile);
                     this.#compileDoWhile(code);
                     break;
+                case C.CodeKind.DRAW_LINE:
+                    U.assert(code instanceof C.DrawLine);
+                    this.#compileDrawLine(code);
+                    break;
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
@@ -1012,7 +1016,7 @@ class Compiler {
         for (const arg of code.args) {
             this.#compileExpr(arg);
         }
-        this.#addCmdCallStdFunc(code.funcInfo.varId);
+        this.#addCmdCallUserFunc(code.funcInfo.varId);
         if (code.funcInfo.isFunc) {
             this.#addCmd(Cmd.POP);
         }
@@ -1069,6 +1073,14 @@ class Compiler {
             this.#compileExpr(arg);
         }
         this.#addCmd(Cmd.PRINT, code.args.length);
+    }
+
+    #compileDrawLine(code: C.DrawLine): void {
+        this.#compileExpr(code.x1);
+        this.#compileExpr(code.y1);
+        this.#compileExpr(code.x2);
+        this.#compileExpr(code.y2);
+        this.#addCmd(Cmd.DRAW_LINE);
     }
 }
 

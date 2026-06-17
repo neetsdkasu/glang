@@ -54,6 +54,7 @@ var Keyword;
     Keyword["CONTINUE"] = "continue";
     Keyword["DIM"] = "dim";
     Keyword["DO"] = "do";
+    Keyword["DRAWLINE"] = "drawline";
     Keyword["ELSE"] = "else";
     Keyword["END"] = "end";
     Keyword["FALSE"] = "false";
@@ -126,6 +127,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "div",
     Keyword.DO,
     "double",
+    Keyword.DRAWLINE,
     "dump",
     "each",
     Keyword.ELSE,
@@ -1021,6 +1023,9 @@ class Parser {
                     break;
                 case Keyword.DO:
                     res = this.#parseDoWhile(line);
+                    break;
+                case Keyword.DRAWLINE:
+                    res = this.#parseDrawLine(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
@@ -2930,6 +2935,73 @@ class Parser {
         this.#env.addCode(funcReturnCode);
         this.#env.setBlockEnd(C.BlockEndKind.RETURN);
         log.debug("PARSED return. [func]");
+        return OK;
+    }
+    #parseDrawLine(line) {
+        const drawlineToken = line.dequeue();
+        const src = [drawlineToken];
+        log.debug("PARSE drawline...");
+        const x1Token = line.front;
+        const x1Res = this.#parseExprTokens(line, src);
+        if (x1Res.isErr) {
+            return Result.err(x1Res.error);
+        }
+        const x1 = x1Res.result;
+        if (C.inferVtype(x1.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`X1の型は${Keyword.INTEGER}が必要です.`, x1Token);
+        }
+        const comma1Token = line.dequeue();
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+        const y1Token = line.front;
+        const y1Res = this.#parseExprTokens(line, src);
+        if (y1Res.isErr) {
+            return Result.err(y1Res.error);
+        }
+        const y1 = y1Res.result;
+        if (C.inferVtype(y1.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Y1の型は${Keyword.INTEGER}が必要です.`, y1Token);
+        }
+        const comma2Token = line.dequeue();
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+        const x2Token = line.front;
+        const x2Res = this.#parseExprTokens(line, src);
+        if (x2Res.isErr) {
+            return Result.err(x2Res.error);
+        }
+        const x2 = x2Res.result;
+        if (C.inferVtype(x2.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`X2の型は${Keyword.INTEGER}が必要です.`, x2Token);
+        }
+        const comma3Token = line.dequeue();
+        src.push(comma3Token);
+        if (comma3Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma3Token);
+        }
+        const y2Token = line.front;
+        const y2Res = this.#parseExprTokens(line, src);
+        if (y2Res.isErr) {
+            return Result.err(y2Res.error);
+        }
+        const y2 = y2Res.result;
+        if (C.inferVtype(y2.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Y2の型は${Keyword.INTEGER}が必要です.`, y2Token);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        const code = new C.DrawLine(src, x1, y1, x2, y2);
+        this.#env.addCode(code);
+        log.debug("PARSED drawline.");
         return OK;
     }
 }
