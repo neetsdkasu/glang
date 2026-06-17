@@ -13,24 +13,6 @@ export function assert(test, hint) {
         throw new Error(`assert error: hint="${hint}"`);
     }
 }
-export function assertEq(a, b, hint) {
-    assert(a === b, `assertEq error: hint="${hint}", not (a=${a}) !== (b=${b})`);
-}
-export function assertNE(a, b, hint) {
-    assert(a !== b, `assertNE error: hint="${hint}", (a=${a}) === (b=${b})`);
-}
-export function assertLT(a, b, hint) {
-    assert(a < b, `assertLT error: hint="${hint}", (a=${a}) >= (b=${b})`);
-}
-export function assertLE(a, b, hint) {
-    assert(a <= b, `assertLE error: hint="${hint}", (a=${a}) > (b=${b})`);
-}
-export function assertGT(a, b, hint) {
-    assert(a > b, `assertGT error: hint="${hint}", (a=${a}) <= (b=${b})`);
-}
-export function assertGE(a, b, hint) {
-    assert(a >= b, `assertGE error: hint="${hint}", (a=${a}) < (b=${b})`);
-}
 export class Unimplemented extends Error {
     constructor(hint) {
         super(`未実装なのでエラー. ( ${hint} )`);

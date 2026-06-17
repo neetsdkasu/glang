@@ -1514,7 +1514,7 @@ class Parser {
      */
     #parseExprUnaryOp(line) {
         const opToken = line.dequeue();
-        U.assertEq(opToken.tokenType, TokenType.OPERATOR);
+        U.assert(opToken.tokenType === TokenType.OPERATOR);
         const unaryOpInfo = UnaryOpMap.get(opToken.value.toLowerCase());
         switch (line.front.tokenType) {
             case TokenType.INTEGER:

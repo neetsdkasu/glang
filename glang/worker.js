@@ -10,7 +10,14 @@ import * as compiler from "./compiler.js";
 import * as parser from "./parser.js";
 import * as U from "./utils.js";
 import * as M from "./mes.js";
+let program = null;
+let canvas = null;
+let offCtx = null;
 class IoImpl {
+    #ctx;
+    constructor(ctx, cin) {
+        this.#ctx = ctx;
+    }
     cerr(s) {
         const sd = {
             kind: "WriteCerr",
@@ -19,7 +26,6 @@ class IoImpl {
         M.send(self, sd);
     }
 }
-let program = null;
 let io = null;
 async function compile(textSrc) {
     const reader = new CharReader(textSrc);
@@ -32,13 +38,16 @@ async function compile(textSrc) {
     }
     const parsedSource = res.result;
     program = compiler.compile(parsedSource);
-    M.send(self, { kind: "Ready" });
+    if (canvas === null) {
+        M.sendRequestCanvas(self);
+    }
+    else {
+        M.send(self, { kind: "Ready" });
+    }
 }
 let runner = null;
-async function goRun() {
-    U.assert(program !== null);
-    io = new IoImpl();
-    runner = new Runner(program, io);
+function run() {
+    U.assert(runner !== null);
     const res = runner.run();
     if (res.isErr) {
         const err = res.error;
@@ -67,36 +76,58 @@ function steps() {
         M.send(self, { kind: "Finished" });
     }
 }
-async function goSteps() {
+async function startRunner(cin) {
     U.assert(program !== null);
-    io = new IoImpl();
+    U.assert(canvas !== null);
+    if (offCtx === null) {
+        offCtx = canvas.getContext("2d");
+        if (offCtx === null) {
+            M.send(self, { kind: "Stop" });
+            return;
+        }
+    }
+    io = new IoImpl(offCtx, cin);
     runner = new Runner(program, io);
-    steps();
+    if (stepSize === 0) {
+        run();
+    }
+    else {
+        steps();
+    }
 }
 self.onmessage = e => {
-    const sd = e.data;
-    switch (sd.kind) {
-        case "TextSrc":
-            const src = sd.textSrc;
-            M.sendMessage(self, "compiling");
-            compile(src);
-            break;
-        case "GoRun":
-            M.sendMessage(self, "running");
-            stepSize = sd.stepSize;
-            if (stepSize === 0) {
-                goRun();
-            }
-            else if (stepSize > 0) {
-                goSteps();
-            }
-            else {
-                M.send(self, { kind: "Stop" });
-            }
-            break;
-        case "Stop":
-            stepSize = -1;
-            break;
-    }
+    Promise.resolve(e.data)
+        .then((sd) => {
+        switch (sd.kind) {
+            case "TextSrc":
+                const src = sd.textSrc;
+                M.sendMessage(self, "compiling");
+                compile(src);
+                break;
+            case "GoRun":
+                M.sendMessage(self, "running");
+                stepSize = sd.stepSize;
+                const cin = sd.cin;
+                if (stepSize < 0) {
+                    U.unreachable(`stepSize: ${stepSize}`);
+                }
+                else {
+                    startRunner(cin);
+                }
+                break;
+            case "Stop":
+                stepSize = -1;
+                break;
+            case "TransferCanvas":
+                canvas = sd.canvas;
+                if (canvas === null) {
+                    U.unreachable("canvas === null");
+                }
+                else {
+                    M.send(self, { kind: "Ready" });
+                }
+                break;
+        }
+    });
 };
 export default {};

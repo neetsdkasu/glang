@@ -1709,7 +1709,7 @@ class Parser {
      */
     #parseExprUnaryOp(line: RQueue<Token>): Result<C.Expr,ParserError> {
         const opToken = line.dequeue()!;
-        U.assertEq(opToken.tokenType, TokenType.OPERATOR);
+        U.assert(opToken.tokenType === TokenType.OPERATOR);
 
         const unaryOpInfo = UnaryOpMap.get(opToken.value.toLowerCase())!;
         

@@ -26,9 +26,8 @@ StepInput.value = `${DEFAULT_STEP_SIZE}`;
 function updateStatus(s) {
     StatusSpan.textContent = s;
 }
-function toggleItemDisabled() {
+function toggleItemsDisabled() {
     RunButton.disabled = !RunButton.disabled;
-    StopButton.disabled = !StopButton.disabled;
     StepInput.disabled = !StepInput.disabled;
     CinTextarea.disabled = !CinTextarea.disabled;
     CodeTextarea.disabled = !CodeTextarea.disabled;
@@ -63,37 +62,49 @@ function workerOnMessageError(ev) {
     log.error("Worker.onMessageError", ev);
 }
 function workerOnMessage(ev) {
-    const sd = ev.data;
-    switch (sd.kind) {
-        case "ParseError":
-            updateStatus("ParseError");
-            toggleItemDisabled();
-            openErrorDetails(sd.msg, sd.src);
-            break;
-        case "RuntimeError":
-            updateStatus("RuntimeError");
-            toggleItemDisabled();
-            openErrorDetails(sd.msg, sd.src);
-            break;
-        case "Message":
-            updateStatus(sd.message);
-            break;
-        case "Ready":
-            updateStatus("ready");
-            M.send(worker, { kind: "GoRun", stepSize: stepSize });
-            break;
-        case "Finished":
-            updateStatus("Finished");
-            toggleItemDisabled();
-            break;
-        case "Stop":
-            updateStatus("Stopped");
-            toggleItemDisabled();
-            break;
-        case "WriteCerr":
-            CerrTextarea.value += sd.text + "\n";
-            break;
-    }
+    Promise.resolve(ev.data)
+        .then(sd => {
+        switch (sd.kind) {
+            case "ParseError":
+                updateStatus("ParseError");
+                toggleItemsDisabled();
+                openErrorDetails(sd.msg, sd.src);
+                break;
+            case "RuntimeError":
+                updateStatus("RuntimeError");
+                toggleItemsDisabled();
+                openErrorDetails(sd.msg, sd.src);
+                break;
+            case "Message":
+                updateStatus(sd.message);
+                break;
+            case "Ready":
+                U.assert(worker !== null);
+                updateStatus("ready");
+                const cin = CinTextarea.value;
+                M.sendGoRun(worker, stepSize, cin);
+                StopButton.disabled = false;
+                break;
+            case "Finished":
+                updateStatus("Finished");
+                toggleItemsDisabled();
+                StopButton.disabled = true;
+                break;
+            case "Stop":
+                updateStatus("Stopped");
+                toggleItemsDisabled();
+                StopButton.disabled = true;
+                break;
+            case "WriteCerr":
+                CerrTextarea.value += sd.text + "\n";
+                break;
+            case "TransferCanvas":
+                U.assert(worker !== null);
+                const canvas = Canvas.transferControlToOffscreen();
+                M.sendTransferCanvas(worker, canvas);
+                break;
+        }
+    });
 }
 function lunchWorker() {
     if (worker === null) {
@@ -106,24 +117,32 @@ function lunchWorker() {
     return worker;
 }
 StopButton.addEventListener("click", () => {
+    StopButton.disabled = true;
     if (stepSize === 0) {
-        if (worker != null) {
-            worker.terminate();
-            worker = null;
-        }
-        updateStatus("Stopped");
-        toggleItemDisabled();
+        Promise.resolve(undefined)
+            .then(() => {
+            if (worker != null) {
+                worker.terminate();
+                worker = null;
+            }
+            updateStatus("Stopped");
+            toggleItemsDisabled();
+        });
     }
-    else if (worker !== null) {
+    else {
+        U.assert(worker !== null);
         M.send(worker, { kind: "Stop" });
     }
 });
 RunButton.addEventListener("click", () => {
-    CoutTextarea.value = "";
-    CerrTextarea.value = "";
-    stepSize = U.parseIntWithDefault(StepInput.value, DEFAULT_STEP_SIZE);
-    const src = CodeTextarea.value;
-    M.sendTextSrc(lunchWorker(), src);
-    toggleItemDisabled();
+    toggleItemsDisabled();
+    Promise.resolve(undefined)
+        .then(() => {
+        CoutTextarea.value = "";
+        CerrTextarea.value = "";
+        stepSize = U.parseIntWithDefault(StepInput.value, DEFAULT_STEP_SIZE);
+        const src = CodeTextarea.value;
+        M.sendTextSrc(lunchWorker(), src);
+    });
 });
 export default {};

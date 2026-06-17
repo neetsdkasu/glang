@@ -17,30 +17,6 @@ export function assert(test: boolean, hint?: any): asserts test {
     }
 }
 
-export function assertEq<T>(a: T, b: T, hint?: any) {
-    assert(a === b, `assertEq error: hint="${hint}", not (a=${a}) !== (b=${b})`);
-}
-
-export function assertNE<T>(a: T, b: T, hint?: any) {
-    assert(a !== b, `assertNE error: hint="${hint}", (a=${a}) === (b=${b})`);
-}
-
-export function assertLT<T extends number | string | bigint>(a: T, b: T, hint?: any) {
-    assert(a < b, `assertLT error: hint="${hint}", (a=${a}) >= (b=${b})`);
-}
-
-export function assertLE<T extends number | string | bigint>(a: T, b: T, hint?: any) {
-    assert(a <= b, `assertLE error: hint="${hint}", (a=${a}) > (b=${b})`);
-}
-
-export function assertGT<T extends number | string | bigint>(a: T, b: T, hint?: any) {
-    assert(a > b, `assertGT error: hint="${hint}", (a=${a}) <= (b=${b})`);
-}
-
-export function assertGE<T extends number | string | bigint>(a: T, b: T, hint?: any) {
-    assert(a >= b, `assertGE error: hint="${hint}", (a=${a}) < (b=${b})`);
-}
-
 export class Unimplemented extends Error {
     constructor(hint?: any) {
         super(`未実装なのでエラー. ( ${hint} )`);

@@ -39,6 +39,7 @@ export interface Ready  {
 export interface GoRun {
     kind: "GoRun";
     stepSize: number;
+    cin: string;
 }
 
 export interface Finished {
@@ -54,10 +55,19 @@ export interface WriteCerr {
     text: string;
 }
 
-export type SendData  = TextSrc | ParseError | Message | Ready | GoRun | Finished | RuntimeError | Stop | WriteCerr;
+export interface TransferCanvas {
+    kind: "TransferCanvas";
+    canvas: OffscreenCanvas | null;
+}
+
+export type SendData  = TextSrc | ParseError | Message | Ready | GoRun | Finished | RuntimeError | Stop | WriteCerr | TransferCanvas;
 
 export interface Sender {
-    postMessage(m: any): void;
+    postMessage(message: any): void;
+}
+
+export interface SenderWithTransfer {
+    postMessage(message: any, transfer?: Transferable[]): void;
 }
 
 export function send(sender: Sender, sd: SendData): void {
@@ -101,12 +111,29 @@ export function sendRuntimeError(sender: Sender, error: runner.RuntimeError): vo
     send(sender, sd);
 }
 
-export function sendGoRun(sender: Sender, stepSize: number): void {
+export function sendGoRun(sender: Sender, stepSize: number, cin: string): void {
     const sd: GoRun = {
         kind: "GoRun",
-        stepSize: stepSize
+        stepSize: stepSize,
+        cin: cin
     };
     send(sender, sd);
+}
+
+export function sendRequestCanvas(sender: Sender): void {
+    const sd: TransferCanvas = {
+        kind: "TransferCanvas",
+        canvas: null
+    };
+    sender.postMessage(sd);
+}
+
+export function sendTransferCanvas(sender: SenderWithTransfer, canvas: OffscreenCanvas): void {
+    const sd: TransferCanvas = {
+        kind: "TransferCanvas",
+        canvas: canvas
+    };
+    sender.postMessage(sd, [canvas]);
 }
 
 export default {};
