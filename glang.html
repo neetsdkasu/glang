@@ -8,16 +8,18 @@
             {
                 "imports": {
                     "./charreader.js": "./glang/charreader.js",
-                    "./command.js": "./glang/command.js",
-                    "./compiler.js": "./glang/compiler.js",
-                    "./code.js": "./glang/code.js",
-                    "./logger.js": "./glang/logger.js",
-                    "./parser.js": "./glang/parser.js",
-                    "./rqueue.js": "./glang/rqueue.js",
-                    "./runner.js": "./glang/runner.js",
-                    "./scanner.js": "./glang/scanner.js",
-                    "./uiutils.js": "./glang/uiutils.js",
-                    "./utils.js": "./glang/utils.js"
+                    "./command.js":    "./glang/command.js",
+                    "./compiler.js":   "./glang/compiler.js",
+                    "./code.js":       "./glang/code.js",
+                    "./logger.js":     "./glang/logger.js",
+                    "./parser.js":     "./glang/parser.js",
+                    "./rqueue.js":     "./glang/rqueue.js",
+                    "./runner.js":     "./glang/runner.js",
+                    "./scanner.js":    "./glang/scanner.js",
+                    "./uiutils.js":    "./glang/uiutils.js",
+                    "./utils.js":      "./glang/utils.js",
+                    "./worker.js":     "./glang/worker.js",
+                    "./xorshift.js":   "./glang/xorshift.js"
                 }
             }
         </script>
@@ -53,11 +55,22 @@ Sub Main()
     Call DrawStar(60, 100, 100, 0,  0xFF0000)
     Call DrawStar(50, 200, 100, 30, 0x00FF00)
     Call DrawStar(80, 150, 250, 70, 0x0000FF)
+    For let i = 1 To 10
+        let r = random() % 20 + 10
+        let x = random() % 400 + r
+        let y = random() % 400 + r
+        let rot = random() % 360
+        let red = random() & 0xFF
+        let green = random() & 0xFF
+        let blue = random() & 0xFF
+        let rgb = (red &lt;&lt; 16) | (green &lt;&lt; 8) | blue
+        Call DrawStar(r, x, y, rot, rgb)
+    End For
 End Sub
 Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer, rgb As Integer)
     let rf = CFloat(r)
     let rotf = 2.0 * 3.14 * CFloat(rot) / 360.0
-    SetColor rgb>>>16, (rgb>>8)&0xFF, rgb&0xFF
+    SetColor rgb &gt;&gt; 16, (rgb &gt;&gt; 8) & 0xFF, rgb & 0xFF
     For let i = 1 To 5
         let d1 = 2.0 * 3.14 * CFloat(i - 1) / 5.0 + rotf
         let x1 = CInt( rf * cos(d1) ) + offx

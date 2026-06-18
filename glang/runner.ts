@@ -6,6 +6,7 @@ const log = new Logger("runner", LogLevel.ALL);
 
 import { Cmd, Program, StdFunc, Source } from "./command.js";
 import { Result } from "./utils.js";
+import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
 
 export class RuntimeError 
@@ -73,6 +74,8 @@ export class Runner {
 
     #valueStack: ValueType[] = [];
     #addressStack: number[] = [];
+
+    #rng: Xorshift32 = new Xorshift32(0xC0FFEE);
 
     constructor(program: Program, io: IO) {
         this.#program = program.program;
@@ -1600,6 +1603,41 @@ export class Runner {
                     const trueValue = this.#valueStack.pop() as string;
                     const testValue = this.#valueStack.pop() as boolean;
                     this.#valueStack.push(testValue ? trueValue : falseValue);
+                }
+                break;
+            case StdFunc.RANDOM:
+                {
+                    this.#valueStack.push(this.#rng.gen() >>> 1);
+                }
+                break;
+            case StdFunc.LOG:
+                {
+                    const x = this.#valueStack.pop() as number;
+                    const value = Math.log(x);
+                    if (U.isInfinityOrNaN(value)) {
+                        return this.#runtimeError(this.#pos-2, `wrong argument: log(${x})`);
+                    }
+                    this.#valueStack.push(value);
+                }
+                break;
+            case StdFunc.LOG2:
+                {
+                    const x = this.#valueStack.pop() as number;
+                    const value = Math.log2(x);
+                    if (U.isInfinityOrNaN(value)) {
+                        return this.#runtimeError(this.#pos-2, `wrong argument: log2(${x})`);
+                    }
+                    this.#valueStack.push(value);
+                }
+                break;
+            case StdFunc.LOG10:
+                {
+                    const x = this.#valueStack.pop() as number;
+                    const value = Math.log10(x);
+                    if (U.isInfinityOrNaN(value)) {
+                        return this.#runtimeError(this.#pos-2, `wrong argument: log10(${x})`);
+                    }
+                    this.#valueStack.push(value);
                 }
                 break;
             default:

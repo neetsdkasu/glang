@@ -32,7 +32,7 @@ export function unreachable(hint?: any): never {
 }
 
 export function isInfinityOrNaN(x: number): boolean {
-    return isNaN(x) || x ===  Infinity;
+    return isNaN(x) || x ===  Infinity || x === -Infinity;
 }
 
 export function popCount(n: number): number {

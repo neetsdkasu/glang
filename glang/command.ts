@@ -213,7 +213,11 @@ export enum StdFunc {
     SEL_BOOLEAN,
     SEL_FLOAT,
     SEL_INTEGER,
-    SEL_STRING
+    SEL_STRING,
+    RANDOM,
+    LOG,
+    LOG2,
+    LOG10
 }
 
 export default {};

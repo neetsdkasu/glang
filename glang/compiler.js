@@ -130,7 +130,10 @@ class Compiler {
             case StdFunc.SIZE_SARR1D:
             case StdFunc.SIZE_SARR2D:
             case StdFunc.SIZE_SARR3D:
-                const r = new U.Range(addr, addr + 1);
+            case StdFunc.LOG:
+            case StdFunc.LOG2:
+            case StdFunc.LOG10:
+                const r = new U.Range(addr, addr + 1); // [Cmd.CALL_STD_FUNC, StdFuncId]
                 const source = new Source(r, src);
                 this.#sourceMap.push(source);
                 break;
@@ -144,7 +147,7 @@ class Compiler {
             case C.BinaryOpKind.DIVIDE:
             case C.BinaryOpKind.INT_DIVIDE:
             case C.BinaryOpKind.INT_REMINDER:
-                const r = new U.Range(addr, addr);
+                const r = new U.Range(addr, addr); // [Cmd]
                 const source = new Source(r, src);
                 this.#sourceMap.push(source);
                 break;
@@ -154,7 +157,7 @@ class Compiler {
     }
     #handleArrayIndexError(src) {
         const addr = this.#getNextAddress();
-        const r = new U.Range(addr, addr + 2);
+        const r = new U.Range(addr, addr + 2); // [Cmd, BlockId, BlockVarId]
         const source = new Source(r, src);
         this.#sourceMap.push(source);
     }

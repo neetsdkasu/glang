@@ -27,7 +27,7 @@ export function unreachable(hint) {
     }
 }
 export function isInfinityOrNaN(x) {
-    return isNaN(x) || x === Infinity;
+    return isNaN(x) || x === Infinity || x === -Infinity;
 }
 export function popCount(n) {
     n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);

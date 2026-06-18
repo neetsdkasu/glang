@@ -394,7 +394,8 @@ export var SideEffect;
     SideEffect[SideEffect["NONE"] = 0] = "NONE";
     SideEffect[SideEffect["WRITE_GLOBAL_VAR"] = 1] = "WRITE_GLOBAL_VAR";
     SideEffect[SideEffect["ACCESS_IO"] = 2] = "ACCESS_IO";
-    SideEffect[SideEffect["ALL"] = 3] = "ALL";
+    SideEffect[SideEffect["CHANGE_RUNNER_STATE"] = 4] = "CHANGE_RUNNER_STATE";
+    // ALL = WRITE_GLOBAL_VAR | ACCESS_IO | CHANGE_RUNNER_STATE
 })(SideEffect || (SideEffect = {}));
 export class Overload {
     stdfuncId;

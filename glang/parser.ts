@@ -394,7 +394,11 @@ const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Ma
         new C.Overload(StdFunc.SEL_FLOAT, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.BOOLEAN, C.Vtype.FLOATING_POINT, C.Vtype.FLOATING_POINT])),
         new C.Overload(StdFunc.SEL_INTEGER, new C.RetArg(C.Vtype.INTEGER, [C.Vtype.BOOLEAN, C.Vtype.INTEGER, C.Vtype.INTEGER])),
         new C.Overload(StdFunc.SEL_STRING, new C.RetArg(C.Vtype.STRING, [C.Vtype.BOOLEAN, C.Vtype.STRING, C.Vtype.STRING])),
-    ], C.SideEffect.NONE)
+    ], C.SideEffect.NONE),
+    new C.StdFuncInfo("random", new C.RetArg(C.Vtype.INTEGER, []), [new C.Overload(StdFunc.RANDOM, new C.RetArg(C.Vtype.INTEGER, []))], C.SideEffect.CHANGE_RUNNER_STATE),
+    new C.StdFuncInfo("log", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE),
+    new C.StdFuncInfo("log2", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG2, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE),
+    new C.StdFuncInfo("log10", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG10, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE)
 ].map( fi => [fi.name, fi] )));
 
 enum Symbols {
@@ -3074,6 +3078,8 @@ class Parser {
             }
         }
 
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO);
+
         const code = new C.Print(src, args);
         this.#env.addCode(code);
 
@@ -3550,10 +3556,13 @@ class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
 
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+
         const code = new C.DrawLine(src, x1, y1, x2, y2);
 
         this.#env.addCode(code);
 
+        log.dump("src", Token.lineToString, src);
         log.debug("PARSED drawline.");
 
         return OK;
@@ -3617,10 +3626,13 @@ class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
 
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.CHANGE_RUNNER_STATE);
+
         const code = new C.SetColor(src, red, green, blue);
 
         this.#env.addCode(code);
 
+        log.dump("src", Token.lineToString, src);
         log.debug("PARSED setcolor.");
 
         return OK;

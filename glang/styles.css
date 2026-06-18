@@ -11,6 +11,15 @@ button {
     margin: 0.5em;
 }
 
+textarea {
+    padding: 1em;
+}
+
+footer {
+    margin-top: 5em;
+    margin-bottom: 5em;
+}
+
 .indent {
     margin-left: 1em;
 }

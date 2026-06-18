@@ -408,9 +408,10 @@ export class RetArg {
 
 export enum SideEffect {
     NONE,
-    WRITE_GLOBAL_VAR = 1 << 0,
-    ACCESS_IO        = 1 << 1,
-    ALL = WRITE_GLOBAL_VAR | ACCESS_IO
+    WRITE_GLOBAL_VAR    = 1 << 0,
+    ACCESS_IO           = 1 << 1,
+    CHANGE_RUNNER_STATE = 1 << 2
+    // ALL = WRITE_GLOBAL_VAR | ACCESS_IO | CHANGE_RUNNER_STATE
 }
 
 export class Overload {
