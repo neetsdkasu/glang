@@ -50,13 +50,14 @@
                     <summary>source code</summary>
                     <textarea id="code" cols="100" rows="40">' Sample Program
 Sub Main()
-    Call DrawStar(60, 100, 100, 0)
-    Call DrawStar(50, 200, 100, 30)
-    Call DrawStar(80, 150, 250, 70)
+    Call DrawStar(60, 100, 100, 0,  0xFF0000)
+    Call DrawStar(50, 200, 100, 30, 0x00FF00)
+    Call DrawStar(80, 150, 250, 70, 0x0000FF)
 End Sub
-Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer)
+Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer, rgb As Integer)
     let rf = CFloat(r)
     let rotf = 2.0 * 3.14 * CFloat(rot) / 360.0
+    SetColor rgb>>>16, (rgb>>8)&0xFF, rgb&0xFF
     For let i = 1 To 5
         let d1 = 2.0 * 3.14 * CFloat(i - 1) / 5.0 + rotf
         let x1 = CInt( rf * cos(d1) ) + offx
@@ -67,6 +68,7 @@ Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer)
         DrawLine x1, y1, x2, y2
     End For
 End Sub
+
 </textarea>
                 </details>
             </div>

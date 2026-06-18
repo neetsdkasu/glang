@@ -154,7 +154,8 @@ export var Cmd;
     Cmd[Cmd["PUSH_BLOCK"] = 116] = "PUSH_BLOCK";
     Cmd[Cmd["POP_BLOCK"] = 117] = "POP_BLOCK";
     Cmd[Cmd["PRINT"] = 118] = "PRINT";
-    Cmd[Cmd["DRAW_LINE"] = 119] = "DRAW_LINE"; // DRAW_LINE () [..., x1, y1, x2, y2] => [...]
+    Cmd[Cmd["DRAW_LINE"] = 119] = "DRAW_LINE";
+    Cmd[Cmd["SET_COLOR"] = 120] = "SET_COLOR"; // SET_COLOR () [..., R, G, B] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

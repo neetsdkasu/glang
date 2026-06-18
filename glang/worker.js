@@ -29,6 +29,9 @@ class GraImpl {
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+    setColor(r, g, b) {
+        this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
+    }
     clear() {
         this.#ctx.clearRect(0, 0, this.width, this.height);
     }

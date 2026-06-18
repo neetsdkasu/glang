@@ -32,6 +32,7 @@ export interface Gra {
     readonly width: number;
     readonly height: number;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
+    setColor(r: number, g: number, b: number): void;
 }
 
 export interface IO {
@@ -1147,6 +1148,14 @@ export class Runner {
                     const y1 = this.#valueStack.pop() as number;
                     const x1 = this.#valueStack.pop() as number;
                     this.#io.g.drawLine(x1, y1, x2, y2);
+                }
+                break;
+            case Cmd.SET_COLOR:
+                {
+                    const b = this.#valueStack.pop() as number;
+                    const g = this.#valueStack.pop() as number;
+                    const r = this.#valueStack.pop() as number;
+                    this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
                 }
                 break;
             default:

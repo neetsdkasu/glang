@@ -67,6 +67,7 @@ var Keyword;
     Keyword["MAIN"] = "main";
     Keyword["PRINT"] = "print";
     Keyword["RETURN"] = "return";
+    Keyword["SETCOLOR"] = "setcolor";
     Keyword["STEP"] = "step";
     Keyword["STRING"] = "string";
     Keyword["SUB"] = "sub";
@@ -242,6 +243,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "select",
     "self",
     "set",
+    Keyword.SETCOLOR,
     "short",
     "single",
     "some",
@@ -1041,6 +1043,9 @@ class Parser {
                     break;
                 case Keyword.RETURN:
                     res = this.#parseReturn(line);
+                    break;
+                case Keyword.SETCOLOR:
+                    res = this.#parseSetColor(line);
                     break;
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -2947,6 +2952,7 @@ class Parser {
             return Result.err(x1Res.error);
         }
         const x1 = x1Res.result;
+        log.dump("X1", x1);
         if (C.inferVtype(x1.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`X1の型は${Keyword.INTEGER}が必要です.`, x1Token);
         }
@@ -2961,6 +2967,7 @@ class Parser {
             return Result.err(y1Res.error);
         }
         const y1 = y1Res.result;
+        log.dump("Y1", y1);
         if (C.inferVtype(y1.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`Y1の型は${Keyword.INTEGER}が必要です.`, y1Token);
         }
@@ -2975,6 +2982,7 @@ class Parser {
             return Result.err(x2Res.error);
         }
         const x2 = x2Res.result;
+        log.dump("X2", x2);
         if (C.inferVtype(x2.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`X2の型は${Keyword.INTEGER}が必要です.`, x2Token);
         }
@@ -2989,6 +2997,7 @@ class Parser {
             return Result.err(y2Res.error);
         }
         const y2 = y2Res.result;
+        log.dump("Y2", y2);
         if (C.inferVtype(y2.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`Y2の型は${Keyword.INTEGER}が必要です.`, y2Token);
         }
@@ -3002,6 +3011,62 @@ class Parser {
         const code = new C.DrawLine(src, x1, y1, x2, y2);
         this.#env.addCode(code);
         log.debug("PARSED drawline.");
+        return OK;
+    }
+    #parseSetColor(line) {
+        const setcolorToken = line.dequeue();
+        const src = [setcolorToken];
+        log.debug("PARSE setcolor...");
+        const redToken = line.front;
+        const redRes = this.#parseExprTokens(line, src);
+        if (redRes.isErr) {
+            return Result.err(redRes.error);
+        }
+        const red = redRes.result;
+        log.dump("R", red);
+        if (C.inferVtype(red.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Rの型は${Keyword.INTEGER}が必要です.`, redToken);
+        }
+        const comma1Token = line.dequeue();
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+        const greenToken = line.front;
+        const greenRes = this.#parseExprTokens(line, src);
+        if (greenRes.isErr) {
+            return Result.err(greenRes.error);
+        }
+        const green = greenRes.result;
+        log.dump("G", green);
+        if (C.inferVtype(green.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Gの型は${Keyword.INTEGER}が必要です.`, greenToken);
+        }
+        const comma2Token = line.dequeue();
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+        const blueToken = line.front;
+        const blueRes = this.#parseExprTokens(line, src);
+        if (blueRes.isErr) {
+            return Result.err(blueRes.error);
+        }
+        const blue = blueRes.result;
+        log.dump("B", blue);
+        if (C.inferVtype(blue.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Bの型は${Keyword.INTEGER}が必要です.`, blueToken);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        const code = new C.SetColor(src, red, green, blue);
+        this.#env.addCode(code);
+        log.debug("PARSED setcolor.");
         return OK;
     }
 }

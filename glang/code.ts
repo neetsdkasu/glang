@@ -1121,7 +1121,8 @@ export enum CodeKind {
     IF,
     LET,
     PRINT,
-    RETURN
+    RETURN,
+    SET_COLOR
 }
 
 export abstract class Code {
@@ -1793,6 +1794,58 @@ export class DrawLine extends Code {
 
     toString(): string {
         return `DrawLine{ x1: ${this.x1}, y1: ${this.y1}, x2: ${this.x2}, y2: ${this.y2} }`;
+    }
+}
+
+export class SetColor extends Code {
+    readonly red: Expr;
+    readonly green: Expr;
+    readonly blue: Expr;
+
+    constructor(src: Readonly<Token[]>, red: Expr, green: Expr, blue: Expr) {
+        super(CodeKind.SET_COLOR, src);
+        this.red = red;
+        this.green = green;
+        this.blue = blue;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const redRes = this.red.rebuild(findUserFunc);
+        if (redRes.isErr) {
+            return Result.err(redRes.error);
+        }
+        const red = redRes.result.expr;
+        let sideEffect = redRes.result.sideEffect;
+        if (red.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Rの型が不正です.", src: red.src });
+        }
+
+        const greenRes = this.green.rebuild(findUserFunc);
+        if (greenRes.isErr) {
+            return Result.err(greenRes.error);
+        }
+        const green = greenRes.result.expr;
+        sideEffect |= greenRes.result.sideEffect;
+        if (green.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Gの型が不正です.", src: green.src });
+        }
+
+        const blueRes = this.blue.rebuild(findUserFunc);
+        if (blueRes.isErr) {
+            return Result.err(blueRes.error);
+        }
+        const blue = blueRes.result.expr;
+        sideEffect |= blueRes.result.sideEffect;
+        if (blue.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Bの型が不正です.", src: blue.src });
+        }
+
+        const code = new SetColor(this.src, red, green, blue);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+
+    toString(): string {
+        return `SetColor{ R: ${this.red}, G: ${this.green}, B: ${this.blue} }`;
     }
 }
 

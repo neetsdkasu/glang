@@ -38,6 +38,10 @@ class GraImpl implements Gra {
         ctx.stroke();
     }
 
+    setColor(r: number, g: number, b: number): void {
+        this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
+    }
+
     clear(): void {
         this.#ctx.clearRect(0, 0, this.width, this.height);
     }

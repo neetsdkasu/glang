@@ -268,6 +268,10 @@ class Compiler {
                     U.assert(code instanceof C.Return);
                     this.#compileReturn(code);
                     break;
+                case C.CodeKind.SET_COLOR:
+                    U.assert(code instanceof C.SetColor);
+                    this.#compileSetColor(code);
+                    break;
                 default:
                     U.unreachable(code);
             }
@@ -1190,6 +1194,12 @@ class Compiler {
         this.#compileExpr(code.x2);
         this.#compileExpr(code.y2);
         this.#addCmd(Cmd.DRAW_LINE);
+    }
+    #compileSetColor(code) {
+        this.#compileExpr(code.red);
+        this.#compileExpr(code.green);
+        this.#compileExpr(code.blue);
+        this.#addCmd(Cmd.SET_COLOR);
     }
 }
 export function compile(src) {

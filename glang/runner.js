@@ -1114,6 +1114,14 @@ export class Runner {
                     this.#io.g.drawLine(x1, y1, x2, y2);
                 }
                 break;
+            case Cmd.SET_COLOR:
+                {
+                    const b = this.#valueStack.pop();
+                    const g = this.#valueStack.pop();
+                    const r = this.#valueStack.pop();
+                    this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
+                }
+                break;
             default:
                 throw new U.Unimplemented(Cmd[cmd]);
         }
