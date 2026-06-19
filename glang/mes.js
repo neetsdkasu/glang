@@ -53,7 +53,21 @@ export function sendRequestCanvas(sender) {
         kind: "TransferCanvas",
         canvas: null
     };
-    sender.postMessage(sd);
+    send(sender, sd);
+}
+export function sendRequestEventOfPointer(sender) {
+    const sd = {
+        kind: "EventOfPointer",
+        state: null
+    };
+    send(sender, sd);
+}
+export function sendEventOfPointer(sender, state) {
+    const sd = {
+        kind: "EventOfPointer",
+        state: state
+    };
+    send(sender, sd);
 }
 export function sendTransferCanvas(sender, canvas) {
     const sd = {

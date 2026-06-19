@@ -60,7 +60,23 @@ export interface TransferCanvas {
     canvas: OffscreenCanvas | null;
 }
 
-export type SendData  = TextSrc | ParseError | Message | Ready | GoRun | Finished | RuntimeError | Stop | WriteCerr | TransferCanvas;
+export interface EventOfPointer {
+    kind: "EventOfPointer";
+    state: runner.PointerState | null;
+}
+
+export type SendData  = TextSrc
+                      | ParseError 
+                      | Message
+                      | Ready
+                      | GoRun
+                      | Finished
+                      | RuntimeError
+                      | Stop
+                      | WriteCerr
+                      | TransferCanvas
+                      | EventOfPointer
+                      ;
 
 export interface Sender {
     postMessage(message: any): void;
@@ -125,7 +141,23 @@ export function sendRequestCanvas(sender: Sender): void {
         kind: "TransferCanvas",
         canvas: null
     };
-    sender.postMessage(sd);
+    send(sender, sd);
+}
+
+export function sendRequestEventOfPointer(sender: Sender): void {
+    const sd: EventOfPointer = {
+        kind: "EventOfPointer",
+        state: null
+    };
+    send(sender, sd);
+}
+
+export function sendEventOfPointer(sender: Sender, state: runner.PointerState): void {
+    const sd: EventOfPointer = {
+        kind: "EventOfPointer",
+        state: state
+    };
+    send(sender, sd);
 }
 
 export function sendTransferCanvas(sender: SenderWithTransfer, canvas: OffscreenCanvas): void {

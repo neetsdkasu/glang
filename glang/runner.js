@@ -25,6 +25,18 @@ export var State;
     State[State["ENDED"] = 3] = "ENDED";
 })(State || (State = {}));
 ;
+export var PointerStateKind;
+(function (PointerStateKind) {
+    PointerStateKind[PointerStateKind["NONE"] = 0] = "NONE";
+    PointerStateKind[PointerStateKind["DOWN"] = 1] = "DOWN";
+    PointerStateKind[PointerStateKind["UP"] = 2] = "UP";
+})(PointerStateKind || (PointerStateKind = {}));
+export const DEFAULT_POINTER_STATE = {
+    x: 0,
+    y: 0,
+    kind: PointerStateKind.NONE,
+    time: 0
+};
 function isValidIndex(arr, index) {
     return 0 <= index && index < arr.length;
 }

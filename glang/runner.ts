@@ -33,6 +33,27 @@ export enum State {
 
 export type RunnerResult = Result<State,RuntimeError>;
 
+export enum PointerStateKind {
+    NONE = 0,
+    DOWN = 1,
+    UP   = 2
+}
+
+export interface PointerState {
+    x: number;
+    y: number;
+    kind: PointerStateKind;
+    time: number;
+}
+
+export const DEFAULT_POINTER_STATE: Readonly<PointerState> = {
+    x: 0,
+    y: 0,
+    kind: PointerStateKind.NONE,
+    time: 0
+};
+
+
 export interface Gra {
     readonly width: number;
     readonly height: number;
@@ -43,6 +64,8 @@ export interface Gra {
 export interface IO {
     readonly g: Gra;
     cerr(s: string): void;
+    reqEventOfPointer(): void;
+    getEventOfPointer(): Readonly<PointerState>;
 }
 
 type ValueType = boolean | number | string;

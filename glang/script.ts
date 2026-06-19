@@ -6,6 +6,7 @@ import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("main", LogLevel.ALL);
 
 import { IToken, Token } from "./scanner.js";
+import * as runner from "./runner.js";
 import * as U from "./utils.js";
 import * as UU from "./uiutils.js";
 import * as M from "./mes.js";
@@ -64,6 +65,13 @@ function openErrorDetails(msg: string, src: IToken | Readonly<IToken[]> | null):
 
 let worker: Worker | null = null;
 
+const pstate: runner.PointerState = {
+    x: 0,
+    y: 0,
+    kind: runner.PointerStateKind.NONE,
+    time: 0
+};
+
 function workerOnError(ev: ErrorEvent): any {
     log.error("Worker.onError", ev);
 }
@@ -77,42 +85,64 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
     .then( sd => {
         switch (sd.kind) {
             case "ParseError":
-                updateStatus("ParseError");
-                toggleItemsDisabled();
-                openErrorDetails(sd.msg, sd.src);
+                {
+                    updateStatus("ParseError");
+                    toggleItemsDisabled();
+                    openErrorDetails(sd.msg, sd.src);
+                }
                 break;
             case "RuntimeError":
-                updateStatus("RuntimeError");
-                toggleItemsDisabled();
-                openErrorDetails(sd.msg, sd.src);
+                {
+                    updateStatus("RuntimeError");
+                    toggleItemsDisabled();
+                    openErrorDetails(sd.msg, sd.src);
+                }
                 break;
             case "Message":
-                updateStatus(sd.message);
+                {
+                    updateStatus(sd.message);
+                }
                 break;
             case "Ready":
-                U.assert(worker !== null);
-                updateStatus("ready");
-                const cin = CinTextarea.value;
-                M.sendGoRun(worker, stepSize, cin);
-                StopButton.disabled = false;
+                {
+                    U.assert(worker !== null);
+                    updateStatus("ready");
+                    const cin = CinTextarea.value;
+                    M.sendGoRun(worker, stepSize, cin);
+                    StopButton.disabled = false;
+                }
                 break;
             case "Finished":
-                updateStatus("Finished");
-                toggleItemsDisabled();
-                StopButton.disabled = true;
+                {
+                    updateStatus("Finished");
+                    toggleItemsDisabled();
+                    StopButton.disabled = true;
+                }
                 break;
             case "Stop":
-                updateStatus("Stopped");
-                toggleItemsDisabled();
-                StopButton.disabled = true;
+                {
+                    updateStatus("Stopped");
+                    toggleItemsDisabled();
+                    StopButton.disabled = true;
+                }
                 break;
             case "WriteCerr":
-                CerrTextarea.value += sd.text + "\n";
+                {
+                    CerrTextarea.value += sd.text + "\n";
+                }
                 break;
             case "TransferCanvas":
-                U.assert(worker !== null);
-                const canvas = Canvas.transferControlToOffscreen();
-                M.sendTransferCanvas(worker, canvas);
+                {
+                    U.assert(worker !== null);
+                    const canvas = Canvas.transferControlToOffscreen();
+                    M.sendTransferCanvas(worker, canvas);
+                }
+                break;
+            case "EventOfPointer":
+                {
+                    U.assert(worker !== null);
+                    M.sendEventOfPointer(worker, pstate);
+                }
                 break;
         }
     });
@@ -157,6 +187,20 @@ RunButton.addEventListener("click", () => {
         const src = CodeTextarea.value;
         M.sendTextSrc(lunchWorker(), src);
     });
+});
+
+Canvas.addEventListener("pointerdown", ev => {
+    pstate.x = ev.clientX;
+    pstate.y = ev.clientY;
+    pstate.kind = runner.PointerStateKind.DOWN;
+    pstate.time = Date.now();
+});
+
+Canvas.addEventListener("pointerup", ev => {
+    pstate.x = ev.clientX;
+    pstate.y = ev.clientY;
+    pstate.kind = runner.PointerStateKind.UP;
+    pstate.time = Date.now();
 });
 
 export default {};

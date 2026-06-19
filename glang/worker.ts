@@ -7,7 +7,7 @@ const log = new Logger("worker", LogLevel.ALL);
 import CharReader from "./charreader.js";
 import Scanner, { Token } from "./scanner.js";
 import { Program  } from "./command.js";
-import Runner, { Gra, IO, State as RunnerState } from "./runner.js";
+import Runner, { Gra, IO, PointerState, State as RunnerState, DEFAULT_POINTER_STATE } from "./runner.js";
 import * as compiler from "./compiler.js";
 import * as parser from "./parser.js";
 import * as U from "./utils.js";
@@ -51,6 +51,8 @@ class IoImpl implements IO {
 
     readonly g: GraImpl;
 
+    #state: Readonly<PointerState> = DEFAULT_POINTER_STATE;
+
     constructor(g: GraImpl, cin: string) {
         this.g = g;
     }
@@ -61,6 +63,18 @@ class IoImpl implements IO {
             text: s
         };
         M.send(self, sd);
+    }
+
+    reqEventOfPointer(): void {
+        M.sendRequestEventOfPointer(self);
+    }
+
+    getEventOfPointer():Readonly<PointerState> {
+        return this.#state;
+    }
+
+    setEventOfPointer(state: PointerState) {
+        this.#state = state;
     }
 }
 
@@ -164,29 +178,49 @@ self.onmessage = e => {
     .then( (sd: M.SendData) => {
         switch (sd.kind) {
             case "TextSrc":
-                const src = sd.textSrc;
-                M.sendMessage(self, "compiling");
-                compile(src);
+                {
+                    const src = sd.textSrc;
+                    M.sendMessage(self, "compiling");
+                    compile(src);
+                }
                 break;
             case "GoRun":
-                M.sendMessage(self, "running");
-                stepSize = sd.stepSize;
-                const cin = sd.cin;
-                if (stepSize < 0) {
-                    U.unreachable(`stepSize: ${stepSize}`);
-                } else {
-                    startRunner(cin);
+                {
+                    M.sendMessage(self, "running");
+                    stepSize = sd.stepSize;
+                    if (stepSize < 0) {
+                        U.unreachable(`stepSize: ${stepSize}`);
+                    } else {
+                        const cin = sd.cin;
+                        startRunner(cin);
+                    }
                 }
                 break;
             case "Stop":
-                stepSize = -1;
+                {
+                    stepSize = -1;
+                }
                 break;
             case "TransferCanvas":
-                canvas = sd.canvas;
-                if (canvas === null) {
-                    U.unreachable("canvas === null");
-                } else {
-                    M.send(self, { kind: "Ready" });
+                {
+                    canvas = sd.canvas;
+                    if (canvas === null) {
+                        U.unreachable("canvas === null");
+                    } else {
+                        M.send(self, { kind: "Ready" });
+                    }
+                }
+                break;
+            case "EventOfPointer":
+                {
+                    if (io !== null) {
+                        const pstate = sd.state;
+                        if (pstate !== null) {
+                            io.setEventOfPointer(pstate);
+                        } else {
+                            io.setEventOfPointer(DEFAULT_POINTER_STATE);
+                        }
+                    }
                 }
                 break;
         }
