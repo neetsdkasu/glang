@@ -1122,6 +1122,7 @@ export enum CodeKind {
     IF,
     LET,
     PRINT,
+    RANDOMIZE,
     RETURN,
     SET_COLOR
 }
@@ -1719,7 +1720,7 @@ export class Print extends Code {
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
-        let sideEffect = SideEffect.NONE;
+        let sideEffect = SideEffect.ACCESS_IO;
         const newArgs: Expr[] = [];
         for (let i = 0; i < this.args.length; i++) {
             const argRes = this.args[i].rebuild(findUserFunc);
@@ -1761,7 +1762,7 @@ export class DrawLine extends Code {
         if (x1.vtype !== Vtype.INTEGER) {
             return Result.err({ msg: "X1の型が不正です.", src: x1.src });
         }
-        let sideEffect = x1Res.result.sideEffect;
+        let sideEffect = x1Res.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
         const y1Res = this.y1.rebuild(findUserFunc);
         if (y1Res.isErr) {
             return Result.err(y1Res.error);
@@ -1816,7 +1817,7 @@ export class SetColor extends Code {
             return Result.err(redRes.error);
         }
         const red = redRes.result.expr;
-        let sideEffect = redRes.result.sideEffect;
+        let sideEffect = redRes.result.sideEffect | SideEffect.CHANGE_RUNNER_STATE;
         if (red.vtype !== Vtype.INTEGER) {
             return Result.err({ msg: "Rの型が不正です.", src: red.src });
         }
@@ -1847,6 +1848,36 @@ export class SetColor extends Code {
 
     toString(): string {
         return `SetColor{ R: ${this.red}, G: ${this.green}, B: ${this.blue} }`;
+    }
+}
+
+export class Randomize extends Code {
+    readonly seed: Expr | null;
+
+    constructor(src: Readonly<Token[]>, seed: Expr | null) {
+        super(CodeKind.RANDOMIZE, src);
+        this.seed = seed;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        if (this.seed === null) {
+            return Result.ok( { code: this, sideEffect: SideEffect.CHANGE_RUNNER_STATE });
+        }
+        const seedRes = this.seed.rebuild(findUserFunc);
+        if (seedRes.isErr) {
+            return Result.err(seedRes.error);
+        }
+        const seed = seedRes.result.expr;
+        const sideEffect = SideEffect.CHANGE_RUNNER_STATE | seedRes.result.sideEffect;
+        if (seed.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "SEEDの型が不正です.", src: seed.src });
+        }
+        const code = new Randomize(this.src, seed);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+
+    toString(): string {
+        return `Randomize{ seed: ${this.seed} }`;
     }
 }
 

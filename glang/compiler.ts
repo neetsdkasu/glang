@@ -294,6 +294,10 @@ class Compiler {
                     U.assert(code instanceof C.Print);
                     this.#compilePrint(code);
                     break;
+                case C.CodeKind.RANDOMIZE:
+                    U.assert(code instanceof C.Randomize);
+                    this.#compileRandomize(code);
+                    break;
                 case C.CodeKind.RETURN:
                     U.assert(code instanceof C.Return);
                     this.#compileReturn(code);
@@ -1095,6 +1099,15 @@ class Compiler {
         this.#compileExpr(code.green);
         this.#compileExpr(code.blue);
         this.#addCmd(Cmd.SET_COLOR);
+    }
+
+    #compileRandomize(code: C.Randomize): void {
+        if (code.seed === null) {
+            this.#addCmd(Cmd.RANDOMIZE_TIME);
+        } else {
+            this.#compileExpr(code.seed);
+            this.#addCmd(Cmd.RANDOMIZE_SEED);
+        }
     }
 }
 

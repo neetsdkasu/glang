@@ -52,13 +52,14 @@
                     <summary>source code</summary>
                     <textarea id="code" cols="100" rows="40">' Sample Program
 Sub Main()
+    Randomize
     Call DrawStar(60, 100, 100, 0,  0xFF0000)
     Call DrawStar(50, 200, 100, 30, 0x00FF00)
     Call DrawStar(80, 150, 250, 70, 0x0000FF)
-    For let i = 1 To 10
+    For let i = 1 To 30
         let r = random() % 20 + 10
-        let x = random() % 400 + r
-        let y = random() % 400 + r
+        let x = random() % (width() - 2*r) + r
+        let y = random() % (height() - 2*r) + r
         let rot = random() % 360
         let red = random() & 0xFF
         let green = random() & 0xFF

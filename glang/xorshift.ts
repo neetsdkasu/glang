@@ -6,7 +6,11 @@ export class Xorshift32 {
     #value: number;
 
     constructor(seed: number) {
-        this.#value = Math.max(Math.imul(Math.abs(seed), 1), 1);
+        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
+    }
+
+    setSeed(seed: number): void {
+        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
     }
 
     gen(): number {

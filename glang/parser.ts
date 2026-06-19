@@ -72,6 +72,7 @@ enum Keyword {
     LET = "let",
     MAIN = "main",
     PRINT = "print",
+    RANDOMIZE = "randomize",
     RETURN = "return",
     SETCOLOR = "setcolor",
     STEP = "step",
@@ -238,6 +239,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "public",
     "push",
     "queue",
+    Keyword.RANDOMIZE,
     "range",
     "read",
     "readonly",
@@ -398,7 +400,9 @@ const StdFuncWordMap: Readonly<Map<string,C.StdFuncInfo>> = Object.freeze(new Ma
     new C.StdFuncInfo("random", new C.RetArg(C.Vtype.INTEGER, []), [new C.Overload(StdFunc.RANDOM, new C.RetArg(C.Vtype.INTEGER, []))], C.SideEffect.CHANGE_RUNNER_STATE),
     new C.StdFuncInfo("log", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE),
     new C.StdFuncInfo("log2", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG2, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE),
-    new C.StdFuncInfo("log10", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG10, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE)
+    new C.StdFuncInfo("log10", new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]), [new C.Overload(StdFunc.LOG10, new C.RetArg(C.Vtype.FLOATING_POINT, [C.Vtype.FLOATING_POINT]))], C.SideEffect.NONE),
+    new C.StdFuncInfo("width", new C.RetArg(C.Vtype.INTEGER, []), [new C.Overload(StdFunc.WIDTH, new C.RetArg(C.Vtype.INTEGER, []))], C.SideEffect.NONE),
+    new C.StdFuncInfo("height", new C.RetArg(C.Vtype.INTEGER, []), [new C.Overload(StdFunc.HEIGHT, new C.RetArg(C.Vtype.INTEGER, []))], C.SideEffect.NONE)
 ].map( fi => [fi.name, fi] )));
 
 enum Symbols {
@@ -1133,6 +1137,9 @@ class Parser {
                     break;
                 case Keyword.PRINT:
                     res = this.#parsePrint(line);
+                    break;
+                case Keyword.RANDOMIZE:
+                    res = this.#parseRandomize(line);
                     break;
                 case Keyword.RETURN:
                     res = this.#parseReturn(line);
@@ -3634,6 +3641,47 @@ class Parser {
 
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED setcolor.");
+
+        return OK;
+    }
+
+    #parseRandomize(line: RQueue<Token>): Result<undefined,ParserError> {
+        const randomizeToken = line.dequeue()!;
+        const src: Token[] = [randomizeToken];
+
+        log.debug("PARSE randomize...");
+
+        let seed: C.Expr | null;
+
+        if (line.front!.tokenType !== TokenType.EOL) {
+            const seedToken = line.front;
+
+            const seedRes = this.#parseExprTokens(line, src);
+            if (seedRes.isErr) {
+                return Result.err(seedRes.error);
+            }
+            seed = seedRes.result;
+            if (C.inferVtype(seed.vtype, C.Vtype.INTEGER).isErr) {
+                return syntaxError(`SEEDの型は${Keyword.INTEGER}は必要です`, seedToken!);
+            }
+        } else {
+            seed = null;
+        }
+        
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.CHANGE_RUNNER_STATE);
+
+        const code = new C.Randomize(src, seed);
+        this.#env.addCode(code);
+
+        log.debug("PARSED randomize.");
+        log.dump("src", Token.lineToString, src);
 
         return OK;
     }

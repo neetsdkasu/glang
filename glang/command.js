@@ -155,7 +155,9 @@ export var Cmd;
     Cmd[Cmd["POP_BLOCK"] = 117] = "POP_BLOCK";
     Cmd[Cmd["PRINT"] = 118] = "PRINT";
     Cmd[Cmd["DRAW_LINE"] = 119] = "DRAW_LINE";
-    Cmd[Cmd["SET_COLOR"] = 120] = "SET_COLOR"; // SET_COLOR () [..., R, G, B] => [...]
+    Cmd[Cmd["SET_COLOR"] = 120] = "SET_COLOR";
+    Cmd[Cmd["RANDOMIZE_TIME"] = 121] = "RANDOMIZE_TIME";
+    Cmd[Cmd["RANDOMIZE_SEED"] = 122] = "RANDOMIZE_SEED"; // RANDOMZIE_SEED () [..., seed-integer] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {
@@ -210,5 +212,7 @@ export var StdFunc;
     StdFunc[StdFunc["LOG"] = 48] = "LOG";
     StdFunc[StdFunc["LOG2"] = 49] = "LOG2";
     StdFunc[StdFunc["LOG10"] = 50] = "LOG10";
+    StdFunc[StdFunc["WIDTH"] = 51] = "WIDTH";
+    StdFunc[StdFunc["HEIGHT"] = 52] = "HEIGHT";
 })(StdFunc || (StdFunc = {}));
 export default {};

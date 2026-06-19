@@ -4,7 +4,10 @@
 export class Xorshift32 {
     #value;
     constructor(seed) {
-        this.#value = Math.max(Math.imul(Math.abs(seed), 1), 1);
+        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
+    }
+    setSeed(seed) {
+        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
     }
     gen() {
         let x = this.#value;

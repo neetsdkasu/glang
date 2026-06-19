@@ -163,7 +163,9 @@ export enum Cmd {
     POP_BLOCK,      // POP_BLOCK ( blockId ) : pop block from Id's blockStack
     PRINT,          // PRINT ( N ) [..., value1-any, value2-any, ... valueN-any] => [...] : print N values on stderr
     DRAW_LINE,      // DRAW_LINE () [..., x1, y1, x2, y2] => [...]
-    SET_COLOR       // SET_COLOR () [..., R, G, B] => [...]
+    SET_COLOR,      // SET_COLOR () [..., R, G, B] => [...]
+    RANDOMIZE_TIME, // RANDOMIZE_TIME () [...] => [...]
+    RANDOMIZE_SEED  // RANDOMZIE_SEED () [..., seed-integer] => [...]
 }
 
 export enum StdFunc {
@@ -217,7 +219,9 @@ export enum StdFunc {
     RANDOM,
     LOG,
     LOG2,
-    LOG10
+    LOG10,
+    WIDTH,
+    HEIGHT
 }
 
 export default {};

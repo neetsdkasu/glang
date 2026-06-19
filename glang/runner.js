@@ -1124,6 +1124,18 @@ export class Runner {
                     this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
                 }
                 break;
+            case Cmd.RANDOMIZE_TIME:
+                {
+                    const seed = Date.now();
+                    this.#rng.setSeed(seed);
+                }
+                break;
+            case Cmd.RANDOMIZE_SEED:
+                {
+                    const seed = this.#valueStack.pop();
+                    this.#rng.setSeed(seed);
+                }
+                break;
             default:
                 throw new U.Unimplemented(Cmd[cmd]);
         }
@@ -1605,6 +1617,16 @@ export class Runner {
                         return this.#runtimeError(this.#pos - 2, `wrong argument: log10(${x})`);
                     }
                     this.#valueStack.push(value);
+                }
+                break;
+            case StdFunc.WIDTH:
+                {
+                    this.#valueStack.push(this.#io.g.width);
+                }
+                break;
+            case StdFunc.HEIGHT:
+                {
+                    this.#valueStack.push(this.#io.g.height);
                 }
                 break;
             default:
