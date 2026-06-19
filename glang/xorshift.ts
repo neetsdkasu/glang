@@ -2,15 +2,23 @@
 // Pseudo Random Number Generator ( Xorshift )
 //
 
+const DEFAULT_SEED32 = 0xC0FFEE;
+
 export class Xorshift32 {
     #value: number;
 
     constructor(seed: number) {
-        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
+        this.#value = Math.imul(seed, 1);
+        if (this.#value === 0) {
+            this.#value = DEFAULT_SEED32;
+        }
     }
 
     setSeed(seed: number): void {
-        this.#value = Math.max(Math.abs(Math.imul(seed, 1)), 1);
+        this.#value = Math.imul(seed, 1);
+        if (this.#value === 0) {
+            this.#value = DEFAULT_SEED32;
+        }
     }
 
     gen(): number {
