@@ -4,7 +4,6 @@
 import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("runner", LogLevel.ALL);
 import { Cmd, StdFunc } from "./command.js";
-import { Result } from "./utils.js";
 import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
 export class RuntimeError {
@@ -18,8 +17,14 @@ export class RuntimeError {
         return `RuntimeError{ msg: ${this.msg}, src: ${this.src} }`;
     }
 }
-const RUNNING = Result.ok(true);
-const ENDED = Result.ok(false);
+export var State;
+(function (State) {
+    State[State["RUNNING"] = 0] = "RUNNING";
+    State[State["INTERRUPTED"] = 1] = "INTERRUPTED";
+    State[State["ERROR"] = 2] = "ERROR";
+    State[State["ENDED"] = 3] = "ENDED";
+})(State || (State = {}));
+;
 function isValidIndex(arr, index) {
     return 0 <= index && index < arr.length;
 }
@@ -39,7 +44,9 @@ export class Runner {
     #sourceMap;
     #pos = 0;
     #isRunning = true;
-    #error = U.Option.none();
+    #error = null;
+    #state = State.RUNNING;
+    #cmd = Cmd.NOP;
     #block;
     #blockStack;
     #valueStack = [];
@@ -53,6 +60,21 @@ export class Runner {
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#io = io;
     }
+    get isRunning() {
+        return this.#isRunning;
+    }
+    get hasError() {
+        return this.#error !== null;
+    }
+    get error() {
+        return this.#error;
+    }
+    get state() {
+        return this.#state;
+    }
+    get lastCommand() {
+        return this.#cmd;
+    }
     #findSource(addr) {
         const index = U.binarySearch(this.#sourceMap, (s => s.addr.min >= addr));
         if (index !== undefined && this.#sourceMap[index].addr.include(addr)) {
@@ -62,48 +84,46 @@ export class Runner {
     }
     #runtimeError(addr, msg) {
         const src = this.#findSource(addr);
-        const err = Result.err(new RuntimeError(msg, src));
-        this.#error = U.Option.some(err);
+        this.#error = new RuntimeError(msg, src);
+        this.#state = State.ERROR;
         this.#isRunning = false;
-        return err;
-    }
-    run() {
-        while (this.#isRunning) {
-            this.step();
-        }
-        return this.#error.getOr(ENDED);
-    }
-    stepN(n) {
-        for (let i = 1; i < n; i++) {
-            this.step();
-        }
-        return this.step();
     }
     step() {
         if (!this.#isRunning) {
-            return this.#error.getOr(ENDED);
+            if (this.#state === State.INTERRUPTED) {
+                this.#isRunning = true;
+                this.#state = State.RUNNING;
+            }
+            else {
+                return;
+            }
         }
-        const cmd = this.#program[this.#pos++];
+        this.#cmd = this.#program[this.#pos++];
         // log.dump("pos", this.#pos);
-        // log.dump("cmd", Cmd[cmd]);
-        switch (cmd) {
+        // log.dump("cmd", Cmd[this.#cmd]);
+        switch (this.#cmd) {
             case Cmd.NOP:
-                break;
+                {
+                    this.#isRunning = false;
+                    this.#state = State.INTERRUPTED;
+                }
+                return;
             case Cmd.END:
                 {
                     this.#isRunning = false;
+                    this.#state = State.ENDED;
                 }
-                return ENDED;
+                return;
             case Cmd.POP:
                 {
                     this.#valueStack.pop();
                 }
-                break;
+                return;
             case Cmd.DUP:
                 {
                     this.#valueStack.push(this.#valueStack.at(-1));
                 }
-                break;
+                return;
             case Cmd.DUPN:
                 {
                     const N = this.#program[this.#pos++];
@@ -111,7 +131,7 @@ export class Runner {
                         this.#valueStack.push(this.#valueStack.at(-N));
                     }
                 }
-                break;
+                return;
             case Cmd.SWAP:
                 {
                     const oldTop = this.#valueStack.pop();
@@ -119,51 +139,51 @@ export class Runner {
                     this.#valueStack.push(oldTop);
                     this.#valueStack.push(newTop);
                 }
-                break;
+                return;
             case Cmd.BPUSH_TRUE:
                 {
                     this.#valueStack.push(true);
                 }
-                break;
+                return;
             case Cmd.BPUSH_FALSE:
                 {
                     this.#valueStack.push(false);
                 }
-                break;
+                return;
             case Cmd.BNOT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(!value);
                 }
-                break;
+                return;
             case Cmd.BAND:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left && right);
                 }
-                break;
+                return;
             case Cmd.BOR:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left || right);
                 }
-                break;
+                return;
             case Cmd.BEQ:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left === right);
                 }
-                break;
+                return;
             case Cmd.BNE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left !== right);
                 }
-                break;
+                return;
             case Cmd.GET_BVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -171,7 +191,7 @@ export class Runner {
                     const value = this.#block[blockId][blockVarId];
                     this.#valueStack.push(value);
                 }
-                break;
+                return;
             case Cmd.SET_BVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -179,19 +199,21 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     this.#block[blockId][blockVarId] = value;
                 }
-                break;
+                return;
             case Cmd.GET_BARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        this.#valueStack.push(arr[index1]);
                     }
-                    this.#valueStack.push(arr[index1]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_BARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -199,12 +221,14 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        arr[index1] = value;
                     }
-                    arr[index1] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_BARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -212,12 +236,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        this.#valueStack.push(arr[index1][index2]);
                     }
-                    this.#valueStack.push(arr[index1][index2]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_BARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -226,12 +252,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        arr[index1][index2] = value;
                     }
-                    arr[index1][index2] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_BARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -240,12 +268,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        this.#valueStack.push(arr[index1][index2][index3]);
                     }
-                    this.#valueStack.push(arr[index1][index2][index3]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_BARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -255,98 +285,102 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        arr[index1][index2][index3] = value;
                     }
-                    arr[index1][index2][index3] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.FPUSH:
                 {
                     const floatValue = this.#program[this.#pos++];
                     this.#valueStack.push(floatValue);
                 }
-                break;
+                return;
             case Cmd.FADD:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left + right);
                 }
-                break;
+                return;
             case Cmd.FSUB:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left - right);
                 }
-                break;
+                return;
             case Cmd.FMUL:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left * right);
                 }
-                break;
+                return;
             case Cmd.FDIV:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     const value = left / right;
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 1, `wrong divide: ${left} / ${right}`);
+                        this.#runtimeError(this.#pos - 1, `wrong divide: ${left} / ${right}`);
                     }
-                    this.#valueStack.push(value);
+                    else {
+                        this.#valueStack.push(value);
+                    }
                 }
-                break;
+                return;
             case Cmd.FNEGA:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(-value);
                 }
-                break;
+                return;
             case Cmd.FEQ:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left === right);
                 }
-                break;
+                return;
             case Cmd.FNE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left !== right);
                 }
-                break;
+                return;
             case Cmd.FLT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left < right);
                 }
-                break;
+                return;
             case Cmd.FLE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left <= right);
                 }
-                break;
+                return;
             case Cmd.FGT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left > right);
                 }
-                break;
+                return;
             case Cmd.FGE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left >= right);
                 }
-                break;
+                return;
             case Cmd.GET_FVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -354,7 +388,7 @@ export class Runner {
                     const value = this.#block[blockId][blockVarId];
                     this.#valueStack.push(value);
                 }
-                break;
+                return;
             case Cmd.SET_FVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -362,19 +396,21 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     this.#block[blockId][blockVarId] = value;
                 }
-                break;
+                return;
             case Cmd.GET_FARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        this.#valueStack.push(arr[index1]);
                     }
-                    this.#valueStack.push(arr[index1]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_FARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -382,12 +418,14 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        arr[index1] = value;
                     }
-                    arr[index1] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_FARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -395,12 +433,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        this.#valueStack.push(arr[index1][index2]);
                     }
-                    this.#valueStack.push(arr[index1][index2]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_FARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -409,12 +449,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        arr[index1][index2] = value;
                     }
-                    arr[index1][index2] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_FARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -423,12 +465,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        this.#valueStack.push(arr[index1][index2][index3]);
                     }
-                    this.#valueStack.push(arr[index1][index2][index3]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_FARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -438,165 +482,171 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        arr[index1][index2][index3] = value;
                     }
-                    arr[index1][index2][index3] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.IPUSH:
                 {
                     const intValue = this.#program[this.#pos++];
                     this.#valueStack.push(intValue);
                     // log.dump("intValue", intValue);
                 }
-                break;
+                return;
             case Cmd.IADD:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push((left + right) & 0xFFFFFFFF);
                 }
-                break;
+                return;
             case Cmd.ISUB:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push((left - right) & 0xFFFFFFFF);
                 }
-                break;
+                return;
             case Cmd.IMUL:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.imul(left, right));
                 }
-                break;
+                return;
             case Cmd.IDIV:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     const value = left / right;
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 1, `wrong divide: ${left} / ${right}`);
+                        this.#runtimeError(this.#pos - 1, `wrong divide: ${left} / ${right}`);
                     }
-                    this.#valueStack.push(Math.trunc(value));
+                    else {
+                        this.#valueStack.push(Math.trunc(value));
+                    }
                 }
-                break;
+                return;
             case Cmd.IREM:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     const value = left % right;
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 1, `wrong divide: ${left} % ${right}`);
+                        this.#runtimeError(this.#pos - 1, `wrong divide: ${left} % ${right}`);
                     }
-                    this.#valueStack.push(value);
+                    else {
+                        this.#valueStack.push(value);
+                    }
                 }
-                break;
+                return;
             case Cmd.INEGA:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(-value);
                 }
-                break;
+                return;
             case Cmd.IASHIFTL:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(0xFFFFFFFF & ((0x80000000 & left) | (left << right)));
                 }
-                break;
+                return;
             case Cmd.IASHIFTR:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(0xFFFFFFFF & (left >> right));
                 }
-                break;
+                return;
             case Cmd.ILSHIFTL:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(0xFFFFFFFF & (left << right));
                 }
-                break;
+                return;
             case Cmd.ILSHIFTR:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(0xFFFFFFFF & (left >>> right));
                 }
-                break;
+                return;
             case Cmd.INOT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(0xFFFFFFFF & (~value));
                 }
-                break;
+                return;
             case Cmd.IAND:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left & right);
                 }
-                break;
+                return;
             case Cmd.IOR:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left | right);
                 }
-                break;
+                return;
             case Cmd.IXOR:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left ^ right);
                 }
-                break;
+                return;
             case Cmd.IEQ:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left === right);
                 }
-                break;
+                return;
             case Cmd.INE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left !== right);
                 }
-                break;
+                return;
             case Cmd.ILT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left < right);
                 }
-                break;
+                return;
             case Cmd.ILE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left <= right);
                 }
-                break;
+                return;
             case Cmd.IGT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left > right);
                 }
-                break;
+                return;
             case Cmd.IGE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left >= right);
                 }
-                break;
+                return;
             case Cmd.GET_IVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -604,7 +654,7 @@ export class Runner {
                     const value = this.#block[blockId][blockVarId];
                     this.#valueStack.push(value);
                 }
-                break;
+                return;
             case Cmd.SET_IVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -612,19 +662,21 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     this.#block[blockId][blockVarId] = value;
                 }
-                break;
+                return;
             case Cmd.GET_IARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        this.#valueStack.push(arr[index1]);
                     }
-                    this.#valueStack.push(arr[index1]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_IARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -632,12 +684,14 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        arr[index1] = value;
                     }
-                    arr[index1] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -645,12 +699,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        this.#valueStack.push(arr[index1][index2]);
                     }
-                    this.#valueStack.push(arr[index1][index2]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -659,12 +715,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        arr[index1][index2] = value;
                     }
-                    arr[index1][index2] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_IARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -673,12 +731,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        this.#valueStack.push(arr[index1][index2][index3]);
                     }
-                    this.#valueStack.push(arr[index1][index2][index3]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_IARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -688,68 +748,70 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        arr[index1][index2][index3] = value;
                     }
-                    arr[index1][index2][index3] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SPUSH:
                 {
                     const litStrId = this.#program[this.#pos++];
                     const value = this.#litStrPool[litStrId];
                     this.#valueStack.push(value);
                 }
-                break;
+                return;
             case Cmd.SCONCAT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left + right);
                 }
-                break;
+                return;
             case Cmd.SEQ:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left === right);
                 }
-                break;
+                return;
             case Cmd.SNE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left !== right);
                 }
-                break;
+                return;
             case Cmd.SLT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left < right);
                 }
-                break;
+                return;
             case Cmd.SLE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left <= right);
                 }
-                break;
+                return;
             case Cmd.SGT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left > right);
                 }
-                break;
+                return;
             case Cmd.SGE:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(left >= right);
                 }
-                break;
+                return;
             case Cmd.GET_SVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -757,7 +819,7 @@ export class Runner {
                     const value = this.#block[blockId][blockVarId];
                     this.#valueStack.push(value);
                 }
-                break;
+                return;
             case Cmd.SET_SVAR:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -765,19 +827,21 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     this.#block[blockId][blockVarId] = value;
                 }
-                break;
+                return;
             case Cmd.GET_SARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        this.#valueStack.push(arr[index1]);
                     }
-                    this.#valueStack.push(arr[index1]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_SARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -785,12 +849,14 @@ export class Runner {
                     const value = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex(arr, index1)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    if (isValidIndex(arr, index1)) {
+                        arr[index1] = value;
                     }
-                    arr[index1] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_SARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -798,12 +864,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        this.#valueStack.push(arr[index1][index2]);
                     }
-                    this.#valueStack.push(arr[index1][index2]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_SARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -812,12 +880,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex2(arr, index1, index2)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    if (isValidIndex2(arr, index1, index2)) {
+                        arr[index1][index2] = value;
                     }
-                    arr[index1][index2] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.GET_SARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -826,12 +896,14 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        this.#valueStack.push(arr[index1][index2][index3]);
                     }
-                    this.#valueStack.push(arr[index1][index2][index3]);
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.SET_SARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -841,96 +913,98 @@ export class Runner {
                     const index2 = this.#valueStack.pop();
                     const index1 = this.#valueStack.pop();
                     const arr = this.#block[blockId][blockVarId];
-                    if (!isValidIndex3(arr, index1, index2, index3)) {
-                        return this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    if (isValidIndex3(arr, index1, index2, index3)) {
+                        arr[index1][index2][index3] = value;
                     }
-                    arr[index1][index2][index3] = value;
+                    else {
+                        this.#runtimeError(this.#pos - 3, `index out of bound: [${index1}][${index2}][${index3}]`);
+                    }
                 }
-                break;
+                return;
             case Cmd.APUSH_BARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_BARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_BARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_FARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_FARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_FARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_IARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_IARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_SARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_SARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.APUSH_SARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
                     const blockVarId = this.#program[this.#pos++];
                     this.#valueStack.push(blockId, blockVarId);
                 }
-                break;
+                return;
             case Cmd.INIT_BARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -938,7 +1012,7 @@ export class Runner {
                     const size1 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill(false);
                 }
-                break;
+                return;
             case Cmd.INIT_BARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -947,7 +1021,7 @@ export class Runner {
                     const size2 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(false));
                 }
-                break;
+                return;
             case Cmd.INIT_BARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -958,7 +1032,7 @@ export class Runner {
                     this.#block[blockId][blockVarId] = new Array(size1).fill([])
                         .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(false)));
                 }
-                break;
+                return;
             case Cmd.INIT_FARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -966,7 +1040,7 @@ export class Runner {
                     const size1 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill(0.0);
                 }
-                break;
+                return;
             case Cmd.INIT_FARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -975,7 +1049,7 @@ export class Runner {
                     const size2 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(0));
                 }
-                break;
+                return;
             case Cmd.INIT_FARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -986,7 +1060,7 @@ export class Runner {
                     this.#block[blockId][blockVarId] = new Array(size1).fill([])
                         .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(0.0)));
                 }
-                break;
+                return;
             case Cmd.INIT_IARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -994,7 +1068,7 @@ export class Runner {
                     const size1 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill(0);
                 }
-                break;
+                return;
             case Cmd.INIT_IARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1003,7 +1077,7 @@ export class Runner {
                     const size2 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(0));
                 }
-                break;
+                return;
             case Cmd.INIT_IARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1014,7 +1088,7 @@ export class Runner {
                     this.#block[blockId][blockVarId] = new Array(size1).fill([])
                         .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill(0)));
                 }
-                break;
+                return;
             case Cmd.INIT_SARR1D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1022,7 +1096,7 @@ export class Runner {
                     const size1 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill("");
                 }
-                break;
+                return;
             case Cmd.INIT_SARR2D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1031,7 +1105,7 @@ export class Runner {
                     const size2 = this.#program[this.#pos++];
                     this.#block[blockId][blockVarId] = new Array(size1).fill([]).map(() => new Array(size2).fill(""));
                 }
-                break;
+                return;
             case Cmd.INIT_SARR3D:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1042,13 +1116,13 @@ export class Runner {
                     this.#block[blockId][blockVarId] = new Array(size1).fill([])
                         .map(() => new Array(size2).fill([]).map(() => new Array(size3).fill("")));
                 }
-                break;
+                return;
             case Cmd.JUMP:
                 {
                     const addr = this.#program[this.#pos++];
                     this.#pos = addr;
                 }
-                break;
+                return;
             case Cmd.JUMP_IF_TRUE:
                 {
                     const addr = this.#program[this.#pos++];
@@ -1057,7 +1131,7 @@ export class Runner {
                         this.#pos = addr;
                     }
                 }
-                break;
+                return;
             case Cmd.JUMP_IF_FALSE:
                 {
                     const addr = this.#program[this.#pos++];
@@ -1066,12 +1140,13 @@ export class Runner {
                         this.#pos = addr;
                     }
                 }
-                break;
+                return;
             case Cmd.CALL_STDFUNC:
                 {
                     const stdfuncId = this.#program[this.#pos++];
-                    return this.#callStdfunc(stdfuncId);
+                    this.#callStdfunc(stdfuncId);
                 }
+                return;
             case Cmd.CALL_USERFUNC:
                 {
                     const userfuncAddress = this.#program[this.#pos++];
@@ -1079,13 +1154,13 @@ export class Runner {
                     this.#pos = userfuncAddress;
                     this.#addressStack.push(returnAddress);
                 }
-                break;
+                return;
             case Cmd.RET:
                 {
                     const addr = this.#addressStack.pop();
                     this.#pos = addr;
                 }
-                break;
+                return;
             case Cmd.PUSH_BLOCK:
                 {
                     const blockId = this.#program[this.#pos++];
@@ -1093,20 +1168,20 @@ export class Runner {
                     this.#blockStack[blockId].push(this.#block[blockId]);
                     this.#block[blockId] = new Array(blockVarCount).fill(undefined);
                 }
-                break;
+                return;
             case Cmd.POP_BLOCK:
                 {
                     const blockId = this.#program[this.#pos++];
                     this.#block[blockId] = this.#blockStack[blockId].pop();
                 }
-                break;
+                return;
             case Cmd.PRINT:
                 {
                     const N = this.#program[this.#pos++];
                     const arr = this.#valueStack.splice(-N).map(e => `${e}`);
                     this.#io.cerr(arr.join(" "));
                 }
-                break;
+                return;
             case Cmd.DRAW_LINE:
                 {
                     const y2 = this.#valueStack.pop();
@@ -1115,7 +1190,7 @@ export class Runner {
                     const x1 = this.#valueStack.pop();
                     this.#io.g.drawLine(x1, y1, x2, y2);
                 }
-                break;
+                return;
             case Cmd.SET_COLOR:
                 {
                     const b = this.#valueStack.pop();
@@ -1123,60 +1198,59 @@ export class Runner {
                     const r = this.#valueStack.pop();
                     this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
                 }
-                break;
+                return;
             case Cmd.RANDOMIZE_TIME:
                 {
                     const seed = Date.now();
                     this.#rng.setSeed(seed);
                 }
-                break;
+                return;
             case Cmd.RANDOMIZE_SEED:
                 {
                     const seed = this.#valueStack.pop();
                     this.#rng.setSeed(seed);
                 }
-                break;
+                return;
             default:
-                throw new U.Unimplemented(Cmd[cmd]);
+                throw new U.Unimplemented(Cmd[this.#cmd]);
         }
-        return RUNNING;
     }
     #callStdfunc(stdfuncId) {
         // log.dump("stdfuncId", StdFunc[stdfuncId]);
         switch (stdfuncId) {
             case StdFunc.CBOOL_FROM_BOOLEAN:
                 // 処理不要.
-                break;
+                return;
             case StdFunc.CBOOL_FROM_FLOAT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(value != 0.0);
                 }
-                break;
+                return;
             case StdFunc.CBOOL_FROM_INTEGER:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(value !== 0);
                 }
-                break;
+                return;
             case StdFunc.CBOOL_FROM_STRING:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(value.length > 0);
                 }
-                break;
+                return;
             case StdFunc.CFLOAT_FROM_BOOLEAN:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(value ? 1.0 : 0.0);
                 }
-                break;
+                return;
             case StdFunc.CFLOAT_FROM_FLOAT:
                 // 処理不要.
-                break;
+                return;
             case StdFunc.CFLOAT_FROM_INTEGER:
                 // 処理不要.
-                break;
+                return;
             case StdFunc.CFLOAT_FROM_STRING:
                 {
                     const strValue = this.#valueStack.pop();
@@ -1188,22 +1262,22 @@ export class Runner {
                         this.#valueStack.push(floatValue);
                     }
                 }
-                break;
+                return;
             case StdFunc.CINT_FROM_BOOLEAN:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(value ? 1 : 0);
                 }
-                break;
+                return;
             case StdFunc.CINT_FROM_FLOAT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.imul(value, 1));
                 }
-                break;
+                return;
             case StdFunc.CINT_FROM_INTEGER:
                 // 処理不要.
-                break;
+                return;
             case StdFunc.CINT_FROM_STRING:
                 {
                     const strValue = this.#valueStack.pop();
@@ -1215,40 +1289,40 @@ export class Runner {
                         this.#valueStack.push(intValue);
                     }
                 }
-                break;
+                return;
             case StdFunc.CSTR_FROM_BOOLEAN:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(`${value}`);
                 }
-                break;
+                return;
             case StdFunc.CSTR_FROM_FLOAT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(`${value}`);
                 }
-                break;
+                return;
             case StdFunc.CSTR_FROM_INTEGER:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(`${value}`);
                 }
-                break;
+                return;
             case StdFunc.CSTR_FROM_STRING:
                 // 処理不要.
-                break;
+                return;
             case StdFunc.SIN:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.sin(value));
                 }
-                break;
+                return;
             case StdFunc.COS:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.cos(value));
                 }
-                break;
+                return;
             case StdFunc.TAN:
                 {
                     const value = this.#valueStack.pop();
@@ -1258,88 +1332,90 @@ export class Runner {
                     }
                     this.#valueStack.push(tanValue);
                 }
-                break;
+                return;
             case StdFunc.ABS_FLOAT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.abs(value));
                 }
-                break;
+                return;
             case StdFunc.ABS_INTGER:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.abs(value));
                 }
-                break;
+                return;
             case StdFunc.SIGN_FLOAT:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.sign(value));
                 }
-                break;
+                return;
             case StdFunc.SIGN_INTEGER:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.sign(value));
                 }
-                break;
+                return;
             case StdFunc.MIN_FLOAT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.min(left, right));
                 }
-                break;
+                return;
             case StdFunc.MIN_INTEGER:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.min(left, right));
                 }
-                break;
+                return;
             case StdFunc.MAX_FLOAT:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.max(left, right));
                 }
-                break;
+                return;
             case StdFunc.MAX_INTEGER:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.max(left, right));
                 }
-                break;
+                return;
             case StdFunc.POW:
                 {
                     const right = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#valueStack.push(Math.pow(left, right));
                 }
-                break;
+                return;
             case StdFunc.SQRT:
                 {
                     const value = this.#valueStack.pop();
                     const sqrtValue = Math.sqrt(value);
                     if (U.isInfinityOrNaN(sqrtValue)) {
-                        return this.#runtimeError(this.#pos - 2, `wrong sqrt argument: sqrt(${value})`);
+                        this.#runtimeError(this.#pos - 2, `wrong sqrt argument: sqrt(${value})`);
                     }
-                    this.#valueStack.push(sqrtValue);
+                    else {
+                        this.#valueStack.push(sqrtValue);
+                    }
                 }
-                break;
+                return;
             case StdFunc.FLOOR:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.floor(value));
                 }
-                break;
+                return;
             case StdFunc.CEIL:
                 {
                     const value = this.#valueStack.pop();
                     this.#valueStack.push(Math.ceil(value));
                 }
-                break;
+                return;
             case StdFunc.SIZE_BARR1D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1350,10 +1426,10 @@ export class Runner {
                         this.#valueStack.push(arr.length);
                     }
                     else {
-                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                        this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_BARR2D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1363,15 +1439,15 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_BARR3D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1381,18 +1457,18 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         case 3:
                             this.#valueStack.push(arr[0][0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_FARR1D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1403,10 +1479,10 @@ export class Runner {
                         this.#valueStack.push(arr.length);
                     }
                     else {
-                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                        this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_FARR2D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1416,15 +1492,15 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_FARR3D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1434,18 +1510,18 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         case 3:
                             this.#valueStack.push(arr[0][0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_IARR1D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1456,10 +1532,10 @@ export class Runner {
                         this.#valueStack.push(arr.length);
                     }
                     else {
-                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                        this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_IARR2D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1469,15 +1545,15 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_IARR3D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1487,18 +1563,18 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         case 3:
                             this.#valueStack.push(arr[0][0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_SARR1D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1509,10 +1585,10 @@ export class Runner {
                         this.#valueStack.push(arr.length);
                     }
                     else {
-                        return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                        this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_SARR2D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1522,15 +1598,15 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SIZE_SARR3D:
                 {
                     const dim = this.#valueStack.pop();
@@ -1540,18 +1616,18 @@ export class Runner {
                     switch (dim) {
                         case 1:
                             this.#valueStack.push(arr.length);
-                            break;
+                            return;
                         case 2:
                             this.#valueStack.push(arr[0].length);
-                            break;
+                            return;
                         case 3:
                             this.#valueStack.push(arr[0][0].length);
-                            break;
+                            return;
                         default:
-                            return this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
+                            this.#runtimeError(this.#pos - 2, `wrong dimension: size(*,${dim})`);
                     }
                 }
-                break;
+                return;
             case StdFunc.SEL_BOOLEAN:
                 {
                     const falseValue = this.#valueStack.pop();
@@ -1559,7 +1635,7 @@ export class Runner {
                     const testValue = this.#valueStack.pop();
                     this.#valueStack.push(testValue ? trueValue : falseValue);
                 }
-                break;
+                return;
             case StdFunc.SEL_FLOAT:
                 {
                     const falseValue = this.#valueStack.pop();
@@ -1567,7 +1643,7 @@ export class Runner {
                     const testValue = this.#valueStack.pop();
                     this.#valueStack.push(testValue ? trueValue : falseValue);
                 }
-                break;
+                return;
             case StdFunc.SEL_INTEGER:
                 {
                     const falseValue = this.#valueStack.pop();
@@ -1575,7 +1651,7 @@ export class Runner {
                     const testValue = this.#valueStack.pop();
                     this.#valueStack.push(testValue ? trueValue : falseValue);
                 }
-                break;
+                return;
             case StdFunc.SEL_STRING:
                 {
                     const falseValue = this.#valueStack.pop();
@@ -1583,56 +1659,61 @@ export class Runner {
                     const testValue = this.#valueStack.pop();
                     this.#valueStack.push(testValue ? trueValue : falseValue);
                 }
-                break;
+                return;
             case StdFunc.RANDOM:
                 {
                     this.#valueStack.push(this.#rng.gen() >>> 1);
                 }
-                break;
+                return;
             case StdFunc.LOG:
                 {
                     const x = this.#valueStack.pop();
                     const value = Math.log(x);
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 2, `wrong argument: log(${x})`);
+                        this.#runtimeError(this.#pos - 2, `wrong argument: log(${x})`);
                     }
-                    this.#valueStack.push(value);
+                    else {
+                        this.#valueStack.push(value);
+                    }
                 }
-                break;
+                return;
             case StdFunc.LOG2:
                 {
                     const x = this.#valueStack.pop();
                     const value = Math.log2(x);
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 2, `wrong argument: log2(${x})`);
+                        this.#runtimeError(this.#pos - 2, `wrong argument: log2(${x})`);
                     }
-                    this.#valueStack.push(value);
+                    else {
+                        this.#valueStack.push(value);
+                    }
                 }
-                break;
+                return;
             case StdFunc.LOG10:
                 {
                     const x = this.#valueStack.pop();
                     const value = Math.log10(x);
                     if (U.isInfinityOrNaN(value)) {
-                        return this.#runtimeError(this.#pos - 2, `wrong argument: log10(${x})`);
+                        this.#runtimeError(this.#pos - 2, `wrong argument: log10(${x})`);
                     }
-                    this.#valueStack.push(value);
+                    else {
+                        this.#valueStack.push(value);
+                    }
                 }
-                break;
+                return;
             case StdFunc.WIDTH:
                 {
                     this.#valueStack.push(this.#io.g.width);
                 }
-                break;
+                return;
             case StdFunc.HEIGHT:
                 {
                     this.#valueStack.push(this.#io.g.height);
                 }
-                break;
+                return;
             default:
                 throw new U.Unimplemented(StdFunc[stdfuncId]);
         }
-        return RUNNING;
     }
 }
 export default Runner;

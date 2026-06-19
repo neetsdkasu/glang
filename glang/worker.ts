@@ -7,7 +7,7 @@ const log = new Logger("worker", LogLevel.ALL);
 import CharReader from "./charreader.js";
 import Scanner, { Token } from "./scanner.js";
 import { Program  } from "./command.js";
-import Runner, { Gra, IO } from "./runner.js";
+import Runner, { Gra, IO, State as RunnerState } from "./runner.js";
 import * as compiler from "./compiler.js";
 import * as parser from "./parser.js";
 import * as U from "./utils.js";
@@ -88,9 +88,15 @@ let runner: Runner | null = null;
 
 function run(): void {
     U.assert(runner !== null);
-    const res = runner.run();
-    if (res.isErr) {
-        const err = res.error;
+    do {
+        runner.step();
+    } while (runner.isRunning);
+    if (runner.state === RunnerState.INTERRUPTED) {
+        setTimeout(run, 1);
+        return;
+    }
+    if (runner.hasError) {
+        const err = runner.error!;
         M.sendRuntimeError(self, err);
     } else {
         M.send(self, { kind: "Finished" });
@@ -98,6 +104,7 @@ function run(): void {
 }
 
 let stepSize: number = 0;
+let currentSteps: number = 0;
 
 function steps(): void {
     U.assert(runner !== null);
@@ -105,17 +112,30 @@ function steps(): void {
         M.send(self, { kind: "Stop" });
         return;
     }
-    const res = runner.stepN(stepSize);
-    if (res.isErr) {
-        const err = res.error;
-        M.sendRuntimeError(self, err);
-    } else if (res.result) {
-        self.setTimeout(steps, 1);
-    } else {
-        M.send(self, { kind: "Finished" });
+    if (currentSteps < stepSize) {
+        do {
+            runner.step();
+            currentSteps++;
+        } while (currentSteps < stepSize && runner.isRunning);
     }
+    switch (runner.state) {
+        case RunnerState.ENDED:
+            M.send(self, { kind: "Finished" });
+            return;
+        case RunnerState.ERROR:
+            U.assert(runner.error !== null);
+            const err = runner.error;
+            M.sendRuntimeError(self, err);
+            return;
+        case RunnerState.INTERRUPTED:
+        case RunnerState.RUNNING:
+            if (currentSteps === stepSize) {
+                currentSteps = 0;
+            }
+            setTimeout(steps, 1);
+            return;
+    } 
 }
-
 
 async function startRunner(cin: string): Promise<undefined> {
     U.assert(program !== null);
@@ -134,6 +154,7 @@ async function startRunner(cin: string): Promise<undefined> {
     if (stepSize === 0) {
         run();
     } else {
+        currentSteps = 0;
         steps();
     }
 }

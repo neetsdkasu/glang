@@ -5,7 +5,7 @@ import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("worker", LogLevel.ALL);
 import CharReader from "./charreader.js";
 import Scanner from "./scanner.js";
-import Runner from "./runner.js";
+import Runner, { State as RunnerState } from "./runner.js";
 import * as compiler from "./compiler.js";
 import * as parser from "./parser.js";
 import * as U from "./utils.js";
@@ -71,9 +71,15 @@ async function compile(textSrc) {
 let runner = null;
 function run() {
     U.assert(runner !== null);
-    const res = runner.run();
-    if (res.isErr) {
-        const err = res.error;
+    do {
+        runner.step();
+    } while (runner.isRunning);
+    if (runner.state === RunnerState.INTERRUPTED) {
+        setTimeout(run, 1);
+        return;
+    }
+    if (runner.hasError) {
+        const err = runner.error;
         M.sendRuntimeError(self, err);
     }
     else {
@@ -81,22 +87,35 @@ function run() {
     }
 }
 let stepSize = 0;
+let currentSteps = 0;
 function steps() {
     U.assert(runner !== null);
     if (stepSize < 0) {
         M.send(self, { kind: "Stop" });
         return;
     }
-    const res = runner.stepN(stepSize);
-    if (res.isErr) {
-        const err = res.error;
-        M.sendRuntimeError(self, err);
+    if (currentSteps < stepSize) {
+        do {
+            runner.step();
+            currentSteps++;
+        } while (currentSteps < stepSize && runner.isRunning);
     }
-    else if (res.result) {
-        self.setTimeout(steps, 1);
-    }
-    else {
-        M.send(self, { kind: "Finished" });
+    switch (runner.state) {
+        case RunnerState.ENDED:
+            M.send(self, { kind: "Finished" });
+            return;
+        case RunnerState.ERROR:
+            U.assert(runner.error !== null);
+            const err = runner.error;
+            M.sendRuntimeError(self, err);
+            return;
+        case RunnerState.INTERRUPTED:
+        case RunnerState.RUNNING:
+            if (currentSteps === stepSize) {
+                currentSteps = 0;
+            }
+            setTimeout(steps, 1);
+            return;
     }
 }
 async function startRunner(cin) {
@@ -117,6 +136,7 @@ async function startRunner(cin) {
         run();
     }
     else {
+        currentSteps = 0;
         steps();
     }
 }
