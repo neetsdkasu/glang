@@ -165,7 +165,9 @@ export enum Cmd {
     DRAW_LINE,      // DRAW_LINE () [..., x1, y1, x2, y2] => [...]
     SET_COLOR,      // SET_COLOR () [..., R, G, B] => [...]
     RANDOMIZE_TIME, // RANDOMIZE_TIME () [...] => [...]
-    RANDOMIZE_SEED  // RANDOMZIE_SEED () [..., seed-integer] => [...]
+    RANDOMIZE_SEED, // RANDOMZIE_SEED () [..., seed-integer] => [...]
+    REQ_POINTER_EV, // REQ_POINTER_EV () [...] => [...]
+    GET_POINTER_EV  // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
 }
 
 export enum StdFunc {

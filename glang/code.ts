@@ -1119,6 +1119,7 @@ export enum CodeKind {
     DO_WHILE,
     DRAW_LINE,
     FOR,
+    GET_POINTER_EVENT,
     IF,
     LET,
     PRINT,
@@ -1879,6 +1880,44 @@ export class Randomize extends Code {
     toString(): string {
         return `Randomize{ seed: ${this.seed} }`;
     }
+}
+
+export class GetPointerEvent extends Code {
+    readonly x: NameInfo;
+    readonly y: NameInfo;
+    readonly eventKind: NameInfo;
+    readonly time: NameInfo;
+    readonly wait: number;
+
+    constructor(src: Readonly<Token[]>, x: NameInfo, y: NameInfo, eventKind: NameInfo, time: NameInfo, wait: number) {
+        super(CodeKind.GET_POINTER_EVENT, src);
+        this.x = x;
+        this.y = y;
+        this.eventKind = eventKind;
+        this.time = time;
+        this.wait = wait;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        if (this.x.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "X座標の値を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.y.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Y座標の値を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.eventKind.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "イベントの種類(KIND)を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.time.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "イベント発生時間(TIME)を格納する変数の型が不正です.", src: this.src });
+        }
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO });
+    }
+
+    toString(): string {
+        return `GetPointerEvent{ x: ${this.x.name}, y: ${this.y.name}, eventKind: ${this.eventKind.name}, time: ${this.time.name}, wait: ${this.wait} }`;
+    }
+
 }
 
 export default {};

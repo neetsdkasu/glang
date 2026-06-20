@@ -255,6 +255,10 @@ class Compiler {
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
                     break;
+                case C.CodeKind.GET_POINTER_EVENT:
+                    U.assert(code instanceof C.GetPointerEvent);
+                    this.#compileGetPointerEvent(code);
+                    break;
                 case C.CodeKind.IF:
                     U.assert(code instanceof C.If);
                     this.#compileIf(code);
@@ -1184,6 +1188,7 @@ class Compiler {
         this.#pushBlock(innerBlockInfo);
         this.#compileCodeBlock(innerBlockInfo.body);
         this.#popBlock(innerBlockInfo);
+        this.#addCmd(Cmd.JUMP, continueAddress);
         const blockEndAddress = this.#getNextAddress();
         this.#breakAddressMap.set(outerBlockInfo.id, blockEndAddress);
         this.#setParam(blockEndReferrer, blockEndAddress);
@@ -1216,6 +1221,13 @@ class Compiler {
             this.#compileExpr(code.seed);
             this.#addCmd(Cmd.RANDOMIZE_SEED);
         }
+    }
+    #compileGetPointerEvent(code) {
+        this.#addCmd(Cmd.REQ_POINTER_EV);
+        for (let i = 0; i < code.wait; i++) {
+            this.#addCmd(Cmd.NOP);
+        }
+        this.#addCmd(Cmd.GET_POINTER_EV, code.x.blockId, code.x.blockVarId, code.y.blockId, code.y.blockVarId, code.eventKind.blockId, code.eventKind.blockVarId, code.time.blockId, code.time.blockVarId);
     }
 }
 export function compile(src) {

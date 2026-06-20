@@ -107,6 +107,10 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
                 {
                     U.assert(worker !== null);
                     updateStatus("ready");
+                    pstate.x = 0;
+                    pstate.y = 0;
+                    pstate.kind = runner.PointerStateKind.NONE;
+                    pstate.time = 0;
                     const cin = CinTextarea.value;
                     M.sendGoRun(worker, stepSize, cin);
                     StopButton.disabled = false;
@@ -190,15 +194,15 @@ RunButton.addEventListener("click", () => {
 });
 
 Canvas.addEventListener("pointerdown", ev => {
-    pstate.x = ev.clientX;
-    pstate.y = ev.clientY;
+    pstate.x = ev.offsetX;
+    pstate.y = ev.offsetY;
     pstate.kind = runner.PointerStateKind.DOWN;
     pstate.time = Date.now();
 });
 
 Canvas.addEventListener("pointerup", ev => {
-    pstate.x = ev.clientX;
-    pstate.y = ev.clientY;
+    pstate.x = ev.offsetX;
+    pstate.y = ev.offsetY;
     pstate.kind = runner.PointerStateKind.UP;
     pstate.time = Date.now();
 });

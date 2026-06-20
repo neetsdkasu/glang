@@ -1019,12 +1019,13 @@ export var CodeKind;
     CodeKind[CodeKind["DO_WHILE"] = 9] = "DO_WHILE";
     CodeKind[CodeKind["DRAW_LINE"] = 10] = "DRAW_LINE";
     CodeKind[CodeKind["FOR"] = 11] = "FOR";
-    CodeKind[CodeKind["IF"] = 12] = "IF";
-    CodeKind[CodeKind["LET"] = 13] = "LET";
-    CodeKind[CodeKind["PRINT"] = 14] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 15] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 16] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 17] = "SET_COLOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 12] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 13] = "IF";
+    CodeKind[CodeKind["LET"] = 14] = "LET";
+    CodeKind[CodeKind["PRINT"] = 15] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 16] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 17] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 18] = "SET_COLOR";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1692,6 +1693,39 @@ export class Randomize extends Code {
     }
     toString() {
         return `Randomize{ seed: ${this.seed} }`;
+    }
+}
+export class GetPointerEvent extends Code {
+    x;
+    y;
+    eventKind;
+    time;
+    wait;
+    constructor(src, x, y, eventKind, time, wait) {
+        super(CodeKind.GET_POINTER_EVENT, src);
+        this.x = x;
+        this.y = y;
+        this.eventKind = eventKind;
+        this.time = time;
+        this.wait = wait;
+    }
+    rebuild(findUserFunc) {
+        if (this.x.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "X座標の値を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.y.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Y座標の値を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.eventKind.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "イベントの種類(KIND)を格納する変数の型が不正です.", src: this.src });
+        }
+        if (this.time.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "イベント発生時間(TIME)を格納する変数の型が不正です.", src: this.src });
+        }
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO });
+    }
+    toString() {
+        return `GetPointerEvent{ x: ${this.x.name}, y: ${this.y.name}, eventKind: ${this.eventKind.name}, time: ${this.time.name}, wait: ${this.wait} }`;
     }
 }
 export default {};

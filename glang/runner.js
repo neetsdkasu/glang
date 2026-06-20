@@ -1223,6 +1223,30 @@ export class Runner {
                     this.#rng.setSeed(seed);
                 }
                 return;
+            case Cmd.REQ_POINTER_EV:
+                {
+                    this.#io.reqEventOfPointer();
+                    this.#isRunning = false;
+                    this.#state = State.INTERRUPTED;
+                }
+                return;
+            case Cmd.GET_POINTER_EV:
+                {
+                    const xBId = this.#program[this.#pos++];
+                    const xBVarId = this.#program[this.#pos++];
+                    const yBId = this.#program[this.#pos++];
+                    const yBVarId = this.#program[this.#pos++];
+                    const kindBId = this.#program[this.#pos++];
+                    const kindBVarId = this.#program[this.#pos++];
+                    const timeBId = this.#program[this.#pos++];
+                    const timeBVarId = this.#program[this.#pos++];
+                    const pstate = this.#io.getEventOfPointer();
+                    this.#block[xBId][xBVarId] = Math.floor(pstate.x);
+                    this.#block[yBId][yBVarId] = Math.floor(pstate.y);
+                    this.#block[kindBId][kindBVarId] = pstate.kind;
+                    this.#block[timeBId][timeBVarId] = pstate.time;
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

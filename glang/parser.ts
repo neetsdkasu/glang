@@ -67,6 +67,7 @@ enum Keyword {
     FLOAT = "float",
     FOR = "for",
     FUNC = "func",
+    GETPOINTEREVENT = "getpointerevent",
     IF = "if",
     INTEGER = "integer",
     LET = "let",
@@ -166,6 +167,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     Keyword.FUNC,
     "function",
     "get",
+    Keyword.GETPOINTEREVENT,
     "global",
     "go",
     "goto",
@@ -1128,6 +1130,9 @@ class Parser {
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
+                    break;
+                case Keyword.GETPOINTEREVENT:
+                    res = this.#parseGetPointerEvent(line);
                     break;
                 case Keyword.IF:
                     res = this.#parseIf(line);
@@ -3681,6 +3686,117 @@ class Parser {
         this.#env.addCode(code);
 
         log.debug("PARSED randomize.");
+        log.dump("src", Token.lineToString, src);
+
+        return OK;
+    }
+
+    #parseGetPointerEvent(line: RQueue<Token>): Result<undefined,ParserError> {
+        const pointerEventToken = line.dequeue()!;
+        const src: Token[] = [pointerEventToken];
+
+        log.debug("PARSE pointerevent...");
+
+        const xToken = line.dequeue()!;
+        src.push(xToken);
+        if (xToken.tokenType !== TokenType.WORD) {
+            return syntaxError(`X座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, xToken);
+        }
+        const xName = xToken.value.toLowerCase();
+        const xInfo = this.#env.findName(xName);
+        if (xInfo === undefined || C.inferVtype(xInfo.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`X座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, xToken);
+        }
+
+        const comma1Token = line.dequeue()!;
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+
+        const yToken = line.dequeue()!;
+        src.push(yToken);
+        if (yToken.tokenType !== TokenType.WORD) {
+            return syntaxError(`Y座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, yToken);
+        }
+        const yName = yToken.value.toLowerCase();
+        const yInfo = this.#env.findName(yName);
+        if (yInfo === undefined || C.inferVtype(yInfo.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`Y座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, yToken);
+        }
+
+        const comma2Token = line.dequeue()!;
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+
+        const kindToken = line.dequeue()!;
+        src.push(kindToken);
+        if (kindToken.tokenType !== TokenType.WORD) {
+            return syntaxError(`イベントの種類(KIND)を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, kindToken);
+        }
+        const kindName = kindToken.value.toLowerCase();
+        const kindInfo = this.#env.findName(kindName);
+        if (kindInfo === undefined || C.inferVtype(kindInfo.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`イベントの種類(KIND)を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, kindToken);
+        }
+
+        const comma3Token = line.dequeue()!;
+        src.push(comma3Token);
+        if (comma3Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma3Token);
+        }
+
+        const timeToken = line.dequeue()!;
+        src.push(timeToken);
+        if (timeToken.tokenType !== TokenType.WORD) {
+            return syntaxError(`イベント発生時間(TIME)を格納する${Keyword.FLOAT}型の変数名の指定が必要です.`, timeToken);
+        }
+        const timeName = timeToken.value.toLowerCase();
+        const timeInfo = this.#env.findName(timeName);
+        if (timeInfo === undefined || C.inferVtype(timeInfo.vtype, C.Vtype.FLOATING_POINT).isErr) {
+            return syntaxError(`イベント発生時間(TIME)を格納する${Keyword.FLOAT}型の変数名の指定が必要です.`, timeToken);
+        }
+
+        let wait: number = 1;
+
+        if (line.front!.value === Symbols.COMMA) {
+            const comma4Token = line.dequeue()!;
+            src.push(comma4Token);
+
+            const waitToken = line.dequeue()!;
+            src.push(waitToken);
+            switch (waitToken.tokenType) {
+                case TokenType.INTEGER:
+                case TokenType.BIN_INETGER:
+                case TokenType.HEX_INTEGER:
+                    const numRes = parseNumber(waitToken);
+                    if (numRes.isErr) {
+                        return Result.err(numRes.error);
+                    }
+                    wait = numRes.result;
+                    if (U.inRange(0, 100, wait)) {
+                        break;
+                    }
+                default:
+                    return syntaxError(`待機命令(NOP)の回数指定には0以上100以下の整数リテラルが必要です.`, waitToken);
+            }
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO);
+
+        const code = new C.GetPointerEvent(src, xInfo, yInfo, kindInfo, timeInfo, wait);
+        this.#env.addCode(code);
+
+        log.debug("PARSED pointerevent.");
         log.dump("src", Token.lineToString, src);
 
         return OK;

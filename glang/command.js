@@ -157,7 +157,9 @@ export var Cmd;
     Cmd[Cmd["DRAW_LINE"] = 119] = "DRAW_LINE";
     Cmd[Cmd["SET_COLOR"] = 120] = "SET_COLOR";
     Cmd[Cmd["RANDOMIZE_TIME"] = 121] = "RANDOMIZE_TIME";
-    Cmd[Cmd["RANDOMIZE_SEED"] = 122] = "RANDOMIZE_SEED"; // RANDOMZIE_SEED () [..., seed-integer] => [...]
+    Cmd[Cmd["RANDOMIZE_SEED"] = 122] = "RANDOMIZE_SEED";
+    Cmd[Cmd["REQ_POINTER_EV"] = 123] = "REQ_POINTER_EV";
+    Cmd[Cmd["GET_POINTER_EV"] = 124] = "GET_POINTER_EV"; // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {
