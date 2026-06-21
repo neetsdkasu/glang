@@ -5,10 +5,7 @@ export function isITokenList(src) {
     return Array.isArray(src);
 }
 export function send(sender, sd) {
-    Promise.resolve(undefined)
-        .then(() => {
-        sender.postMessage(sd);
-    });
+    sender.postMessage(sd);
 }
 export function sendTextSrc(sender, textSrc) {
     const sd = {

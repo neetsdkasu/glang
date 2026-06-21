@@ -87,10 +87,7 @@ export interface SenderWithTransfer {
 }
 
 export function send(sender: Sender, sd: SendData): void {
-    Promise.resolve(undefined)
-    .then( () => {
-        sender.postMessage(sd);
-    });
+    sender.postMessage(sd);
 }
 
 export function sendTextSrc(sender: Sender, textSrc: string): void {

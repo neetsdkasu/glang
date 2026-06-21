@@ -15,6 +15,10 @@ textarea {
     padding: 1em;
 }
 
+summary + label {
+    display: none;
+}
+
 footer {
     margin-top: 5em;
     margin-bottom: 5em;

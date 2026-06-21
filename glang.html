@@ -2,6 +2,7 @@
 <html lang="ja">
     <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width" />
         <title>glang</title>
         <link rel="stylesheet" href="./glang/styles.css" />
         <script type="importmap">
@@ -39,7 +40,7 @@
 
             <div>
                 <div>
-                    <button id="stop" type="stop" disabled>STOP</button>
+                    <button id="stop" type="button" disabled>STOP</button>
                     <button id="run" type="button">RUN</button>
                     <label>stepSize: 
                         <input id="step" type="number" min="0" max="100000" value="100" />
@@ -50,6 +51,7 @@
                 </div>
                 <details class="srcholder">
                     <summary>source code</summary>
+                    <label for="code">source code</label>
                     <textarea id="code" cols="100" rows="40">' Sample Program
 Sub Main()
     Randomize
@@ -94,18 +96,21 @@ End Sub
                 <div class="indent con cerr">
                     <details class="errcatch">
                         <summary>err</summary>
+                        <label for="cerr">err</label>
                         <textarea id="cerr" cols="80" rows="20" readonly></textarea>
                     </details>
                 </div>
                 <div class="indent con cin">
                     <details>
                         <summary>in</summary>
+                        <label for="cin">in</label>
                         <textarea id="cin" cols="80" rows="20"></textarea>
                     </details>
                 </div>
                 <div class="indent con cout">
                     <details>
                         <summary>out</summary>
+                        <label for="cout">out</label>
                         <textarea id="cout" cols="80" rows="20" readonly></textarea>
                     </details>
                 </div>
