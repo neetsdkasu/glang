@@ -84,6 +84,7 @@ enum Keyword {
     SUB = "sub",
     THEN = "then",
     TO = "to",
+    TRANSFER = "transfer",
     TRUE = "true",
     WHILE = "while"
 }
@@ -278,6 +279,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "throw",
     "throws",
     Keyword.TO,
+    Keyword.TRANSFER,
     Keyword.TRUE,
     "try",
     "type",
@@ -1158,6 +1160,9 @@ class Parser {
                     break;
                 case Keyword.SETCOLOR:
                     res = this.#parseSetColor(line);
+                    break;
+                case Keyword.TRANSFER:
+                    res = this.#parseTransfer(line);
                     break;
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -3833,6 +3838,32 @@ class Parser {
 
         return OK;
     }
+
+    #parseTransfer(line: RQueue<Token>): ParserResult {
+        const transferToken = line.dequeue()!;
+        const src: Token[] = [transferToken];
+
+        log.debug("PARSE transfer...");
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+
+        const code = new C.Transfer(src);
+
+        this.#env.addCode(code);
+
+        log.debug("PARSED transfer.");
+        log.dump("src", Token.lineToString, src);
+
+        return OK;
+    }
+
 }
 
 export function parse(scanner: Scanner): Result<C.ParsedSource,ParserError> {

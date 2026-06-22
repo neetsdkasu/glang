@@ -1126,7 +1126,8 @@ export enum CodeKind {
     PRINT,
     RANDOMIZE,
     RETURN,
-    SET_COLOR
+    SET_COLOR,
+    TRANSFER
 }
 
 export abstract class Code {
@@ -1932,6 +1933,20 @@ export class Flush extends Code {
 
     toString(): string {
         return `Flush{}`;
+    }
+}
+
+export class Transfer extends Code {
+    constructor(src: Readonly<Token[]>) {
+        super(CodeKind.TRANSFER, src);
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE });
+    }
+
+    toString(): string {
+        return `Transfer{}`;
     }
 }
 

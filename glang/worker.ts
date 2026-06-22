@@ -45,6 +45,11 @@ class GraImpl implements Gra {
         M.sendTransferImage(self, image);
     }
 
+    transfer(): void {
+        const image = this.#scr.transferToImageBitmap();
+        M.sendTransferImage(self, image);
+    }
+
     setColor(r: number, g: number, b: number): void {
         this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
     }
@@ -162,7 +167,7 @@ async function startRunner(cin: string, width: number, height: number): Promise<
     } else {
         gra.clear();
     }
-    gra.flush();
+    gra.transfer();
     io = new IoImpl(gra, cin);
     runner = new Runner(program, io);
     Promise.resolve(undefined)

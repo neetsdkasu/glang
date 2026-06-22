@@ -1027,6 +1027,7 @@ export var CodeKind;
     CodeKind[CodeKind["RANDOMIZE"] = 17] = "RANDOMIZE";
     CodeKind[CodeKind["RETURN"] = 18] = "RETURN";
     CodeKind[CodeKind["SET_COLOR"] = 19] = "SET_COLOR";
+    CodeKind[CodeKind["TRANSFER"] = 20] = "TRANSFER";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1738,6 +1739,17 @@ export class Flush extends Code {
     }
     toString() {
         return `Flush{}`;
+    }
+}
+export class Transfer extends Code {
+    constructor(src) {
+        super(CodeKind.TRANSFER, src);
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE });
+    }
+    toString() {
+        return `Transfer{}`;
     }
 }
 export default {};

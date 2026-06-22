@@ -1252,6 +1252,11 @@ export class Runner {
                     this.#io.g.flush();
                 }
                 return;
+            case Cmd.TRANSFER:
+                {
+                    this.#io.g.transfer();
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

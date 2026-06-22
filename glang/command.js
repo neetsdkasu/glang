@@ -160,7 +160,8 @@ export var Cmd;
     Cmd[Cmd["RANDOMIZE_SEED"] = 122] = "RANDOMIZE_SEED";
     Cmd[Cmd["REQ_POINTER_EV"] = 123] = "REQ_POINTER_EV";
     Cmd[Cmd["GET_POINTER_EV"] = 124] = "GET_POINTER_EV";
-    Cmd[Cmd["FLUSH"] = 125] = "FLUSH"; // FLUSH () [...] => [...]
+    Cmd[Cmd["FLUSH"] = 125] = "FLUSH";
+    Cmd[Cmd["TRANSFER"] = 126] = "TRANSFER"; // TRANSFER () [...] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

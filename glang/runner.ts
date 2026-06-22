@@ -60,6 +60,7 @@ export interface Gra {
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
     setColor(r: number, g: number, b: number): void;
     flush(): void;
+    transfer(): void;
 }
 
 export interface IO {
@@ -1273,6 +1274,11 @@ export class Runner {
             case Cmd.FLUSH:
                 {
                     this.#io.g.flush();
+                }
+                return;
+            case Cmd.TRANSFER:
+                {
+                    this.#io.g.transfer();
                 }
                 return;
             default:

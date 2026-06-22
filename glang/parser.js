@@ -76,6 +76,7 @@ var Keyword;
     Keyword["SUB"] = "sub";
     Keyword["THEN"] = "then";
     Keyword["TO"] = "to";
+    Keyword["TRANSFER"] = "transfer";
     Keyword["TRUE"] = "true";
     Keyword["WHILE"] = "while";
 })(Keyword || (Keyword = {}));
@@ -269,6 +270,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "throw",
     "throws",
     Keyword.TO,
+    Keyword.TRANSFER,
     Keyword.TRUE,
     "try",
     "type",
@@ -1067,6 +1069,9 @@ class Parser {
                     break;
                 case Keyword.SETCOLOR:
                     res = this.#parseSetColor(line);
+                    break;
+                case Keyword.TRANSFER:
+                    res = this.#parseTransfer(line);
                     break;
                 default:
                     const nameInfo = this.#env.findName(cmd);
@@ -3238,6 +3243,24 @@ class Parser {
         const code = new C.Flush(src);
         this.#env.addCode(code);
         log.debug("PARSED flush.");
+        log.dump("src", Token.lineToString, src);
+        return OK;
+    }
+    #parseTransfer(line) {
+        const transferToken = line.dequeue();
+        const src = [transferToken];
+        log.debug("PARSE transfer...");
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+        const code = new C.Transfer(src);
+        this.#env.addCode(code);
+        log.debug("PARSED transfer.");
         log.dump("src", Token.lineToString, src);
         return OK;
     }

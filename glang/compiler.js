@@ -287,6 +287,10 @@ class Compiler {
                     U.assert(code instanceof C.SetColor);
                     this.#compileSetColor(code);
                     break;
+                case C.CodeKind.TRANSFER:
+                    U.assert(code instanceof C.Transfer);
+                    this.#compileTransfer(code);
+                    break;
                 default:
                     U.unreachable(code);
             }
@@ -1235,6 +1239,9 @@ class Compiler {
     }
     #compileFlush(code) {
         this.#addCmd(Cmd.FLUSH);
+    }
+    #compileTransfer(code) {
+        this.#addCmd(Cmd.TRANSFER);
     }
 }
 export function compile(src) {

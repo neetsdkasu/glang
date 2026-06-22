@@ -36,6 +36,10 @@ class GraImpl {
         this.#ctx.drawImage(image, 0, 0);
         M.sendTransferImage(self, image);
     }
+    transfer() {
+        const image = this.#scr.transferToImageBitmap();
+        M.sendTransferImage(self, image);
+    }
     setColor(r, g, b) {
         this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
     }
@@ -139,7 +143,7 @@ async function startRunner(cin, width, height) {
     else {
         gra.clear();
     }
-    gra.flush();
+    gra.transfer();
     io = new IoImpl(gra, cin);
     runner = new Runner(program, io);
     Promise.resolve(undefined)
