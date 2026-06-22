@@ -139,15 +139,19 @@ async function startRunner(cin, width, height) {
     else {
         gra.clear();
     }
+    gra.flush();
     io = new IoImpl(gra, cin);
     runner = new Runner(program, io);
-    if (stepSize === 0) {
-        run();
-    }
-    else {
-        currentSteps = 0;
-        steps();
-    }
+    Promise.resolve(undefined)
+        .then(() => {
+        if (stepSize === 0) {
+            run();
+        }
+        else {
+            currentSteps = 0;
+            steps();
+        }
+    });
 }
 self.onmessage = e => {
     Promise.resolve(e.data)
