@@ -168,15 +168,11 @@ self.onmessage = e => {
                 {
                     M.sendMessage(self, "running");
                     stepSize = sd.stepSize;
-                    if (stepSize < 0) {
-                        U.unreachable(`stepSize: ${stepSize}`);
-                    }
-                    else {
-                        const cin = sd.cin;
-                        const width = sd.width;
-                        const height = sd.height;
-                        startRunner(cin, width, height);
-                    }
+                    U.assert(stepSize >= 0);
+                    const cin = sd.cin;
+                    const width = sd.width;
+                    const height = sd.height;
+                    startRunner(cin, width, height);
                 }
                 break;
             case "Stop":
