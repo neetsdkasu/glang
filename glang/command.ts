@@ -167,7 +167,8 @@ export enum Cmd {
     RANDOMIZE_TIME, // RANDOMIZE_TIME () [...] => [...]
     RANDOMIZE_SEED, // RANDOMZIE_SEED () [..., seed-integer] => [...]
     REQ_POINTER_EV, // REQ_POINTER_EV () [...] => [...]
-    GET_POINTER_EV  // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
+    GET_POINTER_EV, // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
+    FLUSH           // FLUSH () [...] => [...]
 }
 
 export enum StdFunc {

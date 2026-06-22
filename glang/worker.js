@@ -11,13 +11,15 @@ import * as parser from "./parser.js";
 import * as U from "./utils.js";
 import * as M from "./mes.js";
 let program = null;
-let canvas = null;
-let offCtx = null;
 class GraImpl {
+    #scr;
     #ctx;
     width;
     height;
-    constructor(ctx, width, height) {
+    constructor(width, height) {
+        this.#scr = new OffscreenCanvas(width, height);
+        const ctx = this.#scr.getContext("2d");
+        U.assert(ctx !== null);
         this.#ctx = ctx;
         this.width = width;
         this.height = height;
@@ -28,6 +30,11 @@ class GraImpl {
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
+    }
+    flush() {
+        const image = this.#scr.transferToImageBitmap();
+        this.#ctx.drawImage(image, 0, 0);
+        M.sendTransferImage(self, image);
     }
     setColor(r, g, b) {
         this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
@@ -59,6 +66,7 @@ class IoImpl {
         this.#state = state;
     }
 }
+let gra = null;
 let io = null;
 async function compile(textSrc) {
     const reader = new CharReader(textSrc);
@@ -71,12 +79,7 @@ async function compile(textSrc) {
     }
     const parsedSource = res.result;
     program = compiler.compile(parsedSource);
-    if (canvas === null) {
-        M.sendRequestCanvas(self);
-    }
-    else {
-        M.send(self, { kind: "Ready" });
-    }
+    M.send(self, { kind: "Ready" });
 }
 let runner = null;
 function run() {
@@ -128,19 +131,15 @@ function steps() {
             return;
     }
 }
-async function startRunner(cin) {
+async function startRunner(cin, width, height) {
     U.assert(program !== null);
-    U.assert(canvas !== null);
-    if (offCtx === null) {
-        offCtx = canvas.getContext("2d");
-        if (offCtx === null) {
-            M.send(self, { kind: "Stop" });
-            return;
-        }
+    if (gra === null) {
+        gra = new GraImpl(width, height);
     }
-    const g = new GraImpl(offCtx, canvas.width, canvas.height);
-    g.clear();
-    io = new IoImpl(g, cin);
+    else {
+        gra.clear();
+    }
+    io = new IoImpl(gra, cin);
     runner = new Runner(program, io);
     if (stepSize === 0) {
         run();
@@ -170,24 +169,15 @@ self.onmessage = e => {
                     }
                     else {
                         const cin = sd.cin;
-                        startRunner(cin);
+                        const width = sd.width;
+                        const height = sd.height;
+                        startRunner(cin, width, height);
                     }
                 }
                 break;
             case "Stop":
                 {
                     stepSize = -1;
-                }
-                break;
-            case "TransferCanvas":
-                {
-                    canvas = sd.canvas;
-                    if (canvas === null) {
-                        U.unreachable("canvas === null");
-                    }
-                    else {
-                        M.send(self, { kind: "Ready" });
-                    }
                 }
                 break;
             case "EventOfPointer":

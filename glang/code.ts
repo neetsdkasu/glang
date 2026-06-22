@@ -1118,6 +1118,7 @@ export enum CodeKind {
     DIM,
     DO_WHILE,
     DRAW_LINE,
+    FLUSH,
     FOR,
     GET_POINTER_EVENT,
     IF,
@@ -1918,6 +1919,20 @@ export class GetPointerEvent extends Code {
         return `GetPointerEvent{ x: ${this.x.name}, y: ${this.y.name}, eventKind: ${this.eventKind.name}, time: ${this.time.name}, wait: ${this.wait} }`;
     }
 
+}
+
+export class Flush extends Code {
+    constructor(src: Readonly<Token[]>) {
+        super(CodeKind.FLUSH, src);
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO });
+    }
+
+    toString(): string {
+        return `Flush{}`;
+    }
 }
 
 export default {};

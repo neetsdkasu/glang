@@ -24,6 +24,9 @@ const CinTextarea = document.getElementById("cin") as HTMLTextAreaElement;
 const CoutTextarea = document.getElementById("cout") as HTMLTextAreaElement;
 const StepInput = document.getElementById("step") as HTMLInputElement;
 
+const ctx = Canvas.getContext("bitmaprenderer");
+U.assert(ctx !== null);
+
 UU.setEnableTabIndent(CodeTextarea);
 
 const DEFAULT_STEP_SIZE: number = 100;
@@ -112,7 +115,9 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
                     pstate.kind = runner.PointerStateKind.NONE;
                     pstate.time = 0;
                     const cin = CinTextarea.value;
-                    M.sendGoRun(worker, stepSize, cin);
+                    const width = Canvas.width;
+                    const height = Canvas.height;
+                    M.sendGoRun(worker, stepSize, cin, width, height);
                     StopButton.disabled = false;
                 }
                 break;
@@ -135,11 +140,10 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
                     CerrTextarea.value += sd.text + "\n";
                 }
                 break;
-            case "TransferCanvas":
+            case "TransferImage":
                 {
-                    U.assert(worker !== null);
-                    const canvas = Canvas.transferControlToOffscreen();
-                    M.sendTransferCanvas(worker, canvas);
+                    const image = sd.image;
+                    ctx!.transferFromImageBitmap(image);
                 }
                 break;
             case "EventOfPointer":

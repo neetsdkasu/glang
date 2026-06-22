@@ -1018,14 +1018,15 @@ export var CodeKind;
     CodeKind[CodeKind["DIM"] = 8] = "DIM";
     CodeKind[CodeKind["DO_WHILE"] = 9] = "DO_WHILE";
     CodeKind[CodeKind["DRAW_LINE"] = 10] = "DRAW_LINE";
-    CodeKind[CodeKind["FOR"] = 11] = "FOR";
-    CodeKind[CodeKind["GET_POINTER_EVENT"] = 12] = "GET_POINTER_EVENT";
-    CodeKind[CodeKind["IF"] = 13] = "IF";
-    CodeKind[CodeKind["LET"] = 14] = "LET";
-    CodeKind[CodeKind["PRINT"] = 15] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 16] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 17] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 18] = "SET_COLOR";
+    CodeKind[CodeKind["FLUSH"] = 11] = "FLUSH";
+    CodeKind[CodeKind["FOR"] = 12] = "FOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 13] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 14] = "IF";
+    CodeKind[CodeKind["LET"] = 15] = "LET";
+    CodeKind[CodeKind["PRINT"] = 16] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 17] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 18] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 19] = "SET_COLOR";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1726,6 +1727,17 @@ export class GetPointerEvent extends Code {
     }
     toString() {
         return `GetPointerEvent{ x: ${this.x.name}, y: ${this.y.name}, eventKind: ${this.eventKind.name}, time: ${this.time.name}, wait: ${this.wait} }`;
+    }
+}
+export class Flush extends Code {
+    constructor(src) {
+        super(CodeKind.FLUSH, src);
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.ACCESS_IO });
+    }
+    toString() {
+        return `Flush{}`;
     }
 }
 export default {};

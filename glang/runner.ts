@@ -59,6 +59,7 @@ export interface Gra {
     readonly height: number;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
     setColor(r: number, g: number, b: number): void;
+    flush(): void;
 }
 
 export interface IO {
@@ -1267,6 +1268,11 @@ export class Runner {
                     this.#block[yBId][yBVarId] = Math.floor(pstate.y);
                     this.#block[kindBId][kindBVarId] = pstate.kind as number;
                     this.#block[timeBId][timeBVarId] = pstate.time;
+                }
+                return;
+            case Cmd.FLUSH:
+                {
+                    this.#io.g.flush();
                 }
                 return;
             default:

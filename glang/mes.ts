@@ -40,6 +40,8 @@ export interface GoRun {
     kind: "GoRun";
     stepSize: number;
     cin: string;
+    width: number;
+    height: number;
 }
 
 export interface Finished {
@@ -55,14 +57,14 @@ export interface WriteCerr {
     text: string;
 }
 
-export interface TransferCanvas {
-    kind: "TransferCanvas";
-    canvas: OffscreenCanvas | null;
-}
-
 export interface EventOfPointer {
     kind: "EventOfPointer";
     state: runner.PointerState | null;
+}
+
+export interface TransferImage {
+    kind: "TransferImage";
+    image: ImageBitmap;
 }
 
 export type SendData  = TextSrc
@@ -74,7 +76,7 @@ export type SendData  = TextSrc
                       | RuntimeError
                       | Stop
                       | WriteCerr
-                      | TransferCanvas
+                      | TransferImage
                       | EventOfPointer
                       ;
 
@@ -83,7 +85,7 @@ export interface Sender {
 }
 
 export interface SenderWithTransfer {
-    postMessage(message: any, transfer?: Transferable[]): void;
+    postMessage(message: any, transferList?: Transferable[]): void;
 }
 
 export function send(sender: Sender, sd: SendData): void {
@@ -124,19 +126,13 @@ export function sendRuntimeError(sender: Sender, error: runner.RuntimeError): vo
     send(sender, sd);
 }
 
-export function sendGoRun(sender: Sender, stepSize: number, cin: string): void {
+export function sendGoRun(sender: Sender, stepSize: number, cin: string, width: number, height: number): void {
     const sd: GoRun = {
         kind: "GoRun",
         stepSize: stepSize,
-        cin: cin
-    };
-    send(sender, sd);
-}
-
-export function sendRequestCanvas(sender: Sender): void {
-    const sd: TransferCanvas = {
-        kind: "TransferCanvas",
-        canvas: null
+        cin: cin,
+        width: width,
+        height: height
     };
     send(sender, sd);
 }
@@ -157,12 +153,12 @@ export function sendEventOfPointer(sender: Sender, state: runner.PointerState): 
     send(sender, sd);
 }
 
-export function sendTransferCanvas(sender: SenderWithTransfer, canvas: OffscreenCanvas): void {
-    const sd: TransferCanvas = {
-        kind: "TransferCanvas",
-        canvas: canvas
+export function sendTransferImage(sender: SenderWithTransfer, image: ImageBitmap): void {
+    const sd: TransferImage = {
+        kind: "TransferImage",
+        image: image
     };
-    sender.postMessage(sd, [canvas]);
+    sender.postMessage(sd, [image]);
 }
 
 export default {};

@@ -251,6 +251,10 @@ class Compiler {
                     U.assert(code instanceof C.DrawLine);
                     this.#compileDrawLine(code);
                     break;
+                case C.CodeKind.FLUSH:
+                    U.assert(code instanceof C.Flush);
+                    this.#compileFlush(code);
+                    break;
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
@@ -1228,6 +1232,9 @@ class Compiler {
             this.#addCmd(Cmd.NOP);
         }
         this.#addCmd(Cmd.GET_POINTER_EV, code.x.blockId, code.x.blockVarId, code.y.blockId, code.y.blockVarId, code.eventKind.blockId, code.eventKind.blockVarId, code.time.blockId, code.time.blockVarId);
+    }
+    #compileFlush(code) {
+        this.#addCmd(Cmd.FLUSH);
     }
 }
 export function compile(src) {

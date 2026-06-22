@@ -278,6 +278,10 @@ class Compiler {
                     U.assert(code instanceof C.DrawLine);
                     this.#compileDrawLine(code);
                     break;
+                case C.CodeKind.FLUSH:
+                    U.assert(code instanceof C.Flush);
+                    this.#compileFlush(code);
+                    break;
                 case C.CodeKind.FOR:
                     U.assert(code instanceof C.For);
                     this.#compileFor(code);
@@ -1128,6 +1132,10 @@ class Compiler {
             code.eventKind.blockId, code.eventKind.blockVarId,
             code.time.blockId, code.time.blockVarId
         );
+    }
+
+    #compileFlush(code: C.Flush): void {
+        this.#addCmd(Cmd.FLUSH);
     }
 }
 

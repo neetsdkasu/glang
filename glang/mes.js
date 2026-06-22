@@ -37,18 +37,13 @@ export function sendRuntimeError(sender, error) {
     };
     send(sender, sd);
 }
-export function sendGoRun(sender, stepSize, cin) {
+export function sendGoRun(sender, stepSize, cin, width, height) {
     const sd = {
         kind: "GoRun",
         stepSize: stepSize,
-        cin: cin
-    };
-    send(sender, sd);
-}
-export function sendRequestCanvas(sender) {
-    const sd = {
-        kind: "TransferCanvas",
-        canvas: null
+        cin: cin,
+        width: width,
+        height: height
     };
     send(sender, sd);
 }
@@ -66,11 +61,11 @@ export function sendEventOfPointer(sender, state) {
     };
     send(sender, sd);
 }
-export function sendTransferCanvas(sender, canvas) {
+export function sendTransferImage(sender, image) {
     const sd = {
-        kind: "TransferCanvas",
-        canvas: canvas
+        kind: "TransferImage",
+        image: image
     };
-    sender.postMessage(sd, [canvas]);
+    sender.postMessage(sd, [image]);
 }
 export default {};

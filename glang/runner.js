@@ -1247,6 +1247,11 @@ export class Runner {
                     this.#block[timeBId][timeBVarId] = pstate.time;
                 }
                 return;
+            case Cmd.FLUSH:
+                {
+                    this.#io.g.flush();
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

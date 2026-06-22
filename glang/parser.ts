@@ -42,7 +42,9 @@ export class ParserError {
     }
 }
 
-const OK: Result<undefined,ParserError> = Result.ok(undefined);
+export type ParserResult = Result<undefined,ParserError>;
+
+const OK: ParserResult = Result.ok(undefined);
 
 function syntaxError<R>(msg: string, src: Token | Readonly<Token[]> | null): Result<R,ParserError> {
     return Result.err(new ParserError(`Syntax Error: ${msg}`, src));
@@ -65,6 +67,7 @@ enum Keyword {
     END = "end",
     FALSE = "false",
     FLOAT = "float",
+    FLUSH = "flush",
     FOR = "for",
     FUNC = "func",
     GETPOINTEREVENT = "getpointerevent",
@@ -158,6 +161,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "final",
     "finally",
     Keyword.FLOAT,
+    Keyword.FLUSH,
     Keyword.FOR,
     "foreach",
     "free",
@@ -616,7 +620,7 @@ class Env {
         return ret;
     }
 
-    rebuild(): Result<undefined,ParserError> {
+    rebuild(): ParserResult {
         const n = this.#codeBodyStack.length;
         const before: C.Code[] = this.#codeBodyStack[n-1];
         const after: C.Code[] = [];
@@ -1001,7 +1005,7 @@ class Parser {
                 return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
             }
 
-            let res: Result<undefined,ParserError>;
+            let res: ParserResult;
 
             const cmd = cmdToken.value.toLowerCase();
 
@@ -1091,7 +1095,7 @@ class Parser {
                 return syntaxError("行頭に使用できない文字/文字列です.", cmdToken);
             }
 
-            let res: Result<undefined,ParserError>;
+            let res: ParserResult;
 
             const cmd = cmdToken.value.toLowerCase();
 
@@ -1127,6 +1131,9 @@ class Parser {
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
+                    break;
+                case Keyword.FLUSH:
+                    res = this.#parseFlush(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
@@ -1182,7 +1189,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseDim(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseDim(line: RQueue<Token>): ParserResult {
         const dimToken = line.dequeue()!;
         const src: Token[] = [dimToken];
 
@@ -1326,7 +1333,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseSub(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseSub(line: RQueue<Token>): ParserResult {
         const subToken = line.dequeue()!;
         const src: Token[] = [subToken];
 
@@ -1476,7 +1483,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseLet(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseLet(line: RQueue<Token>): ParserResult {
         const letToken = line.dequeue()!;
         const src: Token[] = [letToken];
 
@@ -2272,7 +2279,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseAssign(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseAssign(line: RQueue<Token>): ParserResult {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
 
@@ -2357,7 +2364,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseAssignArray(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseAssignArray(line: RQueue<Token>): ParserResult {
         const nameToken = line.dequeue()!;
         const src: Token[] = [nameToken];
 
@@ -2468,7 +2475,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseFor(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseFor(line: RQueue<Token>): ParserResult {
         const forToken = line.dequeue()!;
         const src: Token[] = [forToken];
 
@@ -2645,7 +2652,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseIf(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseIf(line: RQueue<Token>): ParserResult {
         const ifToken = line.dequeue()!;
         const src: Token[] = [ifToken];
 
@@ -2795,7 +2802,7 @@ class Parser {
      * @param line 
      * @returns 
      */
-    #parseCall(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseCall(line: RQueue<Token>): ParserResult {
         const callToken = line.dequeue()!;
         const src: Token[] = [callToken];
 
@@ -3054,7 +3061,7 @@ class Parser {
         return OK;
     }
 
-    #parsePrint(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parsePrint(line: RQueue<Token>): ParserResult {
         const printToken = line.dequeue()!;
         const src: Token[] = [printToken];
 
@@ -3102,7 +3109,7 @@ class Parser {
         return OK;
     }
 
-    #parseDoWhile(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseDoWhile(line: RQueue<Token>): ParserResult {
         const doToken = line.dequeue()!;
         const src: Token[] = [doToken];
 
@@ -3186,7 +3193,7 @@ class Parser {
         return OK;
     }
 
-    #parseFunc(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseFunc(line: RQueue<Token>): ParserResult {
         const funcToken = line.dequeue()!;
         const src: Token[] = [funcToken];
 
@@ -3364,7 +3371,7 @@ class Parser {
         return OK;
     }
 
-    #parseBreak(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseBreak(line: RQueue<Token>): ParserResult {
         const breakToken = line.dequeue()!;
         const src: Token[] = [breakToken];
 
@@ -3399,7 +3406,7 @@ class Parser {
         return OK;
     }
 
-    #parseContinue(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseContinue(line: RQueue<Token>): ParserResult {
         const continueToken = line.dequeue()!;
         const src: Token[] = [continueToken];
 
@@ -3434,7 +3441,7 @@ class Parser {
         return OK;
     }
 
-    #parseReturn(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseReturn(line: RQueue<Token>): ParserResult {
         const returnToken = line.dequeue()!;
         const src: Token[] = [returnToken];
 
@@ -3493,7 +3500,7 @@ class Parser {
         return OK;
     }
 
-    #parseDrawLine(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseDrawLine(line: RQueue<Token>): ParserResult {
         const drawlineToken = line.dequeue()!;
         const src: Token[] = [drawlineToken];
         
@@ -3580,7 +3587,7 @@ class Parser {
         return OK;
     }
 
-    #parseSetColor(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseSetColor(line: RQueue<Token>): ParserResult {
         const setcolorToken = line.dequeue()!;
         const src: Token[] = [setcolorToken];
 
@@ -3650,7 +3657,7 @@ class Parser {
         return OK;
     }
 
-    #parseRandomize(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseRandomize(line: RQueue<Token>): ParserResult {
         const randomizeToken = line.dequeue()!;
         const src: Token[] = [randomizeToken];
 
@@ -3691,7 +3698,7 @@ class Parser {
         return OK;
     }
 
-    #parseGetPointerEvent(line: RQueue<Token>): Result<undefined,ParserError> {
+    #parseGetPointerEvent(line: RQueue<Token>): ParserResult {
         const pointerEventToken = line.dequeue()!;
         const src: Token[] = [pointerEventToken];
 
@@ -3797,6 +3804,31 @@ class Parser {
         this.#env.addCode(code);
 
         log.debug("PARSED pointerevent.");
+        log.dump("src", Token.lineToString, src);
+
+        return OK;
+    }
+
+    #parseFlush(line: RQueue<Token>): ParserResult {
+        const flushToken = line.dequeue()!;
+        const src: Token[] = [flushToken];
+
+        log.debug("PARSE flush...");
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO);
+
+        const code = new C.Flush(src);
+
+        this.#env.addCode(code);
+
+        log.debug("PARSED flush.");
         log.dump("src", Token.lineToString, src);
 
         return OK;

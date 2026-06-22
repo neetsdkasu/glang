@@ -59,6 +59,7 @@ var Keyword;
     Keyword["END"] = "end";
     Keyword["FALSE"] = "false";
     Keyword["FLOAT"] = "float";
+    Keyword["FLUSH"] = "flush";
     Keyword["FOR"] = "for";
     Keyword["FUNC"] = "func";
     Keyword["GETPOINTEREVENT"] = "getpointerevent";
@@ -151,6 +152,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "final",
     "finally",
     Keyword.FLOAT,
+    Keyword.FLUSH,
     Keyword.FOR,
     "foreach",
     "free",
@@ -1038,6 +1040,9 @@ class Parser {
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
+                    break;
+                case Keyword.FLUSH:
+                    res = this.#parseFlush(line);
                     break;
                 case Keyword.FOR:
                     res = this.#parseFor(line);
@@ -3215,6 +3220,24 @@ class Parser {
         const code = new C.GetPointerEvent(src, xInfo, yInfo, kindInfo, timeInfo, wait);
         this.#env.addCode(code);
         log.debug("PARSED pointerevent.");
+        log.dump("src", Token.lineToString, src);
+        return OK;
+    }
+    #parseFlush(line) {
+        const flushToken = line.dequeue();
+        const src = [flushToken];
+        log.debug("PARSE flush...");
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO);
+        const code = new C.Flush(src);
+        this.#env.addCode(code);
+        log.debug("PARSED flush.");
         log.dump("src", Token.lineToString, src);
         return OK;
     }
