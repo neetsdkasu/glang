@@ -54,6 +54,12 @@
                     <label for="code">source code</label>
                     <textarea id="code" cols="100" rows="40">' Sample Program
 Sub Main()
+    For let w = 5 To 15 Step 5
+        SetColor 127,127,127
+        DrawRect w, w, width()-2*w, height()-2*w
+    End For
+    Flush
+    Await 1000
     Randomize
     Call DrawStar(60, 100, 100, 0,  0xFF0000)
     Call DrawStar(50, 200, 100, 30, 0x00FF00)

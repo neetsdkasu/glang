@@ -1276,6 +1276,15 @@ export class Runner {
                     }
                 }
                 return;
+            case Cmd.DRAW_RECT:
+                {
+                    const height = this.#valueStack.pop();
+                    const width = this.#valueStack.pop();
+                    const y = this.#valueStack.pop();
+                    const x = this.#valueStack.pop();
+                    this.#io.g.drawRect(x, y, width, height);
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

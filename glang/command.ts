@@ -170,7 +170,8 @@ export enum Cmd {
     GET_POINTER_EV, // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
     FLUSH,          // FLUSH () [...] => [...]
     TRANSFER,       // TRANSFER () [...] => [...]
-    AWAIT           // AWAIT ( waitTime ) [...] => [...]
+    AWAIT,          // AWAIT ( waitTime ) [...] => [...]
+    DRAW_RECT       // DRAW_RECT () [...,x,y.width,height] => [...]
 }
 
 export enum StdFunc {

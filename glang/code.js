@@ -1019,16 +1019,17 @@ export var CodeKind;
     CodeKind[CodeKind["DIM"] = 9] = "DIM";
     CodeKind[CodeKind["DO_WHILE"] = 10] = "DO_WHILE";
     CodeKind[CodeKind["DRAW_LINE"] = 11] = "DRAW_LINE";
-    CodeKind[CodeKind["FLUSH"] = 12] = "FLUSH";
-    CodeKind[CodeKind["FOR"] = 13] = "FOR";
-    CodeKind[CodeKind["GET_POINTER_EVENT"] = 14] = "GET_POINTER_EVENT";
-    CodeKind[CodeKind["IF"] = 15] = "IF";
-    CodeKind[CodeKind["LET"] = 16] = "LET";
-    CodeKind[CodeKind["PRINT"] = 17] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 18] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 19] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 20] = "SET_COLOR";
-    CodeKind[CodeKind["TRANSFER"] = 21] = "TRANSFER";
+    CodeKind[CodeKind["DRAW_RECT"] = 12] = "DRAW_RECT";
+    CodeKind[CodeKind["FLUSH"] = 13] = "FLUSH";
+    CodeKind[CodeKind["FOR"] = 14] = "FOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 15] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 16] = "IF";
+    CodeKind[CodeKind["LET"] = 17] = "LET";
+    CodeKind[CodeKind["PRINT"] = 18] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 19] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 20] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 21] = "SET_COLOR";
+    CodeKind[CodeKind["TRANSFER"] = 22] = "TRANSFER";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1590,7 +1591,7 @@ export class DrawLine extends Code {
         }
         const x1 = x1Res.result.expr;
         if (x1.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "X1の型が不正です.", src: x1.src });
+            return Result.err({ msg: "始点のX座標の型が不正です.", src: x1.src });
         }
         let sideEffect = x1Res.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
         const y1Res = this.y1.rebuild(findUserFunc);
@@ -1599,7 +1600,7 @@ export class DrawLine extends Code {
         }
         const y1 = y1Res.result.expr;
         if (y1.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Y1の型が不正です.", src: y1.src });
+            return Result.err({ msg: "始点のY座標の型が不正です.", src: y1.src });
         }
         sideEffect |= y1Res.result.sideEffect;
         const x2Res = this.x2.rebuild(findUserFunc);
@@ -1608,7 +1609,7 @@ export class DrawLine extends Code {
         }
         const x2 = x2Res.result.expr;
         if (x2.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "X2の型が不正です.", src: x2.src });
+            return Result.err({ msg: "終点のX座標の型が不正です.", src: x2.src });
         }
         sideEffect |= x2Res.result.sideEffect;
         const y2Res = this.y2.rebuild(findUserFunc);
@@ -1617,7 +1618,7 @@ export class DrawLine extends Code {
         }
         const y2 = y2Res.result.expr;
         if (y2.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Y2の型が不正です.", src: y2.src });
+            return Result.err({ msg: "終点のY座標の型が不正です.", src: y2.src });
         }
         sideEffect |= y2Res.result.sideEffect;
         const code = new DrawLine(this.src, x1, y1, x2, y2);
@@ -1645,7 +1646,7 @@ export class SetColor extends Code {
         const red = redRes.result.expr;
         let sideEffect = redRes.result.sideEffect | SideEffect.CHANGE_RUNNER_STATE;
         if (red.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Rの型が不正です.", src: red.src });
+            return Result.err({ msg: "赤の成分値Rの型が不正です.", src: red.src });
         }
         const greenRes = this.green.rebuild(findUserFunc);
         if (greenRes.isErr) {
@@ -1654,7 +1655,7 @@ export class SetColor extends Code {
         const green = greenRes.result.expr;
         sideEffect |= greenRes.result.sideEffect;
         if (green.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Gの型が不正です.", src: green.src });
+            return Result.err({ msg: "緑の成分値Gの型が不正です.", src: green.src });
         }
         const blueRes = this.blue.rebuild(findUserFunc);
         if (blueRes.isErr) {
@@ -1663,7 +1664,7 @@ export class SetColor extends Code {
         const blue = blueRes.result.expr;
         sideEffect |= blueRes.result.sideEffect;
         if (blue.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Bの型が不正です.", src: blue.src });
+            return Result.err({ msg: "青の成分値Bの型が不正です.", src: blue.src });
         }
         const code = new SetColor(this.src, red, green, blue);
         return Result.ok({ code: code, sideEffect: sideEffect });
@@ -1689,7 +1690,7 @@ export class Randomize extends Code {
         const seed = seedRes.result.expr;
         const sideEffect = SideEffect.CHANGE_RUNNER_STATE | seedRes.result.sideEffect;
         if (seed.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "SEEDの型が不正です.", src: seed.src });
+            return Result.err({ msg: "乱数種SEEDの型が不正です.", src: seed.src });
         }
         const code = new Randomize(this.src, seed);
         return Result.ok({ code: code, sideEffect: sideEffect });
@@ -1764,6 +1765,62 @@ export class Await extends Code {
     }
     toString() {
         return `Await{ waitTime: ${this.waitTime} }`;
+    }
+}
+export class DrawRect extends Code {
+    x;
+    y;
+    width;
+    height;
+    constructor(src, x, y, width, height) {
+        super(CodeKind.DRAW_RECT, src);
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+    rebuild(findUserFunc) {
+        const xRes = this.x.rebuild(findUserFunc);
+        if (xRes.isErr) {
+            return Result.err(xRes.error);
+        }
+        const x = xRes.result.expr;
+        if (x.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "X座標の型が不正です.", src: x.src });
+        }
+        let sideEffect = xRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        const yRes = this.y.rebuild(findUserFunc);
+        if (yRes.isErr) {
+            return Result.err(yRes.error);
+        }
+        const y = yRes.result.expr;
+        if (y.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "Y座標の型が不正です.", src: y.src });
+        }
+        sideEffect |= yRes.result.sideEffect;
+        const widthRes = this.width.rebuild(findUserFunc);
+        if (widthRes.isErr) {
+            return Result.err(widthRes.error);
+        }
+        const width = widthRes.result.expr;
+        if (width.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "幅widthの型が不正です.", src: width.src });
+        }
+        sideEffect |= widthRes.result.sideEffect;
+        const heightRes = this.height.rebuild(findUserFunc);
+        if (heightRes.isErr) {
+            return Result.err(heightRes.error);
+        }
+        const height = heightRes.result.expr;
+        if (height.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "高さheightの型が不正です.", src: height.src });
+        }
+        sideEffect |= heightRes.result.sideEffect;
+        const code = new DrawRect(this.src, x, y, width, height);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+    toString() {
+        return `DrawRect{ x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height} }`;
     }
 }
 export default {};

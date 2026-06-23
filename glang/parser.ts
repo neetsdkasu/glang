@@ -64,6 +64,7 @@ enum Keyword {
     DIM = "dim",
     DO = "do",
     DRAWLINE = "drawline",
+    DRAWRECT = "drawrect",
     ELSE = "else",
     END = "end",
     FALSE = "false",
@@ -143,6 +144,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     Keyword.DO,
     "double",
     Keyword.DRAWLINE,
+    Keyword.DRAWRECT,
     "dump",
     "each",
     Keyword.ELSE,
@@ -1137,6 +1139,9 @@ class Parser {
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
+                    break;
+                case Keyword.DRAWRECT:
+                    res = this.#parseDrawRect(line);
                     break;
                 case Keyword.FLUSH:
                     res = this.#parseFlush(line);
@@ -3523,7 +3528,7 @@ class Parser {
         const x1 = x1Res.result;
         log.dump("X1", x1);
         if (C.inferVtype(x1.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`X1の型は${Keyword.INTEGER}が必要です.`, x1Token!);
+            return syntaxError(`始点のX座標の型は${Keyword.INTEGER}が必要です.`, x1Token!);
         }
 
         const comma1Token = line.dequeue()!;
@@ -3540,7 +3545,7 @@ class Parser {
         const y1 = y1Res.result;
         log.dump("Y1", y1);
         if (C.inferVtype(y1.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`Y1の型は${Keyword.INTEGER}が必要です.`, y1Token!);
+            return syntaxError(`始点のY座標の型は${Keyword.INTEGER}が必要です.`, y1Token!);
         }
 
         const comma2Token = line.dequeue()!;
@@ -3557,7 +3562,7 @@ class Parser {
         const x2 = x2Res.result;
         log.dump("X2", x2);
         if (C.inferVtype(x2.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`X2の型は${Keyword.INTEGER}が必要です.`, x2Token!);
+            return syntaxError(`終点のX座標の型は${Keyword.INTEGER}が必要です.`, x2Token!);
         }
 
         const comma3Token = line.dequeue()!;
@@ -3574,7 +3579,7 @@ class Parser {
         const y2 = y2Res.result;
         log.dump("Y2", y2);
         if (C.inferVtype(y2.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`Y2の型は${Keyword.INTEGER}が必要です.`, y2Token!);
+            return syntaxError(`終点のY座標の型は${Keyword.INTEGER}が必要です.`, y2Token!);
         }
 
         const eolToken = line.dequeue()!;
@@ -3610,7 +3615,7 @@ class Parser {
         const red = redRes.result;
         log.dump("R", red);
         if (C.inferVtype(red.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`Rの型は${Keyword.INTEGER}が必要です.`, redToken!);
+            return syntaxError(`赤の成分値Rの型は${Keyword.INTEGER}が必要です.`, redToken!);
         }
 
         const comma1Token = line.dequeue()!;
@@ -3627,7 +3632,7 @@ class Parser {
         const green = greenRes.result;
         log.dump("G", green);
         if (C.inferVtype(green.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`Gの型は${Keyword.INTEGER}が必要です.`, greenToken!);
+            return syntaxError(`緑の成分値Gの型は${Keyword.INTEGER}が必要です.`, greenToken!);
         }
 
         const comma2Token = line.dequeue()!;
@@ -3644,7 +3649,7 @@ class Parser {
         const blue = blueRes.result;
         log.dump("B", blue);
         if (C.inferVtype(blue.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`Bの型は${Keyword.INTEGER}が必要です.`, blueToken!);
+            return syntaxError(`青の成分値Bの型は${Keyword.INTEGER}が必要です.`, blueToken!);
         }
 
         const eolToken = line.dequeue()!;
@@ -3683,11 +3688,12 @@ class Parser {
             }
             seed = seedRes.result;
             if (C.inferVtype(seed.vtype, C.Vtype.INTEGER).isErr) {
-                return syntaxError(`SEEDの型は${Keyword.INTEGER}は必要です`, seedToken!);
+                return syntaxError(`乱数種SEEDの型は${Keyword.INTEGER}は必要です`, seedToken!);
             }
         } else {
             seed = null;
         }
+        log.dump("seed", seed);
         
         const eolToken = line.dequeue()!;
         if (eolToken.tokenType === TokenType.EOF) {
@@ -3723,6 +3729,7 @@ class Parser {
         if (xInfo === undefined || C.inferVtype(xInfo.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`X座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, xToken);
         }
+        log.dump("xName", xName);
 
         const comma1Token = line.dequeue()!;
         src.push(comma1Token);
@@ -3740,6 +3747,7 @@ class Parser {
         if (yInfo === undefined || C.inferVtype(yInfo.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`Y座標を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, yToken);
         }
+        log.dump("yName", yName);
 
         const comma2Token = line.dequeue()!;
         src.push(comma2Token);
@@ -3757,6 +3765,7 @@ class Parser {
         if (kindInfo === undefined || C.inferVtype(kindInfo.vtype, C.Vtype.INTEGER).isErr) {
             return syntaxError(`イベントの種類(KIND)を格納する${Keyword.INTEGER}型の変数名の指定が必要です.`, kindToken);
         }
+        log.dump("kindName", kindName);
 
         const comma3Token = line.dequeue()!;
         src.push(comma3Token);
@@ -3774,6 +3783,7 @@ class Parser {
         if (timeInfo === undefined || C.inferVtype(timeInfo.vtype, C.Vtype.FLOATING_POINT).isErr) {
             return syntaxError(`イベント発生時間(TIME)を格納する${Keyword.FLOAT}型の変数名の指定が必要です.`, timeToken);
         }
+        log.dump("timeName", timeName);
 
         let wait: number = 1;
 
@@ -3792,6 +3802,7 @@ class Parser {
                         return Result.err(numRes.error);
                     }
                     wait = numRes.result;
+                    log.dump("wait", wait);
                     if (U.inRange(0, 100, wait)) {
                         break;
                     }
@@ -3888,6 +3899,7 @@ class Parser {
                     return Result.err(numRes.error);
                 }
                 waitTime = numRes.result;
+                log.dump("waitTime", waitTime);
                 if (U.inRange(1, 1000, waitTime)) {
                     break;
                 }
@@ -3914,6 +3926,93 @@ class Parser {
         return OK;
     }
 
+    
+    #parseDrawRect(line: RQueue<Token>): ParserResult {
+        const drawRectToken = line.dequeue()!;
+        const src: Token[] = [drawRectToken];
+        
+        log.debug("PARSE drawrect...");
+
+        const xToken = line.front;
+        const xRes = this.#parseExprTokens(line, src);
+        if (xRes.isErr) {
+            return Result.err(xRes.error);
+        }
+        const x = xRes.result;
+        log.dump("X", x);
+        if (C.inferVtype(x.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`座標Xの型は${Keyword.INTEGER}が必要です.`, xToken!);
+        }
+
+        const comma1Token = line.dequeue()!;
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+
+        const yToken = line.front;
+        const yRes = this.#parseExprTokens(line, src);
+        if (yRes.isErr) {
+            return Result.err(yRes.error);
+        }
+        const y = yRes.result;
+        log.dump("Y", y);
+        if (C.inferVtype(y.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`座標Yの型は${Keyword.INTEGER}が必要です.`, yToken!);
+        }
+
+        const comma2Token = line.dequeue()!;
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+
+        const widthToken = line.front;
+        const widthRes = this.#parseExprTokens(line, src);
+        if (widthRes.isErr) {
+            return Result.err(widthRes.error);
+        }
+        const width = widthRes.result;
+        log.dump("Width", width);
+        if (C.inferVtype(width.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`幅Widthの型は${Keyword.INTEGER}が必要です.`, widthToken!);
+        }
+
+        const comma3Token = line.dequeue()!;
+        src.push(comma3Token);
+        if (comma3Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma3Token);
+        }
+
+        const heightToken = line.front;
+        const heightRes = this.#parseExprTokens(line, src);
+        if (heightRes.isErr) {
+            return Result.err(heightRes.error);
+        }
+        const height = heightRes.result;
+        log.dump("Height", height);
+        if (C.inferVtype(height.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`高さHeightの型は${Keyword.INTEGER}が必要です.`, heightToken!);
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+
+        const code = new C.DrawRect(src, x, y, width, height);
+
+        this.#env.addCode(code);
+
+        log.dump("src", Token.lineToString, src);
+        log.debug("PARSED drawrect.");
+
+        return OK;
+    }
 }
 
 export function parse(scanner: Scanner): Result<C.ParsedSource,ParserError> {

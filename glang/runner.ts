@@ -58,6 +58,7 @@ export interface Gra {
     readonly width: number;
     readonly height: number;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
+    drawRect(x: number, y: number, width: number, height: number): void;
     setColor(r: number, g: number, b: number): void;
     flush(): void;
     transfer(): void;
@@ -1298,6 +1299,15 @@ export class Runner {
                             this.#state = State.INTERRUPTED;
                         }
                     }
+                }
+                return;
+            case Cmd.DRAW_RECT:
+                {
+                    const height = this.#valueStack.pop() as number;
+                    const width = this.#valueStack.pop() as number;
+                    const y = this.#valueStack.pop() as number;
+                    const x = this.#valueStack.pop() as number;
+                    this.#io.g.drawRect(x, y, width, height);
                 }
                 return;
             default:

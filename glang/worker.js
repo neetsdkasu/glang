@@ -31,6 +31,9 @@ class GraImpl {
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+    drawRect(x, y, width, height) {
+        this.#ctx.strokeRect(x, y, width, height);
+    }
     flush() {
         const image = this.#scr.transferToImageBitmap();
         this.#ctx.drawImage(image, 0, 0);

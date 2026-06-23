@@ -282,6 +282,10 @@ class Compiler {
                     U.assert(code instanceof C.DrawLine);
                     this.#compileDrawLine(code);
                     break;
+                case C.CodeKind.DRAW_RECT:
+                    U.assert(code instanceof C.DrawRect);
+                    this.#compileDrawRect(code);
+                    break;
                 case C.CodeKind.FLUSH:
                     U.assert(code instanceof C.Flush);
                     this.#compileFlush(code);
@@ -1152,6 +1156,14 @@ class Compiler {
 
     #compileAwait(code: C.Await): void {
         this.#addCmd(Cmd.AWAIT, code.waitTime);
+    }
+
+    #compileDrawRect(code: C.DrawRect): void {
+        this.#compileExpr(code.x);
+        this.#compileExpr(code.y);
+        this.#compileExpr(code.width);
+        this.#compileExpr(code.height);
+        this.#addCmd(Cmd.DRAW_RECT);
     }
 }
 

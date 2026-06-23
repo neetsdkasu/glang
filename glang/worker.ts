@@ -39,6 +39,10 @@ class GraImpl implements Gra {
         ctx.stroke();
     }
 
+    drawRect(x: number, y: number, width: number, height: number): void {
+        this.#ctx.strokeRect(x, y, width, height);
+    }
+
     flush(): void {
         const image = this.#scr.transferToImageBitmap();
         this.#ctx.drawImage(image, 0, 0);
