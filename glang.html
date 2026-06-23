@@ -58,6 +58,8 @@ Sub Main()
     Call DrawStar(60, 100, 100, 0,  0xFF0000)
     Call DrawStar(50, 200, 100, 30, 0x00FF00)
     Call DrawStar(80, 150, 250, 70, 0x0000FF)
+    Flush
+    Await 1000
     For let i = 1 To 30
         let r = random() % 20 + 10
         let x = random() % (width() - 2*r) + r
@@ -68,8 +70,9 @@ Sub Main()
         let blue = random() &amp; 0xFF
         let rgb = (red &lt;&lt; 16) | (green &lt;&lt; 8) | blue
         Call DrawStar(r, x, y, rot, rgb)
+        Flush
+        Await 1000
     End For
-    Flush
     let lasttime = 0.0
     Do While true
         let px = 0

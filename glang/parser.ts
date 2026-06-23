@@ -56,6 +56,7 @@ function boundaryError<R>(msg: string, src: Token | Readonly<Token[]>): Result<R
 
 enum Keyword {
     AS = "as",
+    AWAIT = "await",
     BOOLEAN = "boolean",
     BREAK = "break",
     CALL = "call",
@@ -100,7 +101,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "asm",
     "assemble",
     "async",
-    "await",
+    Keyword.AWAIT,
     "base",
     "bool",
     Keyword.BOOLEAN,
@@ -1116,6 +1117,9 @@ class Parser {
                 case Keyword.SUB:
                 case Keyword.FUNC:
                     return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.AWAIT:
+                    res = this.#parseAwait(line);
+                    break;
                 case Keyword.BREAK:
                     res = this.#parseBreak(line);
                     break;
@@ -3859,6 +3863,52 @@ class Parser {
         this.#env.addCode(code);
 
         log.debug("PARSED transfer.");
+        log.dump("src", Token.lineToString, src);
+
+        return OK;
+    }
+
+    #parseAwait(line: RQueue<Token>): ParserResult {
+        const awaitToken = line.dequeue()!;
+        const src: Token[] = [awaitToken];
+
+        log.debug("PARSE await...");
+
+        const timeToken = line.dequeue()!;
+        src.push(timeToken);
+
+        let waitTime: number;
+
+        switch (timeToken.tokenType) {
+            case TokenType.INTEGER:
+            case TokenType.BIN_INETGER:
+            case TokenType.HEX_INTEGER:
+                const numRes = parseNumber(timeToken);
+                if (numRes.isErr) {
+                    return Result.err(numRes.error);
+                }
+                waitTime = numRes.result;
+                if (U.inRange(1, 1000, waitTime)) {
+                    break;
+                }
+            default:
+                return syntaxError(`待ち時間(ミリ秒)は1以上1000以下の${Keyword.INTEGER}型での指定が必要です.`, timeToken);
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.CHANGE_RUNNER_STATE);
+
+        const code = new C.Await(src, waitTime);
+
+        this.#env.addCode(code);
+
+        log.debug("PARSED await.");
         log.dump("src", Token.lineToString, src);
 
         return OK;

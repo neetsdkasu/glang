@@ -223,6 +223,10 @@ class Compiler {
                     U.assert(code instanceof C.AssignVar);
                     this.#compileAssignVar(code);
                     break;
+                case C.CodeKind.AWAIT:
+                    U.assert(code instanceof C.Await);
+                    this.#compileAwait(code);
+                    break;
                 case C.CodeKind.BREAK:
                     U.assert(code instanceof C.Break);
                     this.#compileBreak(code);
@@ -1242,6 +1246,9 @@ class Compiler {
     }
     #compileTransfer(code) {
         this.#addCmd(Cmd.TRANSFER);
+    }
+    #compileAwait(code) {
+        this.#addCmd(Cmd.AWAIT, code.waitTime);
     }
 }
 export function compile(src) {

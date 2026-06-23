@@ -59,6 +59,7 @@ export class Runner {
     #error = null;
     #state = State.RUNNING;
     #cmd = Cmd.NOP;
+    #awaitTime;
     #block;
     #blockStack;
     #valueStack = [];
@@ -71,6 +72,7 @@ export class Runner {
         this.#block = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#io = io;
+        this.#awaitTime = Date.now();
     }
     get isRunning() {
         return this.#isRunning;
@@ -1255,6 +1257,23 @@ export class Runner {
             case Cmd.TRANSFER:
                 {
                     this.#io.g.transfer();
+                }
+                return;
+            case Cmd.AWAIT:
+                {
+                    const waitTime = this.#program[this.#pos++];
+                    const now = Date.now();
+                    const diff = (this.#awaitTime + waitTime) - now;
+                    if (diff <= 0) {
+                        this.#awaitTime = now;
+                    }
+                    else {
+                        this.#pos -= 2;
+                        if (diff > 200) {
+                            this.#isRunning = false;
+                            this.#state = State.INTERRUPTED;
+                        }
+                    }
                 }
                 return;
             default:

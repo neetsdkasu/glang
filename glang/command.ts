@@ -169,7 +169,8 @@ export enum Cmd {
     REQ_POINTER_EV, // REQ_POINTER_EV () [...] => [...]
     GET_POINTER_EV, // GET_POINTER_EV ( xBId, xBVId, yBId, yBVId, kindBId, kindBVId, timeBId, timeBVId ) : [...] => [...]
     FLUSH,          // FLUSH () [...] => [...]
-    TRANSFER        // TRANSFER () [...] => [...]
+    TRANSFER,       // TRANSFER () [...] => [...]
+    AWAIT           // AWAIT ( waitTime ) [...] => [...]
 }
 
 export enum StdFunc {

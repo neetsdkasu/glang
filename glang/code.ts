@@ -1109,6 +1109,7 @@ export class ExprArrayRef extends ExprVar {
 export enum CodeKind {
     ASSIGN_ARRAY,
     ASSIGN_VAR,
+    AWAIT,
     BLOCK,
     BREAK,
     CALL_STD_FUNC,
@@ -1947,6 +1948,23 @@ export class Transfer extends Code {
 
     toString(): string {
         return `Transfer{}`;
+    }
+}
+
+export class Await extends Code {
+    readonly waitTime: number;
+
+    constructor(src: Readonly<Token[]>, waitTime: number) {
+        super(CodeKind.AWAIT, src);
+        this.waitTime = waitTime;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.CHANGE_RUNNER_STATE });
+    }
+
+    toString(): string {
+        return `Await{ waitTime: ${this.waitTime} }`;
     }
 }
 

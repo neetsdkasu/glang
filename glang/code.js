@@ -1009,25 +1009,26 @@ export var CodeKind;
 (function (CodeKind) {
     CodeKind[CodeKind["ASSIGN_ARRAY"] = 0] = "ASSIGN_ARRAY";
     CodeKind[CodeKind["ASSIGN_VAR"] = 1] = "ASSIGN_VAR";
-    CodeKind[CodeKind["BLOCK"] = 2] = "BLOCK";
-    CodeKind[CodeKind["BREAK"] = 3] = "BREAK";
-    CodeKind[CodeKind["CALL_STD_FUNC"] = 4] = "CALL_STD_FUNC";
-    CodeKind[CodeKind["CALL_USER_FUNC"] = 5] = "CALL_USER_FUNC";
-    CodeKind[CodeKind["CONTINUE"] = 6] = "CONTINUE";
-    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 7] = "DEFINE_USER_FUNC";
-    CodeKind[CodeKind["DIM"] = 8] = "DIM";
-    CodeKind[CodeKind["DO_WHILE"] = 9] = "DO_WHILE";
-    CodeKind[CodeKind["DRAW_LINE"] = 10] = "DRAW_LINE";
-    CodeKind[CodeKind["FLUSH"] = 11] = "FLUSH";
-    CodeKind[CodeKind["FOR"] = 12] = "FOR";
-    CodeKind[CodeKind["GET_POINTER_EVENT"] = 13] = "GET_POINTER_EVENT";
-    CodeKind[CodeKind["IF"] = 14] = "IF";
-    CodeKind[CodeKind["LET"] = 15] = "LET";
-    CodeKind[CodeKind["PRINT"] = 16] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 17] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 18] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 19] = "SET_COLOR";
-    CodeKind[CodeKind["TRANSFER"] = 20] = "TRANSFER";
+    CodeKind[CodeKind["AWAIT"] = 2] = "AWAIT";
+    CodeKind[CodeKind["BLOCK"] = 3] = "BLOCK";
+    CodeKind[CodeKind["BREAK"] = 4] = "BREAK";
+    CodeKind[CodeKind["CALL_STD_FUNC"] = 5] = "CALL_STD_FUNC";
+    CodeKind[CodeKind["CALL_USER_FUNC"] = 6] = "CALL_USER_FUNC";
+    CodeKind[CodeKind["CONTINUE"] = 7] = "CONTINUE";
+    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 8] = "DEFINE_USER_FUNC";
+    CodeKind[CodeKind["DIM"] = 9] = "DIM";
+    CodeKind[CodeKind["DO_WHILE"] = 10] = "DO_WHILE";
+    CodeKind[CodeKind["DRAW_LINE"] = 11] = "DRAW_LINE";
+    CodeKind[CodeKind["FLUSH"] = 12] = "FLUSH";
+    CodeKind[CodeKind["FOR"] = 13] = "FOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 14] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 15] = "IF";
+    CodeKind[CodeKind["LET"] = 16] = "LET";
+    CodeKind[CodeKind["PRINT"] = 17] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 18] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 19] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 20] = "SET_COLOR";
+    CodeKind[CodeKind["TRANSFER"] = 21] = "TRANSFER";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1750,6 +1751,19 @@ export class Transfer extends Code {
     }
     toString() {
         return `Transfer{}`;
+    }
+}
+export class Await extends Code {
+    waitTime;
+    constructor(src, waitTime) {
+        super(CodeKind.AWAIT, src);
+        this.waitTime = waitTime;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.CHANGE_RUNNER_STATE });
+    }
+    toString() {
+        return `Await{ waitTime: ${this.waitTime} }`;
     }
 }
 export default {};

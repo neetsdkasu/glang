@@ -161,7 +161,8 @@ export var Cmd;
     Cmd[Cmd["REQ_POINTER_EV"] = 123] = "REQ_POINTER_EV";
     Cmd[Cmd["GET_POINTER_EV"] = 124] = "GET_POINTER_EV";
     Cmd[Cmd["FLUSH"] = 125] = "FLUSH";
-    Cmd[Cmd["TRANSFER"] = 126] = "TRANSFER"; // TRANSFER () [...] => [...]
+    Cmd[Cmd["TRANSFER"] = 126] = "TRANSFER";
+    Cmd[Cmd["AWAIT"] = 127] = "AWAIT"; // AWAIT ( waitTime ) [...] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {
