@@ -1167,7 +1167,7 @@ class Compiler {
         this.#compileExpr(code.top);
         this.#compileExpr(code.width);
         this.#compileExpr(code.height);
-        this.#addCmd(Cmd.DRAW_RECT);
+        this.#addCmd(code.fill ? Cmd.FILL_RECT : Cmd.DRAW_RECT);
     }
 
     #compileDrawArc(code: C.DrawArc): void {
@@ -1176,7 +1176,7 @@ class Compiler {
         this.#compileExpr(code.diameter);
         this.#compileExpr(code.startAngle);
         this.#compileExpr(code.endAngle);
-        this.#addCmd(Cmd.DRAW_ARC);
+        this.#addCmd(code.fill ? Cmd.FILL_ARC : Cmd.DRAW_ARC);
     }
 }
 

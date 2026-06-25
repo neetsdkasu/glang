@@ -1975,13 +1975,15 @@ export class DrawRect extends Code {
     readonly top: Expr;
     readonly width: Expr;
     readonly height: Expr;
+    readonly fill: boolean;
 
-    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, width: Expr, height: Expr) {
+    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, width: Expr, height: Expr, fill: boolean) {
         super(CodeKind.DRAW_RECT, src);
         this.left = left;
         this.top = top;
         this.width = width;
         this.height = height;
+        this.fill = fill;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
@@ -2021,12 +2023,12 @@ export class DrawRect extends Code {
             return Result.err({ msg: "高さheightの型が不正です.", src: height.src });
         }
         sideEffect |= heightRes.result.sideEffect;
-        const code = new DrawRect(this.src, left, top, width, height);
+        const code = new DrawRect(this.src, left, top, width, height, this.fill);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height} }`;
+        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height}, fill: ${this.fill} }`;
     }
 }
 
@@ -2036,14 +2038,16 @@ export class DrawArc extends Code {
     readonly diameter: Expr;
     readonly startAngle: Expr;
     readonly endAngle: Expr;
+    readonly fill: boolean;
 
-    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, diameter: Expr, startAngle: Expr, endAngle: Expr) {
+    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, diameter: Expr, startAngle: Expr, endAngle: Expr, fill: boolean) {
         super(CodeKind.DRAW_ARC, src);
         this.left = left;
         this.top = top;
         this.diameter = diameter;
         this.startAngle = startAngle;
         this.endAngle = endAngle;
+        this.fill = fill;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
@@ -2092,12 +2096,12 @@ export class DrawArc extends Code {
         if (endAngle.vtype !== Vtype.FLOATING_POINT) {
             return Result.err({ msg: "弧の終点の角度の型が不正です.", src: endAngle.src });
         }
-        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle);
+        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle, this.fill);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle} }`;
+        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle}, fill: ${this.fill} }`;
     }
 
 }

@@ -69,6 +69,8 @@ enum Keyword {
     ELSE = "else",
     END = "end",
     FALSE = "false",
+    FILLARC = "fillarc",
+    FILLRECT = "fillrect",
     FLOAT = "float",
     FLUSH = "flush",
     FOR = "for",
@@ -164,6 +166,8 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "external",
     Keyword.FALSE,
     "field",
+    Keyword.FILLARC,
+    Keyword.FILLRECT,
     "final",
     "finally",
     Keyword.FLOAT,
@@ -1140,13 +1144,19 @@ class Parser {
                     res = this.#parseDoWhile(line);
                     break;
                 case Keyword.DRAWARC:
-                    res = this.#parseDrawArc(line);
+                    res = this.#parseDrawArc(line, false);
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
                     break;
                 case Keyword.DRAWRECT:
-                    res = this.#parseDrawRect(line);
+                    res = this.#parseDrawRect(line, false);
+                    break;
+                case Keyword.FILLARC:
+                    res = this.#parseDrawArc(line, true);
+                    break;
+                case Keyword.FILLRECT:
+                    res = this.#parseDrawRect(line, true);
                     break;
                 case Keyword.FLUSH:
                     res = this.#parseFlush(line);
@@ -3932,11 +3942,13 @@ class Parser {
     }
 
     
-    #parseDrawRect(line: RQueue<Token>): ParserResult {
+    #parseDrawRect(line: RQueue<Token>, fill: boolean): ParserResult {
         const drawRectToken = line.dequeue()!;
         const src: Token[] = [drawRectToken];
         
-        log.debug("PARSE drawrect...");
+        log.debug("PARSE drawrect/fillrect...");
+
+        log.dump("fill", fill);
 
         const leftToken = line.front;
         const leftRes = this.#parseExprTokens(line, src);
@@ -4009,21 +4021,23 @@ class Parser {
 
         this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
 
-        const code = new C.DrawRect(src, left, top, width, height);
+        const code = new C.DrawRect(src, left, top, width, height, fill);
 
         this.#env.addCode(code);
 
         log.dump("src", Token.lineToString, src);
-        log.debug("PARSED drawrect.");
+        log.debug("PARSED drawrect/fillrect.");
 
         return OK;
     }
 
-    #parseDrawArc(line: RQueue<Token>): ParserResult {
+    #parseDrawArc(line: RQueue<Token>, fill: boolean): ParserResult {
         const drawArcToken = line.dequeue()!;
         const src: Token[] = [drawArcToken];
 
-        log.debug("PARSE drawarc...");
+        log.debug("PARSE drawarc/fillarc...");
+
+        log.dump("fill", fill);
 
         const leftToken = line.front;
         const leftRes = this.#parseExprTokens(line, src);
@@ -4113,11 +4127,11 @@ class Parser {
 
         this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
 
-        const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle);
+        const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle, fill);
 
         this.#env.addCode(code);
 
-        log.debug("PARSED drawarc.");
+        log.debug("PARSED drawarc/fillarc.");
         log.dump("src", Token.lineToString, src);
 
         return OK;

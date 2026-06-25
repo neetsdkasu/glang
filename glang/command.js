@@ -164,7 +164,9 @@ export var Cmd;
     Cmd[Cmd["TRANSFER"] = 126] = "TRANSFER";
     Cmd[Cmd["AWAIT"] = 127] = "AWAIT";
     Cmd[Cmd["DRAW_RECT"] = 128] = "DRAW_RECT";
-    Cmd[Cmd["DRAW_ARC"] = 129] = "DRAW_ARC"; // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    Cmd[Cmd["DRAW_ARC"] = 129] = "DRAW_ARC";
+    Cmd[Cmd["FILL_RECT"] = 130] = "FILL_RECT";
+    Cmd[Cmd["FILL_ARC"] = 131] = "FILL_ARC"; // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

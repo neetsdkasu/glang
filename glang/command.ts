@@ -172,7 +172,9 @@ export enum Cmd {
     TRANSFER,       // TRANSFER () [...] => [...]
     AWAIT,          // AWAIT ( waitTime ) [...] => [...]
     DRAW_RECT,      // DRAW_RECT () [...,left,top,width,height] => [...]
-    DRAW_ARC        // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    DRAW_ARC,       // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    FILL_RECT,      // FILL_RECT () [...,left,top,width,height] => [...]
+    FILL_ARC        // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
 }
 
 export enum StdFunc {

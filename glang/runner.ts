@@ -60,6 +60,8 @@ export interface Gra {
     drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
     drawRect(left: number, top: number, width: number, height: number): void;
+    fillArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void;
+    fillRect(left: number, top: number, width: number, height: number): void;
     setColor(r: number, g: number, b: number): void;
     flush(): void;
     transfer(): void;
@@ -1319,6 +1321,25 @@ export class Runner {
                     const top = this.#valueStack.pop() as number;
                     const left = this.#valueStack.pop() as number;
                     this.#io.g.drawArc(left, top, diameter, startAngle, endAngle);
+                }
+                return;
+            case Cmd.FILL_RECT:
+                {
+                    const height = this.#valueStack.pop() as number;
+                    const width = this.#valueStack.pop() as number;
+                    const top = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#io.g.fillRect(left, top, width, height);
+                }
+                return;
+            case Cmd.FILL_ARC:
+                {
+                    const endAngle = this.#valueStack.pop() as number;
+                    const startAngle = this.#valueStack.pop() as number;
+                    const diameter = this.#valueStack.pop() as number;
+                    const top = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#io.g.fillArc(left, top, diameter, startAngle, endAngle);
                 }
                 return;
             default:

@@ -43,6 +43,16 @@ class GraImpl {
         ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
         ctx.stroke();
     }
+    fillRect(left, top, width, height) {
+        this.#ctx.fillRect(left, top, width, height);
+    }
+    fillArc(left, top, diameter, startAngle, endAngle) {
+        const ctx = this.#ctx;
+        const radius = diameter / 2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.fill();
+    }
     flush() {
         const image = this.#scr.transferToImageBitmap();
         this.#ctx.drawImage(image, 0, 0);

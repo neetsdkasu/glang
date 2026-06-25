@@ -1295,6 +1295,25 @@ export class Runner {
                     this.#io.g.drawArc(left, top, diameter, startAngle, endAngle);
                 }
                 return;
+            case Cmd.FILL_RECT:
+                {
+                    const height = this.#valueStack.pop();
+                    const width = this.#valueStack.pop();
+                    const top = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#io.g.fillRect(left, top, width, height);
+                }
+                return;
+            case Cmd.FILL_ARC:
+                {
+                    const endAngle = this.#valueStack.pop();
+                    const startAngle = this.#valueStack.pop();
+                    const diameter = this.#valueStack.pop();
+                    const top = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#io.g.fillArc(left, top, diameter, startAngle, endAngle);
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

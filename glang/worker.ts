@@ -53,6 +53,18 @@ class GraImpl implements Gra {
         ctx.stroke();
     }
 
+    fillRect(left: number, top: number, width: number, height: number): void {
+        this.#ctx.fillRect(left, top, width, height);
+    }
+
+    fillArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void {
+        const ctx = this.#ctx;
+        const radius = diameter/2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.fill();
+    }
+
     flush(): void {
         const image = this.#scr.transferToImageBitmap();
         this.#ctx.drawImage(image, 0, 0);

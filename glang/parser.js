@@ -61,6 +61,8 @@ var Keyword;
     Keyword["ELSE"] = "else";
     Keyword["END"] = "end";
     Keyword["FALSE"] = "false";
+    Keyword["FILLARC"] = "fillarc";
+    Keyword["FILLRECT"] = "fillrect";
     Keyword["FLOAT"] = "float";
     Keyword["FLUSH"] = "flush";
     Keyword["FOR"] = "for";
@@ -155,6 +157,8 @@ const ReservedWordSet = Object.freeze(new Set([
     "external",
     Keyword.FALSE,
     "field",
+    Keyword.FILLARC,
+    Keyword.FILLRECT,
     "final",
     "finally",
     Keyword.FLOAT,
@@ -1049,13 +1053,19 @@ class Parser {
                     res = this.#parseDoWhile(line);
                     break;
                 case Keyword.DRAWARC:
-                    res = this.#parseDrawArc(line);
+                    res = this.#parseDrawArc(line, false);
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
                     break;
                 case Keyword.DRAWRECT:
-                    res = this.#parseDrawRect(line);
+                    res = this.#parseDrawRect(line, false);
+                    break;
+                case Keyword.FILLARC:
+                    res = this.#parseDrawArc(line, true);
+                    break;
+                case Keyword.FILLRECT:
+                    res = this.#parseDrawRect(line, true);
                     break;
                 case Keyword.FLUSH:
                     res = this.#parseFlush(line);
@@ -3321,10 +3331,11 @@ class Parser {
         log.dump("src", Token.lineToString, src);
         return OK;
     }
-    #parseDrawRect(line) {
+    #parseDrawRect(line, fill) {
         const drawRectToken = line.dequeue();
         const src = [drawRectToken];
-        log.debug("PARSE drawrect...");
+        log.debug("PARSE drawrect/fillrect...");
+        log.dump("fill", fill);
         const leftToken = line.front;
         const leftRes = this.#parseExprTokens(line, src);
         if (leftRes.isErr) {
@@ -3388,16 +3399,17 @@ class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
         this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
-        const code = new C.DrawRect(src, left, top, width, height);
+        const code = new C.DrawRect(src, left, top, width, height, fill);
         this.#env.addCode(code);
         log.dump("src", Token.lineToString, src);
-        log.debug("PARSED drawrect.");
+        log.debug("PARSED drawrect/fillrect.");
         return OK;
     }
-    #parseDrawArc(line) {
+    #parseDrawArc(line, fill) {
         const drawArcToken = line.dequeue();
         const src = [drawArcToken];
-        log.debug("PARSE drawarc...");
+        log.debug("PARSE drawarc/fillarc...");
+        log.dump("fill", fill);
         const leftToken = line.front;
         const leftRes = this.#parseExprTokens(line, src);
         if (leftRes.isErr) {
@@ -3476,9 +3488,9 @@ class Parser {
             return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
         }
         this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
-        const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle);
+        const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle, fill);
         this.#env.addCode(code);
-        log.debug("PARSED drawarc.");
+        log.debug("PARSED drawarc/fillarc.");
         log.dump("src", Token.lineToString, src);
         return OK;
     }

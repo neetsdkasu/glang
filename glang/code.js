@@ -1773,12 +1773,14 @@ export class DrawRect extends Code {
     top;
     width;
     height;
-    constructor(src, left, top, width, height) {
+    fill;
+    constructor(src, left, top, width, height, fill) {
         super(CodeKind.DRAW_RECT, src);
         this.left = left;
         this.top = top;
         this.width = width;
         this.height = height;
+        this.fill = fill;
     }
     rebuild(findUserFunc) {
         const leftRes = this.left.rebuild(findUserFunc);
@@ -1817,11 +1819,11 @@ export class DrawRect extends Code {
             return Result.err({ msg: "高さheightの型が不正です.", src: height.src });
         }
         sideEffect |= heightRes.result.sideEffect;
-        const code = new DrawRect(this.src, left, top, width, height);
+        const code = new DrawRect(this.src, left, top, width, height, this.fill);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
     toString() {
-        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height} }`;
+        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height}, fill: ${this.fill} }`;
     }
 }
 export class DrawArc extends Code {
@@ -1830,13 +1832,15 @@ export class DrawArc extends Code {
     diameter;
     startAngle;
     endAngle;
-    constructor(src, left, top, diameter, startAngle, endAngle) {
+    fill;
+    constructor(src, left, top, diameter, startAngle, endAngle, fill) {
         super(CodeKind.DRAW_ARC, src);
         this.left = left;
         this.top = top;
         this.diameter = diameter;
         this.startAngle = startAngle;
         this.endAngle = endAngle;
+        this.fill = fill;
     }
     rebuild(findUserFunc) {
         const leftRes = this.left.rebuild(findUserFunc);
@@ -1884,11 +1888,11 @@ export class DrawArc extends Code {
         if (endAngle.vtype !== Vtype.FLOATING_POINT) {
             return Result.err({ msg: "弧の終点の角度の型が不正です.", src: endAngle.src });
         }
-        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle);
+        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle, this.fill);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
     toString() {
-        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle} }`;
+        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle}, fill: ${this.fill} }`;
     }
 }
 export default {};
