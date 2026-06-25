@@ -23,6 +23,8 @@ class GraImpl {
         this.#ctx = ctx;
         this.width = width;
         this.height = height;
+        ctx.strokeStyle = "rgb(0 0 0)";
+        ctx.fillStyle = "rgb(0 0 0)";
     }
     drawLine(x1, y1, x2, y2) {
         const ctx = this.#ctx;
@@ -31,8 +33,15 @@ class GraImpl {
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
-    drawRect(x, y, width, height) {
-        this.#ctx.strokeRect(x, y, width, height);
+    drawRect(left, top, width, height) {
+        this.#ctx.strokeRect(left, top, width, height);
+    }
+    drawArc(left, top, diameter, startAngle, endAngle) {
+        const ctx = this.#ctx;
+        const radius = diameter / 2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.stroke();
     }
     flush() {
         const image = this.#scr.transferToImageBitmap();
@@ -44,10 +53,15 @@ class GraImpl {
         M.sendTransferImage(self, image);
     }
     setColor(r, g, b) {
-        this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
+        const color = `rgb(${r & 0xFF} ${g & 0xFF} ${b & 0xFF})`;
+        this.#ctx.strokeStyle = color;
+        this.#ctx.fillStyle = color;
     }
-    clear() {
-        this.#ctx.clearRect(0, 0, this.width, this.height);
+    cleanUp() {
+        const ctx = this.#ctx;
+        ctx.strokeStyle = "rgb(0 0 0)";
+        ctx.fillStyle = "rgb(0 0 0)";
+        ctx.clearRect(0, 0, this.width, this.height);
     }
 }
 class IoImpl {
@@ -144,7 +158,7 @@ async function startRunner(cin, width, height) {
         gra = new GraImpl(width, height);
     }
     else {
-        gra.clear();
+        gra.cleanUp();
     }
     gra.transfer();
     io = new IoImpl(gra, cin);

@@ -171,7 +171,8 @@ export enum Cmd {
     FLUSH,          // FLUSH () [...] => [...]
     TRANSFER,       // TRANSFER () [...] => [...]
     AWAIT,          // AWAIT ( waitTime ) [...] => [...]
-    DRAW_RECT       // DRAW_RECT () [...,x,y.width,height] => [...]
+    DRAW_RECT,      // DRAW_RECT () [...,left,top,width,height] => [...]
+    DRAW_ARC        // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
 }
 
 export enum StdFunc {

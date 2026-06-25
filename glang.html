@@ -76,6 +76,7 @@ Sub Main()
         let blue = random() &amp; 0xFF
         let rgb = (red &lt;&lt; 16) | (green &lt;&lt; 8) | blue
         Call DrawStar(r, x, y, rot, rgb)
+        DrawArc x-r, y-r, 2*r, 0.0, 3.141592*2.0
         Flush
         Await 1000
     End For

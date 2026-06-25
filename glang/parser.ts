@@ -63,6 +63,7 @@ enum Keyword {
     CONTINUE = "continue",
     DIM = "dim",
     DO = "do",
+    DRAWARC = "drawarc",
     DRAWLINE = "drawline",
     DRAWRECT = "drawrect",
     ELSE = "else",
@@ -143,6 +144,7 @@ const ReservedWordSet: Readonly<Set<string>> = Object.freeze(new Set([
     "div",
     Keyword.DO,
     "double",
+    Keyword.DRAWARC,
     Keyword.DRAWLINE,
     Keyword.DRAWRECT,
     "dump",
@@ -1136,6 +1138,9 @@ class Parser {
                     break;
                 case Keyword.DO:
                     res = this.#parseDoWhile(line);
+                    break;
+                case Keyword.DRAWARC:
+                    res = this.#parseDrawArc(line);
                     break;
                 case Keyword.DRAWLINE:
                     res = this.#parseDrawLine(line);
@@ -3933,15 +3938,15 @@ class Parser {
         
         log.debug("PARSE drawrect...");
 
-        const xToken = line.front;
-        const xRes = this.#parseExprTokens(line, src);
-        if (xRes.isErr) {
-            return Result.err(xRes.error);
+        const leftToken = line.front;
+        const leftRes = this.#parseExprTokens(line, src);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
         }
-        const x = xRes.result;
-        log.dump("X", x);
-        if (C.inferVtype(x.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`座標Xの型は${Keyword.INTEGER}が必要です.`, xToken!);
+        const left = leftRes.result;
+        log.dump("Left", left);
+        if (C.inferVtype(left.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`左辺のX座標の型は${Keyword.INTEGER}が必要です.`, leftToken!);
         }
 
         const comma1Token = line.dequeue()!;
@@ -3950,15 +3955,15 @@ class Parser {
             return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
         }
 
-        const yToken = line.front;
-        const yRes = this.#parseExprTokens(line, src);
-        if (yRes.isErr) {
-            return Result.err(yRes.error);
+        const topToken = line.front;
+        const topRes = this.#parseExprTokens(line, src);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
         }
-        const y = yRes.result;
-        log.dump("Y", y);
-        if (C.inferVtype(y.vtype, C.Vtype.INTEGER).isErr) {
-            return syntaxError(`座標Yの型は${Keyword.INTEGER}が必要です.`, yToken!);
+        const top = topRes.result;
+        log.dump("Top", top);
+        if (C.inferVtype(top.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`上辺のY座標の型は${Keyword.INTEGER}が必要です.`, topToken!);
         }
 
         const comma2Token = line.dequeue()!;
@@ -4004,12 +4009,116 @@ class Parser {
 
         this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
 
-        const code = new C.DrawRect(src, x, y, width, height);
+        const code = new C.DrawRect(src, left, top, width, height);
 
         this.#env.addCode(code);
 
         log.dump("src", Token.lineToString, src);
         log.debug("PARSED drawrect.");
+
+        return OK;
+    }
+
+    #parseDrawArc(line: RQueue<Token>): ParserResult {
+        const drawArcToken = line.dequeue()!;
+        const src: Token[] = [drawArcToken];
+
+        log.debug("PARSE drawarc...");
+
+        const leftToken = line.front;
+        const leftRes = this.#parseExprTokens(line, src);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
+        }
+        const left = leftRes.result;
+        log.dump("Left", left);
+        if (C.inferVtype(left.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`矩形範囲左辺のX座標の型は${Keyword.INTEGER}が必要です.`, leftToken!);
+        }
+
+        const comma1Token = line.dequeue()!;
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+
+        const topToken = line.front;
+        const topRes = this.#parseExprTokens(line, src);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
+        }
+        const top = topRes.result;
+        log.dump("Top", top);
+        if (C.inferVtype(top.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`矩形範囲上辺のY座標の型は${Keyword.INTEGER}が必要です.`, topToken!);
+        }
+
+        const comma2Token = line.dequeue()!;
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+
+        const diameterToken = line.front;
+        const diameterRes = this.#parseExprTokens(line, src);
+        if (diameterRes.isErr) {
+            return Result.err(diameterRes.error);
+        }        
+        const diameter = diameterRes.result;
+        log.dump("diameter", diameter);
+        if (C.inferVtype(diameter.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`円の直径の型は${Keyword.INTEGER}が必要です.`, diameterToken!);
+        }
+
+        const comma3Token = line.dequeue()!;
+        src.push(comma3Token);
+        if (comma3Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma3Token);
+        }
+
+        const startAngleToken = line.front;
+        const startAngleRes = this.#parseExprTokens(line, src);
+        if (startAngleRes.isErr) {
+            return Result.err(startAngleRes.error);
+        }
+        const startAngle = startAngleRes.result;
+        log.dump("startAngle", startAngle);
+        if (C.inferVtype(startAngle.vtype, C.Vtype.FLOATING_POINT).isErr) {
+            return syntaxError(`弧の始点の角度の型は${Keyword.FLOAT}が必要です.`, startAngleToken!);
+        }
+
+        const comma4Token = line.dequeue()!;
+        src.push(comma4Token);
+        if (comma4Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma4Token);
+        }
+
+        const endAngleToken = line.front;
+        const endAngleRes = this.#parseExprTokens(line, src);
+        if (endAngleRes.isErr) {
+            return Result.err(endAngleRes.error);
+        }
+        const endAngle = endAngleRes.result;
+        log.dump("endAngle", endAngle);
+        if (C.inferVtype(endAngle.vtype, C.Vtype.FLOATING_POINT).isErr) {
+            return syntaxError(`弧の終点の角度の型は${Keyword.FLOAT}が必要です.`, endAngleToken!);
+        }
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+
+        const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle);
+
+        this.#env.addCode(code);
+
+        log.debug("PARSED drawarc.");
+        log.dump("src", Token.lineToString, src);
 
         return OK;
     }

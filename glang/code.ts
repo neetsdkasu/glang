@@ -1118,6 +1118,7 @@ export enum CodeKind {
     DEFINE_USER_FUNC,
     DIM,
     DO_WHILE,
+    DRAW_ARC,
     DRAW_LINE,
     DRAW_RECT,
     FLUSH,
@@ -1970,38 +1971,38 @@ export class Await extends Code {
 }
 
 export class DrawRect extends Code {
-    readonly x: Expr;
-    readonly y: Expr;
+    readonly left: Expr;
+    readonly top: Expr;
     readonly width: Expr;
     readonly height: Expr;
 
-    constructor(src: Readonly<Token[]>, x: Expr, y: Expr, width: Expr, height: Expr) {
+    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, width: Expr, height: Expr) {
         super(CodeKind.DRAW_RECT, src);
-        this.x = x;
-        this.y = y;
+        this.left = left;
+        this.top = top;
         this.width = width;
         this.height = height;
     }
 
     rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
-        const xRes = this.x.rebuild(findUserFunc);
-        if (xRes.isErr) {
-            return Result.err(xRes.error);
+        const leftRes = this.left.rebuild(findUserFunc);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
         }
-        const x = xRes.result.expr;
-        if (x.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "X座標の型が不正です.", src: x.src });
+        const left = leftRes.result.expr;
+        if (left.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "左辺のX座標の型が不正です.", src: left.src });
         }
-        let sideEffect = xRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
-        const yRes = this.y.rebuild(findUserFunc);
-        if (yRes.isErr) {
-            return Result.err(yRes.error);
+        let sideEffect = leftRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        const topRes = this.top.rebuild(findUserFunc);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
         }
-        const y = yRes.result.expr;
-        if (y.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Y座標の型が不正です.", src: y.src });
+        const top = topRes.result.expr;
+        if (top.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "上辺のY座標の型が不正です.", src: top.src });
         }
-        sideEffect |= yRes.result.sideEffect;
+        sideEffect |= topRes.result.sideEffect;
         const widthRes = this.width.rebuild(findUserFunc);
         if (widthRes.isErr) {
             return Result.err(widthRes.error);
@@ -2020,13 +2021,85 @@ export class DrawRect extends Code {
             return Result.err({ msg: "高さheightの型が不正です.", src: height.src });
         }
         sideEffect |= heightRes.result.sideEffect;
-        const code = new DrawRect(this.src, x, y, width, height);
+        const code = new DrawRect(this.src, left, top, width, height);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
 
     toString(): string {
-        return `DrawRect{ x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height} }`;
+        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height} }`;
     }
+}
+
+export class DrawArc extends Code {
+    readonly left: Expr;
+    readonly top: Expr;
+    readonly diameter: Expr;
+    readonly startAngle: Expr;
+    readonly endAngle: Expr;
+
+    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, diameter: Expr, startAngle: Expr, endAngle: Expr) {
+        super(CodeKind.DRAW_ARC, src);
+        this.left = left;
+        this.top = top;
+        this.diameter = diameter;
+        this.startAngle = startAngle;
+        this.endAngle = endAngle;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const leftRes = this.left.rebuild(findUserFunc);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
+        }
+        const left = leftRes.result.expr;
+        let sideEffect = leftRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        if (left.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲左辺のX座標の型が不正です.", src: left.src });
+        }
+        const topRes = this.top.rebuild(findUserFunc);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
+        }
+        const top = topRes.result.expr;
+        sideEffect |= topRes.result.sideEffect;
+        if (top.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲上辺のY座標の型が不正です.", src: top.src });
+        }
+        const diameterRes = this.diameter.rebuild(findUserFunc);
+        if (diameterRes.isErr) {
+            return Result.err(diameterRes.error);
+        }
+        const diameter = diameterRes.result.expr;
+        sideEffect |= diameterRes.result.sideEffect;
+        if (diameter.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "円の直径の型が不正です.", src: diameter.src });
+        }
+        const startAngleRes = this.startAngle.rebuild(findUserFunc);
+        if (startAngleRes.isErr) {
+            return Result.err(startAngleRes.error);
+        }
+        const startAngle = startAngleRes.result.expr;
+        sideEffect |= startAngleRes.result.sideEffect;
+        if (startAngle.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "弧の始点の角度の型が不正です.", src: startAngle.src });
+        }
+        const endAngleRes = this.endAngle.rebuild(findUserFunc);
+        if (endAngleRes.isErr) {
+            return Result.err(endAngleRes.error);
+        }
+        const endAngle = endAngleRes.result.expr;
+        sideEffect |= endAngleRes.result.sideEffect;
+        if (endAngle.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "弧の終点の角度の型が不正です.", src: endAngle.src });
+        }
+        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+
+    toString(): string {
+        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle} }`;
+    }
+
 }
 
 export default {};

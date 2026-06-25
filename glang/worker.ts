@@ -29,6 +29,8 @@ class GraImpl implements Gra {
         this.#ctx = ctx;
         this.width = width;
         this.height = height;
+        ctx.strokeStyle = "rgb(0 0 0)";
+        ctx.fillStyle = "rgb(0 0 0)";
     }
 
     drawLine(x1: number, y1: number, x2: number, y2: number): void {
@@ -39,8 +41,16 @@ class GraImpl implements Gra {
         ctx.stroke();
     }
 
-    drawRect(x: number, y: number, width: number, height: number): void {
-        this.#ctx.strokeRect(x, y, width, height);
+    drawRect(left: number, top: number, width: number, height: number): void {
+        this.#ctx.strokeRect(left, top, width, height);
+    }
+
+    drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void {
+        const ctx = this.#ctx;
+        const radius = diameter/2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.stroke();
     }
 
     flush(): void {
@@ -55,11 +65,16 @@ class GraImpl implements Gra {
     }
 
     setColor(r: number, g: number, b: number): void {
-        this.#ctx.strokeStyle = `RGB(${r},${g},${b})`;
+        const color = `rgb(${r & 0xFF} ${g & 0xFF} ${b & 0xFF})`;
+        this.#ctx.strokeStyle = color;
+        this.#ctx.fillStyle = color;
     }
 
-    clear(): void {
-        this.#ctx.clearRect(0, 0, this.width, this.height);
+    cleanUp(): void {
+        const ctx = this.#ctx;
+        ctx.strokeStyle = "rgb(0 0 0)";
+        ctx.fillStyle = "rgb(0 0 0)";
+        ctx.clearRect(0, 0, this.width, this.height);
     }
 }
 
@@ -169,7 +184,7 @@ async function startRunner(cin: string, width: number, height: number): Promise<
     if (gra === null) {
         gra = new GraImpl(width, height);
     } else {
-        gra.clear();
+        gra.cleanUp();
     }
     gra.transfer();
     io = new IoImpl(gra, cin);

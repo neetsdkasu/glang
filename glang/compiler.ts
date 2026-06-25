@@ -278,6 +278,10 @@ class Compiler {
                     U.assert(code instanceof C.DoWhile);
                     this.#compileDoWhile(code);
                     break;
+                case C.CodeKind.DRAW_ARC:
+                    U.assert(code instanceof C.DrawArc);
+                    this.#compileDrawArc(code);
+                    break;
                 case C.CodeKind.DRAW_LINE:
                     U.assert(code instanceof C.DrawLine);
                     this.#compileDrawLine(code);
@@ -1159,11 +1163,20 @@ class Compiler {
     }
 
     #compileDrawRect(code: C.DrawRect): void {
-        this.#compileExpr(code.x);
-        this.#compileExpr(code.y);
+        this.#compileExpr(code.left);
+        this.#compileExpr(code.top);
         this.#compileExpr(code.width);
         this.#compileExpr(code.height);
         this.#addCmd(Cmd.DRAW_RECT);
+    }
+
+    #compileDrawArc(code: C.DrawArc): void {
+        this.#compileExpr(code.left);
+        this.#compileExpr(code.top);
+        this.#compileExpr(code.diameter);
+        this.#compileExpr(code.startAngle);
+        this.#compileExpr(code.endAngle);
+        this.#addCmd(Cmd.DRAW_ARC);
     }
 }
 

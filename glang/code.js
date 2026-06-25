@@ -1018,18 +1018,19 @@ export var CodeKind;
     CodeKind[CodeKind["DEFINE_USER_FUNC"] = 8] = "DEFINE_USER_FUNC";
     CodeKind[CodeKind["DIM"] = 9] = "DIM";
     CodeKind[CodeKind["DO_WHILE"] = 10] = "DO_WHILE";
-    CodeKind[CodeKind["DRAW_LINE"] = 11] = "DRAW_LINE";
-    CodeKind[CodeKind["DRAW_RECT"] = 12] = "DRAW_RECT";
-    CodeKind[CodeKind["FLUSH"] = 13] = "FLUSH";
-    CodeKind[CodeKind["FOR"] = 14] = "FOR";
-    CodeKind[CodeKind["GET_POINTER_EVENT"] = 15] = "GET_POINTER_EVENT";
-    CodeKind[CodeKind["IF"] = 16] = "IF";
-    CodeKind[CodeKind["LET"] = 17] = "LET";
-    CodeKind[CodeKind["PRINT"] = 18] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 19] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 20] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 21] = "SET_COLOR";
-    CodeKind[CodeKind["TRANSFER"] = 22] = "TRANSFER";
+    CodeKind[CodeKind["DRAW_ARC"] = 11] = "DRAW_ARC";
+    CodeKind[CodeKind["DRAW_LINE"] = 12] = "DRAW_LINE";
+    CodeKind[CodeKind["DRAW_RECT"] = 13] = "DRAW_RECT";
+    CodeKind[CodeKind["FLUSH"] = 14] = "FLUSH";
+    CodeKind[CodeKind["FOR"] = 15] = "FOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 16] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 17] = "IF";
+    CodeKind[CodeKind["LET"] = 18] = "LET";
+    CodeKind[CodeKind["PRINT"] = 19] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 20] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 21] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 22] = "SET_COLOR";
+    CodeKind[CodeKind["TRANSFER"] = 23] = "TRANSFER";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1768,36 +1769,36 @@ export class Await extends Code {
     }
 }
 export class DrawRect extends Code {
-    x;
-    y;
+    left;
+    top;
     width;
     height;
-    constructor(src, x, y, width, height) {
+    constructor(src, left, top, width, height) {
         super(CodeKind.DRAW_RECT, src);
-        this.x = x;
-        this.y = y;
+        this.left = left;
+        this.top = top;
         this.width = width;
         this.height = height;
     }
     rebuild(findUserFunc) {
-        const xRes = this.x.rebuild(findUserFunc);
-        if (xRes.isErr) {
-            return Result.err(xRes.error);
+        const leftRes = this.left.rebuild(findUserFunc);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
         }
-        const x = xRes.result.expr;
-        if (x.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "X座標の型が不正です.", src: x.src });
+        const left = leftRes.result.expr;
+        if (left.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "左辺のX座標の型が不正です.", src: left.src });
         }
-        let sideEffect = xRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
-        const yRes = this.y.rebuild(findUserFunc);
-        if (yRes.isErr) {
-            return Result.err(yRes.error);
+        let sideEffect = leftRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        const topRes = this.top.rebuild(findUserFunc);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
         }
-        const y = yRes.result.expr;
-        if (y.vtype !== Vtype.INTEGER) {
-            return Result.err({ msg: "Y座標の型が不正です.", src: y.src });
+        const top = topRes.result.expr;
+        if (top.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "上辺のY座標の型が不正です.", src: top.src });
         }
-        sideEffect |= yRes.result.sideEffect;
+        sideEffect |= topRes.result.sideEffect;
         const widthRes = this.width.rebuild(findUserFunc);
         if (widthRes.isErr) {
             return Result.err(widthRes.error);
@@ -1816,11 +1817,78 @@ export class DrawRect extends Code {
             return Result.err({ msg: "高さheightの型が不正です.", src: height.src });
         }
         sideEffect |= heightRes.result.sideEffect;
-        const code = new DrawRect(this.src, x, y, width, height);
+        const code = new DrawRect(this.src, left, top, width, height);
         return Result.ok({ code: code, sideEffect: sideEffect });
     }
     toString() {
-        return `DrawRect{ x: ${this.x}, y: ${this.y}, width: ${this.width}, height: ${this.height} }`;
+        return `DrawRect{ left: ${this.left}, top: ${this.top}, width: ${this.width}, height: ${this.height} }`;
+    }
+}
+export class DrawArc extends Code {
+    left;
+    top;
+    diameter;
+    startAngle;
+    endAngle;
+    constructor(src, left, top, diameter, startAngle, endAngle) {
+        super(CodeKind.DRAW_ARC, src);
+        this.left = left;
+        this.top = top;
+        this.diameter = diameter;
+        this.startAngle = startAngle;
+        this.endAngle = endAngle;
+    }
+    rebuild(findUserFunc) {
+        const leftRes = this.left.rebuild(findUserFunc);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
+        }
+        const left = leftRes.result.expr;
+        let sideEffect = leftRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        if (left.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲左辺のX座標の型が不正です.", src: left.src });
+        }
+        const topRes = this.top.rebuild(findUserFunc);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
+        }
+        const top = topRes.result.expr;
+        sideEffect |= topRes.result.sideEffect;
+        if (top.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲上辺のY座標の型が不正です.", src: top.src });
+        }
+        const diameterRes = this.diameter.rebuild(findUserFunc);
+        if (diameterRes.isErr) {
+            return Result.err(diameterRes.error);
+        }
+        const diameter = diameterRes.result.expr;
+        sideEffect |= diameterRes.result.sideEffect;
+        if (diameter.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "円の直径の型が不正です.", src: diameter.src });
+        }
+        const startAngleRes = this.startAngle.rebuild(findUserFunc);
+        if (startAngleRes.isErr) {
+            return Result.err(startAngleRes.error);
+        }
+        const startAngle = startAngleRes.result.expr;
+        sideEffect |= startAngleRes.result.sideEffect;
+        if (startAngle.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "弧の始点の角度の型が不正です.", src: startAngle.src });
+        }
+        const endAngleRes = this.endAngle.rebuild(findUserFunc);
+        if (endAngleRes.isErr) {
+            return Result.err(endAngleRes.error);
+        }
+        const endAngle = endAngleRes.result.expr;
+        sideEffect |= endAngleRes.result.sideEffect;
+        if (endAngle.vtype !== Vtype.FLOATING_POINT) {
+            return Result.err({ msg: "弧の終点の角度の型が不正です.", src: endAngle.src });
+        }
+        const code = new DrawArc(this.src, left, top, diameter, startAngle, endAngle);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+    toString() {
+        return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle} }`;
     }
 }
 export default {};

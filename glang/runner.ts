@@ -57,8 +57,9 @@ export const DEFAULT_POINTER_STATE: Readonly<PointerState> = {
 export interface Gra {
     readonly width: number;
     readonly height: number;
+    drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
-    drawRect(x: number, y: number, width: number, height: number): void;
+    drawRect(left: number, top: number, width: number, height: number): void;
     setColor(r: number, g: number, b: number): void;
     flush(): void;
     transfer(): void;
@@ -1236,7 +1237,7 @@ export class Runner {
                     const b = this.#valueStack.pop() as number;
                     const g = this.#valueStack.pop() as number;
                     const r = this.#valueStack.pop() as number;
-                    this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
+                    this.#io.g.setColor(r, g, b);
                 }
                 return;
             case Cmd.RANDOMIZE_TIME:
@@ -1305,9 +1306,19 @@ export class Runner {
                 {
                     const height = this.#valueStack.pop() as number;
                     const width = this.#valueStack.pop() as number;
-                    const y = this.#valueStack.pop() as number;
-                    const x = this.#valueStack.pop() as number;
-                    this.#io.g.drawRect(x, y, width, height);
+                    const top = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#io.g.drawRect(left, top, width, height);
+                }
+                return;
+            case Cmd.DRAW_ARC:
+                {
+                    const endAngle = this.#valueStack.pop() as number;
+                    const startAngle = this.#valueStack.pop() as number;
+                    const diameter = this.#valueStack.pop() as number;
+                    const top = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#io.g.drawArc(left, top, diameter, startAngle, endAngle);
                 }
                 return;
             default:

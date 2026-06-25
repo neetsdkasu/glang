@@ -163,7 +163,8 @@ export var Cmd;
     Cmd[Cmd["FLUSH"] = 125] = "FLUSH";
     Cmd[Cmd["TRANSFER"] = 126] = "TRANSFER";
     Cmd[Cmd["AWAIT"] = 127] = "AWAIT";
-    Cmd[Cmd["DRAW_RECT"] = 128] = "DRAW_RECT"; // DRAW_RECT () [...,x,y.width,height] => [...]
+    Cmd[Cmd["DRAW_RECT"] = 128] = "DRAW_RECT";
+    Cmd[Cmd["DRAW_ARC"] = 129] = "DRAW_ARC"; // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

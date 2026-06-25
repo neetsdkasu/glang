@@ -1210,7 +1210,7 @@ export class Runner {
                     const b = this.#valueStack.pop();
                     const g = this.#valueStack.pop();
                     const r = this.#valueStack.pop();
-                    this.#io.g.setColor(r & 0xFF, g & 0xFF, b & 0xFF);
+                    this.#io.g.setColor(r, g, b);
                 }
                 return;
             case Cmd.RANDOMIZE_TIME:
@@ -1280,9 +1280,19 @@ export class Runner {
                 {
                     const height = this.#valueStack.pop();
                     const width = this.#valueStack.pop();
-                    const y = this.#valueStack.pop();
-                    const x = this.#valueStack.pop();
-                    this.#io.g.drawRect(x, y, width, height);
+                    const top = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#io.g.drawRect(left, top, width, height);
+                }
+                return;
+            case Cmd.DRAW_ARC:
+                {
+                    const endAngle = this.#valueStack.pop();
+                    const startAngle = this.#valueStack.pop();
+                    const diameter = this.#valueStack.pop();
+                    const top = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#io.g.drawArc(left, top, diameter, startAngle, endAngle);
                 }
                 return;
             default:
