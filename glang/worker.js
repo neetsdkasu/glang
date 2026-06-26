@@ -25,6 +25,15 @@ class GraImpl {
         this.height = height;
         ctx.strokeStyle = "rgb(0 0 0)";
         ctx.fillStyle = "rgb(0 0 0)";
+        ctx.font = "bold 30px monospace";
+        ctx.textBaseline = "top";
+    }
+    drawArc(left, top, diameter, startAngle, endAngle) {
+        const ctx = this.#ctx;
+        const radius = diameter / 2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.stroke();
     }
     drawLine(x1, y1, x2, y2) {
         const ctx = this.#ctx;
@@ -36,15 +45,8 @@ class GraImpl {
     drawRect(left, top, width, height) {
         this.#ctx.strokeRect(left, top, width, height);
     }
-    drawArc(left, top, diameter, startAngle, endAngle) {
-        const ctx = this.#ctx;
-        const radius = diameter / 2;
-        ctx.beginPath();
-        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
-        ctx.stroke();
-    }
-    fillRect(left, top, width, height) {
-        this.#ctx.fillRect(left, top, width, height);
+    drawText(left, top, text) {
+        this.#ctx.fillText(text, left, top);
     }
     fillArc(left, top, diameter, startAngle, endAngle) {
         const ctx = this.#ctx;
@@ -52,6 +54,9 @@ class GraImpl {
         ctx.beginPath();
         ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
         ctx.fill();
+    }
+    fillRect(left, top, width, height) {
+        this.#ctx.fillRect(left, top, width, height);
     }
     flush() {
         const image = this.#scr.transferToImageBitmap();
@@ -66,6 +71,9 @@ class GraImpl {
         const color = `rgb(${r & 0xFF} ${g & 0xFF} ${b & 0xFF})`;
         this.#ctx.strokeStyle = color;
         this.#ctx.fillStyle = color;
+    }
+    setFontSize(size) {
+        this.#ctx.font = `bold ${size}px monospace`;
     }
     cleanUp() {
         const ctx = this.#ctx;

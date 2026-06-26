@@ -60,9 +60,11 @@ export interface Gra {
     drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void;
     drawLine(x1: number, y1: number, x2: number, y2: number): void;
     drawRect(left: number, top: number, width: number, height: number): void;
+    drawText(left: number, top: number, text: string): void;
     fillArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void;
     fillRect(left: number, top: number, width: number, height: number): void;
     setColor(r: number, g: number, b: number): void;
+    setFontSize(size: number): void;
     flush(): void;
     transfer(): void;
 }
@@ -1340,6 +1342,20 @@ export class Runner {
                     const top = this.#valueStack.pop() as number;
                     const left = this.#valueStack.pop() as number;
                     this.#io.g.fillArc(left, top, diameter, startAngle, endAngle);
+                }
+                return;
+            case Cmd.SET_FONT_SIZE:
+                {
+                    const size = this.#valueStack.pop() as number;
+                    this.#io.g.setFontSize(Math.max(0, size));
+                }
+                return;
+            case Cmd.DRAW_TEXT:
+                {
+                    const text = this.#valueStack.pop() as string;
+                    const top = this.#valueStack.pop() as number;
+                    const left = this.#valueStack.pop() as number;
+                    this.#io.g.drawText(left, top, text);
                 }
                 return;
             default:

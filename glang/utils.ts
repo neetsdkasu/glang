@@ -35,6 +35,10 @@ export function isInfinityOrNaN(x: number): boolean {
     return isNaN(x) || x ===  Infinity || x === -Infinity;
 }
 
+export function isInteger(x: number): boolean {
+    return Math.trunc(x) === x;
+}
+
 export function popCount(n: number): number {
     n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);
     n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);

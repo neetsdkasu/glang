@@ -5,6 +5,11 @@
 import { Token } from "./scanner.js";
 import * as U from "./utils.js";
 
+export const GET_POINTER_EVENT_MIN_WAIT_COUNT = 0;
+export const GET_POINTER_EVENT_MAX_WAIT_COUNT = 100;
+export const AWAIT_MIN_WAIT_TIME = 1;
+export const AWAIT_MAX_WAIT_TIME = 1000;
+
 export class Source {
     readonly addr: U.Range;
     readonly src: Token | Readonly<Token[]>;
@@ -174,7 +179,9 @@ export enum Cmd {
     DRAW_RECT,      // DRAW_RECT () [...,left,top,width,height] => [...]
     DRAW_ARC,       // DRAW_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
     FILL_RECT,      // FILL_RECT () [...,left,top,width,height] => [...]
-    FILL_ARC        // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    FILL_ARC,       // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    SET_FONT_SIZE,  // SET_FONT_SIZE () [...,size] => [...]
+    DRAW_TEXT       // DRAW_TEXT () [...,left,top,text] => [...]
 }
 
 export enum StdFunc {

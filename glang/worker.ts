@@ -31,6 +31,16 @@ class GraImpl implements Gra {
         this.height = height;
         ctx.strokeStyle = "rgb(0 0 0)";
         ctx.fillStyle = "rgb(0 0 0)";
+        ctx.font = "bold 30px monospace";
+        ctx.textBaseline = "top";
+    }
+
+    drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void {
+        const ctx = this.#ctx;
+        const radius = diameter/2;
+        ctx.beginPath();
+        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
+        ctx.stroke();
     }
 
     drawLine(x1: number, y1: number, x2: number, y2: number): void {
@@ -45,16 +55,8 @@ class GraImpl implements Gra {
         this.#ctx.strokeRect(left, top, width, height);
     }
 
-    drawArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void {
-        const ctx = this.#ctx;
-        const radius = diameter/2;
-        ctx.beginPath();
-        ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
-        ctx.stroke();
-    }
-
-    fillRect(left: number, top: number, width: number, height: number): void {
-        this.#ctx.fillRect(left, top, width, height);
+    drawText(left: number, top: number, text: string): void {
+        this.#ctx.fillText(text, left, top);
     }
 
     fillArc(left: number, top: number, diameter: number, startAngle: number, endAngle: number): void {
@@ -63,6 +65,10 @@ class GraImpl implements Gra {
         ctx.beginPath();
         ctx.arc(left + radius, top + radius, radius, startAngle, endAngle);
         ctx.fill();
+    }
+
+    fillRect(left: number, top: number, width: number, height: number): void {
+        this.#ctx.fillRect(left, top, width, height);
     }
 
     flush(): void {
@@ -80,6 +86,10 @@ class GraImpl implements Gra {
         const color = `rgb(${r & 0xFF} ${g & 0xFF} ${b & 0xFF})`;
         this.#ctx.strokeStyle = color;
         this.#ctx.fillStyle = color;
+    }
+
+    setFontSize(size: number): void {
+        this.#ctx.font = `bold ${size}px monospace`;        
     }
 
     cleanUp(): void {

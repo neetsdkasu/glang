@@ -29,6 +29,9 @@ export function unreachable(hint) {
 export function isInfinityOrNaN(x) {
     return isNaN(x) || x === Infinity || x === -Infinity;
 }
+export function isInteger(x) {
+    return Math.trunc(x) === x;
+}
 export function popCount(n) {
     n = (n & 0x55555555) + ((n >>> 1) & 0x55555555);
     n = (n & 0x33333333) + ((n >>> 2) & 0x33333333);

@@ -2,6 +2,10 @@
 // Command
 //
 import { Token } from "./scanner.js";
+export const GET_POINTER_EVENT_MIN_WAIT_COUNT = 0;
+export const GET_POINTER_EVENT_MAX_WAIT_COUNT = 100;
+export const AWAIT_MIN_WAIT_TIME = 1;
+export const AWAIT_MAX_WAIT_TIME = 1000;
 export class Source {
     addr;
     src;
@@ -166,7 +170,9 @@ export var Cmd;
     Cmd[Cmd["DRAW_RECT"] = 128] = "DRAW_RECT";
     Cmd[Cmd["DRAW_ARC"] = 129] = "DRAW_ARC";
     Cmd[Cmd["FILL_RECT"] = 130] = "FILL_RECT";
-    Cmd[Cmd["FILL_ARC"] = 131] = "FILL_ARC"; // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
+    Cmd[Cmd["FILL_ARC"] = 131] = "FILL_ARC";
+    Cmd[Cmd["SET_FONT_SIZE"] = 132] = "SET_FONT_SIZE";
+    Cmd[Cmd["DRAW_TEXT"] = 133] = "DRAW_TEXT"; // DRAW_TEXT () [...,left,top,text] => [...]
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

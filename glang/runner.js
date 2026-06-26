@@ -1314,6 +1314,20 @@ export class Runner {
                     this.#io.g.fillArc(left, top, diameter, startAngle, endAngle);
                 }
                 return;
+            case Cmd.SET_FONT_SIZE:
+                {
+                    const size = this.#valueStack.pop();
+                    this.#io.g.setFontSize(Math.max(0, size));
+                }
+                return;
+            case Cmd.DRAW_TEXT:
+                {
+                    const text = this.#valueStack.pop();
+                    const top = this.#valueStack.pop();
+                    const left = this.#valueStack.pop();
+                    this.#io.g.drawText(left, top, text);
+                }
+                return;
             default:
                 throw new U.Unimplemented(Cmd[this.#cmd]);
         }

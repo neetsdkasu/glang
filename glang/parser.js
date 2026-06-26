@@ -9,6 +9,7 @@ import { Result, Unimplemented } from "./utils.js";
 import * as U from "./utils.js";
 import * as C from "./code.js";
 import { StdFunc } from "./command.js";
+import * as CM from "./command.js";
 /*
 古いtscのせいでArray<T>にfindLastメソッドがないのだけど
 これを有効にすればArray<T>にfindLastが追加されるぽい？のだけど、コメントアウトして無効にしてる
@@ -58,6 +59,7 @@ var Keyword;
     Keyword["DRAWARC"] = "drawarc";
     Keyword["DRAWLINE"] = "drawline";
     Keyword["DRAWRECT"] = "drawrect";
+    Keyword["DRAWTEXT"] = "drawtext";
     Keyword["ELSE"] = "else";
     Keyword["END"] = "end";
     Keyword["FALSE"] = "false";
@@ -76,6 +78,7 @@ var Keyword;
     Keyword["RANDOMIZE"] = "randomize";
     Keyword["RETURN"] = "return";
     Keyword["SETCOLOR"] = "setcolor";
+    Keyword["SETFONTSIZE"] = "setfontsize";
     Keyword["STEP"] = "step";
     Keyword["STRING"] = "string";
     Keyword["SUB"] = "sub";
@@ -140,6 +143,7 @@ const ReservedWordSet = Object.freeze(new Set([
     Keyword.DRAWARC,
     Keyword.DRAWLINE,
     Keyword.DRAWRECT,
+    Keyword.DRAWTEXT,
     "dump",
     "each",
     Keyword.ELSE,
@@ -260,6 +264,7 @@ const ReservedWordSet = Object.freeze(new Set([
     "self",
     "set",
     Keyword.SETCOLOR,
+    Keyword.SETFONTSIZE,
     "short",
     "single",
     "some",
@@ -1061,6 +1066,9 @@ class Parser {
                 case Keyword.DRAWRECT:
                     res = this.#parseDrawRect(line, false);
                     break;
+                case Keyword.DRAWTEXT:
+                    res = this.#parseDrawText(line);
+                    break;
                 case Keyword.FILLARC:
                     res = this.#parseDrawArc(line, true);
                     break;
@@ -1093,6 +1101,9 @@ class Parser {
                     break;
                 case Keyword.SETCOLOR:
                     res = this.#parseSetColor(line);
+                    break;
+                case Keyword.SETFONTSIZE:
+                    res = this.#parseSetFontSize(line);
                     break;
                 case Keyword.TRANSFER:
                     res = this.#parseTransfer(line);
@@ -3237,11 +3248,11 @@ class Parser {
                     }
                     wait = numRes.result;
                     log.dump("wait", wait);
-                    if (U.inRange(0, 100, wait)) {
+                    if (U.inRange(CM.GET_POINTER_EVENT_MIN_WAIT_COUNT, CM.GET_POINTER_EVENT_MAX_WAIT_COUNT, wait)) {
                         break;
                     }
                 default:
-                    return syntaxError(`待機命令(NOP)の回数指定には0以上100以下の整数リテラルが必要です.`, waitToken);
+                    return syntaxError(`待機命令(NOP)の回数指定には${CM.GET_POINTER_EVENT_MIN_WAIT_COUNT}以上${CM.GET_POINTER_EVENT_MAX_WAIT_COUNT}以下の整数リテラルが必要です.`, waitToken);
             }
         }
         const eolToken = line.dequeue();
@@ -3311,11 +3322,11 @@ class Parser {
                 }
                 waitTime = numRes.result;
                 log.dump("waitTime", waitTime);
-                if (U.inRange(1, 1000, waitTime)) {
+                if (U.inRange(CM.AWAIT_MIN_WAIT_TIME, CM.AWAIT_MAX_WAIT_TIME, waitTime)) {
                     break;
                 }
             default:
-                return syntaxError(`待ち時間(ミリ秒)は1以上1000以下の${Keyword.INTEGER}型での指定が必要です.`, timeToken);
+                return syntaxError(`待ち時間(ミリ秒)は${CM.AWAIT_MIN_WAIT_TIME}以上${CM.AWAIT_MAX_WAIT_TIME}以下の${Keyword.INTEGER}型での指定が必要です.`, timeToken);
         }
         const eolToken = line.dequeue();
         if (eolToken.tokenType === TokenType.EOF) {
@@ -3491,6 +3502,88 @@ class Parser {
         const code = new C.DrawArc(src, left, top, diameter, startAngle, endAngle, fill);
         this.#env.addCode(code);
         log.debug("PARSED drawarc/fillarc.");
+        log.dump("src", Token.lineToString, src);
+        return OK;
+    }
+    #parseSetFontSize(line) {
+        const setfontsizeToken = line.dequeue();
+        const src = [setfontsizeToken];
+        log.debug("PARSE setfontsize...");
+        const sizeToken = line.front;
+        const sizeRes = this.#parseExprTokens(line, src);
+        if (sizeRes.isErr) {
+            return Result.err(sizeRes.error);
+        }
+        const size = sizeRes.result;
+        if (C.inferVtype(size.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`フォントサイズの型は${Keyword.INTEGER}が必要です.`, sizeToken);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.CHANGE_RUNNER_STATE);
+        const code = new C.SetFontSize(src, size);
+        this.#env.addCode(code);
+        log.debug("PARSED setfontosize.");
+        log.dump("src", Token.lineToString, src);
+        return OK;
+    }
+    #parseDrawText(line) {
+        const drawtextToken = line.dequeue();
+        const src = [drawtextToken];
+        log.debug("PARSE drawtext...");
+        const leftToken = line.front;
+        const leftRes = this.#parseExprTokens(line, src);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
+        }
+        const left = leftRes.result;
+        if (C.inferVtype(left.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`矩形範囲左端のX座標の型は${Keyword.INTEGER}が必要です.`, leftToken);
+        }
+        const comma1Token = line.dequeue();
+        src.push(comma1Token);
+        if (comma1Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma1Token);
+        }
+        const topToken = line.front;
+        const topRes = this.#parseExprTokens(line, src);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
+        }
+        const top = topRes.result;
+        if (C.inferVtype(top.vtype, C.Vtype.INTEGER).isErr) {
+            return syntaxError(`矩形範囲上端のY座標の型は${Keyword.INTEGER}が必要です.`, topToken);
+        }
+        const comma2Token = line.dequeue();
+        src.push(comma2Token);
+        if (comma2Token.value !== Symbols.COMMA) {
+            return syntaxError(`記号 ${Symbols.COMMA} が必要です.`, comma2Token);
+        }
+        const textToken = line.front;
+        const textRes = this.#parseExprTokens(line, src);
+        if (textRes.isErr) {
+            return Result.err(textRes.error);
+        }
+        const text = textRes.result;
+        if (C.inferVtype(text.vtype, C.Vtype.STRING).isErr) {
+            return syntaxError(`テキストの型は${Keyword.STRING}が必要です.`, textToken);
+        }
+        const eolToken = line.dequeue();
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        }
+        else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+        this.#env.definitionUserFunc.addSideEffect(C.SideEffect.ACCESS_IO | C.SideEffect.CHANGE_RUNNER_STATE);
+        const code = new C.DrawText(src, left, top, text);
+        this.#env.addCode(code);
+        log.debug("PARSED drawtext.");
         log.dump("src", Token.lineToString, src);
         return OK;
     }

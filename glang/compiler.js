@@ -263,6 +263,10 @@ class Compiler {
                     U.assert(code instanceof C.DrawRect);
                     this.#compileDrawRect(code);
                     break;
+                case C.CodeKind.DRAW_TEXT:
+                    U.assert(code instanceof C.DrawText);
+                    this.#compileDrawText(code);
+                    break;
                 case C.CodeKind.FLUSH:
                     U.assert(code instanceof C.Flush);
                     this.#compileFlush(code);
@@ -298,6 +302,10 @@ class Compiler {
                 case C.CodeKind.SET_COLOR:
                     U.assert(code instanceof C.SetColor);
                     this.#compileSetColor(code);
+                    break;
+                case C.CodeKind.SET_FONT_SIZE:
+                    U.assert(code instanceof C.SetFontSize);
+                    this.#compileSetFontSize(code);
                     break;
                 case C.CodeKind.TRANSFER:
                     U.assert(code instanceof C.Transfer);
@@ -1272,6 +1280,16 @@ class Compiler {
         this.#compileExpr(code.startAngle);
         this.#compileExpr(code.endAngle);
         this.#addCmd(code.fill ? Cmd.FILL_ARC : Cmd.DRAW_ARC);
+    }
+    #compileSetFontSize(code) {
+        this.#compileExpr(code.size);
+        this.#addCmd(Cmd.SET_FONT_SIZE);
+    }
+    #compileDrawText(code) {
+        this.#compileExpr(code.left);
+        this.#compileExpr(code.top);
+        this.#compileExpr(code.text);
+        this.#addCmd(Cmd.DRAW_TEXT);
     }
 }
 export function compile(src) {

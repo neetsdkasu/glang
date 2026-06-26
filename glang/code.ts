@@ -8,6 +8,7 @@ import { Token } from "./scanner.js";
 import { Result } from "./utils.js";
 import { StdFunc } from "./command.js";
 import * as U from "./utils.js";
+import * as CM from "./command.js";
 
 export type RebuildError = { msg: string, src: Readonly<Token | Token[]> };
 
@@ -1121,6 +1122,7 @@ export enum CodeKind {
     DRAW_ARC,
     DRAW_LINE,
     DRAW_RECT,
+    DRAW_TEXT,
     FLUSH,
     FOR,
     GET_POINTER_EVENT,
@@ -1130,6 +1132,7 @@ export enum CodeKind {
     RANDOMIZE,
     RETURN,
     SET_COLOR,
+    SET_FONT_SIZE,
     TRANSFER
 }
 
@@ -1896,6 +1899,12 @@ export class GetPointerEvent extends Code {
 
     constructor(src: Readonly<Token[]>, x: NameInfo, y: NameInfo, eventKind: NameInfo, time: NameInfo, wait: number) {
         super(CodeKind.GET_POINTER_EVENT, src);
+        U.assert(inferVtype(x.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(y.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(eventKind.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(time.vtype, Vtype.FLOATING_POINT).isOk);
+        U.assert(U.isInteger(wait));
+        U.assert(U.inRange(CM.GET_POINTER_EVENT_MIN_WAIT_COUNT, CM.GET_POINTER_EVENT_MAX_WAIT_COUNT, wait));
         this.x = x;
         this.y = y;
         this.eventKind = eventKind;
@@ -1958,6 +1967,8 @@ export class Await extends Code {
 
     constructor(src: Readonly<Token[]>, waitTime: number) {
         super(CodeKind.AWAIT, src);
+        U.assert(U.isInteger(waitTime));
+        U.assert(U.inRange(CM.AWAIT_MIN_WAIT_TIME, CM.AWAIT_MAX_WAIT_TIME, waitTime));
         this.waitTime = waitTime;
     }
 
@@ -1979,6 +1990,10 @@ export class DrawRect extends Code {
 
     constructor(src: Readonly<Token[]>, left: Expr, top: Expr, width: Expr, height: Expr, fill: boolean) {
         super(CodeKind.DRAW_RECT, src);
+        U.assert(inferVtype(left.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(top.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(width.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(height.vtype, Vtype.INTEGER).isOk);
         this.left = left;
         this.top = top;
         this.width = width;
@@ -2042,6 +2057,11 @@ export class DrawArc extends Code {
 
     constructor(src: Readonly<Token[]>, left: Expr, top: Expr, diameter: Expr, startAngle: Expr, endAngle: Expr, fill: boolean) {
         super(CodeKind.DRAW_ARC, src);
+        U.assert(inferVtype(left.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(top.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(diameter.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(startAngle.vtype, Vtype.FLOATING_POINT).isOk);
+        U.assert(inferVtype(endAngle.vtype, Vtype.FLOATING_POINT).isOk);
         this.left = left;
         this.top = top;
         this.diameter = diameter;
@@ -2103,7 +2123,86 @@ export class DrawArc extends Code {
     toString(): string {
         return `DrawArc{ left: ${this.left}, top: ${this.top}, diameter: ${this.diameter}, startAngle: ${this.startAngle}, endAngle: ${this.endAngle}, fill: ${this.fill} }`;
     }
+}
 
+export class SetFontSize extends Code {
+    readonly size: Expr;
+
+    constructor(src: Readonly<Token[]>, size: Expr) {
+        super(CodeKind.SET_FONT_SIZE, src);
+        U.assert(inferVtype(size.vtype, Vtype.INTEGER).isOk);
+        this.size = size;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const sizeRes = this.size.rebuild(findUserFunc);
+        if (sizeRes.isErr) {
+            return Result.err(sizeRes.error);
+        }
+        const size = sizeRes.result.expr;
+        const sideEffect = sizeRes.result.sideEffect | SideEffect.CHANGE_RUNNER_STATE;
+        if (size.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "サイズの型が不正です.", src: size.src });
+        }
+        const code = new SetFontSize(this.src, size);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+
+    toString(): string {
+        return `SetFontSize{ size: ${this.size} }`;
+    }
+}
+
+export class DrawText extends Code {
+    readonly left: Expr;
+    readonly top: Expr;
+    readonly text: Expr;
+
+    constructor(src: Readonly<Token[]>, left: Expr, top: Expr, text: Expr) {
+        super(CodeKind.DRAW_TEXT, src);
+        U.assert(inferVtype(left.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(top.vtype, Vtype.INTEGER).isOk);
+        U.assert(inferVtype(text.vtype, Vtype.STRING).isOk);
+        this.left = left;
+        this.top = top;
+        this.text = text;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        const leftRes = this.left.rebuild(findUserFunc);
+        if (leftRes.isErr) {
+            return Result.err(leftRes.error);
+        }
+        const left = leftRes.result.expr;
+        let sideEffect = leftRes.result.sideEffect | SideEffect.ACCESS_IO | SideEffect.CHANGE_RUNNER_STATE;
+        if (left.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲左端のX座標の型が不正です.", src: left.src });
+        }
+        const topRes = this.top.rebuild(findUserFunc);
+        if (topRes.isErr) {
+            return Result.err(topRes.error);
+        }
+        const top = topRes.result.expr;
+        sideEffect |= topRes.result.sideEffect;
+        if (top.vtype !== Vtype.INTEGER) {
+            return Result.err({ msg: "矩形範囲上端のY座標の型が不正です.", src: top.src });
+        }
+        const textRes = this.text.rebuild(findUserFunc);
+        if (textRes.isErr) {
+            return Result.err(textRes.error);
+        }
+        const text = textRes.result.expr;
+        sideEffect |= textRes.result.sideEffect;
+        if (text.vtype !== Vtype.STRING) {
+            return Result.err({ msg: "テキストの型が不正です.", src: text.src });
+        }
+        const code = new DrawText(this.src, left, top, text);
+        return Result.ok({ code: code, sideEffect: sideEffect });
+    }
+
+    toString(): string {
+        return `DrawText{ left: ${this.left}, top: ${this.top}, text: ${this.text} }`;
+    }
 }
 
 export default {};
