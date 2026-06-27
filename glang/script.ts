@@ -22,16 +22,11 @@ const CodeTextarea = document.getElementById("code") as HTMLTextAreaElement;
 const CerrTextarea = document.getElementById("cerr") as HTMLTextAreaElement;
 const CinTextarea = document.getElementById("cin") as HTMLTextAreaElement;
 const CoutTextarea = document.getElementById("cout") as HTMLTextAreaElement;
-const StepInput = document.getElementById("step") as HTMLInputElement;
 
 const ctx = Canvas.getContext("bitmaprenderer");
 U.assert(ctx !== null);
 
 UU.setEnableTabIndent(CodeTextarea);
-
-const DEFAULT_STEP_SIZE: number = 100;
-let stepSize: number = DEFAULT_STEP_SIZE
-StepInput.value = `${DEFAULT_STEP_SIZE}`;
 
 function updateStatus(s: string): void {
     StatusSpan.textContent = s;
@@ -39,7 +34,6 @@ function updateStatus(s: string): void {
 
 function toggleItemsDisabled(): void {
     RunButton.disabled = !RunButton.disabled;
-    StepInput.disabled = !StepInput.disabled;
     CinTextarea.disabled = !CinTextarea.disabled;
     CodeTextarea.disabled = !CodeTextarea.disabled;
 }
@@ -117,20 +111,13 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
                     const cin = CinTextarea.value;
                     const width = Canvas.width;
                     const height = Canvas.height;
-                    M.sendGoRun(worker, stepSize, cin, width, height);
+                    M.sendGoRun(worker, cin, width, height);
                     StopButton.disabled = false;
                 }
                 break;
             case "Finished":
                 {
                     updateStatus("Finished");
-                    toggleItemsDisabled();
-                    StopButton.disabled = true;
-                }
-                break;
-            case "Stop":
-                {
-                    updateStatus("Stopped");
                     toggleItemsDisabled();
                     StopButton.disabled = true;
                 }
@@ -169,20 +156,15 @@ function lunchWorker(): Worker {
 
 StopButton.addEventListener("click", () => {
     StopButton.disabled = true;
-    if (stepSize === 0) {
-        Promise.resolve(undefined)
-        .then( () => {
-            if (worker != null) {
-                worker.terminate();
-                worker = null;
-            }
-            updateStatus("Stopped");
-            toggleItemsDisabled();
-        });
-    } else {
-        U.assert(worker !== null);
-        M.send(worker, { kind: "Stop" });
-    }
+    Promise.resolve(undefined)
+    .then( () => {
+        if (worker != null) {
+            worker.terminate();
+            worker = null;
+        }
+        updateStatus("Stopped");
+        toggleItemsDisabled();
+    });
 });
 
 RunButton.addEventListener("click", () => {
@@ -191,7 +173,6 @@ RunButton.addEventListener("click", () => {
     .then( () => {
         CoutTextarea.value = "";
         CerrTextarea.value = "";
-        stepSize = U.parseIntWithDefault(StepInput.value, DEFAULT_STEP_SIZE);
         const src = CodeTextarea.value;
         M.sendTextSrc(lunchWorker(), src);
     });

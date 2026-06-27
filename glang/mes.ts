@@ -38,7 +38,6 @@ export interface Ready  {
 
 export interface GoRun {
     kind: "GoRun";
-    stepSize: number;
     cin: string;
     width: number;
     height: number;
@@ -46,10 +45,6 @@ export interface GoRun {
 
 export interface Finished {
     kind: "Finished";
-}
-
-export interface Stop {
-    kind: "Stop";
 }
 
 export interface WriteCerr {
@@ -74,7 +69,6 @@ export type SendData  = TextSrc
                       | GoRun
                       | Finished
                       | RuntimeError
-                      | Stop
                       | WriteCerr
                       | TransferImage
                       | EventOfPointer
@@ -126,10 +120,9 @@ export function sendRuntimeError(sender: Sender, error: runner.RuntimeError): vo
     send(sender, sd);
 }
 
-export function sendGoRun(sender: Sender, stepSize: number, cin: string, width: number, height: number): void {
+export function sendGoRun(sender: Sender, cin: string, width: number, height: number): void {
     const sd: GoRun = {
         kind: "GoRun",
-        stepSize: stepSize,
         cin: cin,
         width: width,
         height: height

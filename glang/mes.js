@@ -37,10 +37,9 @@ export function sendRuntimeError(sender, error) {
     };
     send(sender, sd);
 }
-export function sendGoRun(sender, stepSize, cin, width, height) {
+export function sendGoRun(sender, cin, width, height) {
     const sd = {
         kind: "GoRun",
-        stepSize: stepSize,
         cin: cin,
         width: width,
         height: height

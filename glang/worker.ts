@@ -167,40 +167,6 @@ function run(): void {
     }
 }
 
-let stepSize: number = 0;
-let currentSteps: number = 0;
-
-function steps(): void {
-    U.assert(runner !== null);
-    if (stepSize < 0) {
-        M.send(self, { kind: "Stop" });
-        return;
-    }
-    if (currentSteps < stepSize) {
-        do {
-            runner.step();
-            currentSteps++;
-        } while (currentSteps < stepSize && runner.isRunning);
-    }
-    switch (runner.state) {
-        case RunnerState.ENDED:
-            M.send(self, { kind: "Finished" });
-            return;
-        case RunnerState.ERROR:
-            U.assert(runner.error !== null);
-            const err = runner.error;
-            M.sendRuntimeError(self, err);
-            return;
-        case RunnerState.INTERRUPTED:
-        case RunnerState.RUNNING:
-            if (currentSteps === stepSize) {
-                currentSteps = 0;
-            }
-            setTimeout(steps, 1);
-            return;
-    } 
-}
-
 async function startRunner(cin: string, width: number, height: number): Promise<undefined> {
     U.assert(program !== null);
     if (gra === null) {
@@ -212,14 +178,7 @@ async function startRunner(cin: string, width: number, height: number): Promise<
     io = new IoImpl(gra, cin);
     runner = new Runner(program, io);
     Promise.resolve(undefined)
-    .then( () => {
-        if (stepSize === 0) {
-            run();
-        } else {
-            currentSteps = 0;
-            steps();
-        }
-    });
+    .then( () => void run() );
 }
 
 self.onmessage = e => {
@@ -236,17 +195,10 @@ self.onmessage = e => {
             case "GoRun":
                 {
                     M.sendMessage(self, "running");
-                    stepSize = sd.stepSize;
-                    U.assert(stepSize >= 0);
                     const cin = sd.cin;
                     const width = sd.width;
                     const height = sd.height;
                     startRunner(cin, width, height);
-                }
-                break;
-            case "Stop":
-                {
-                    stepSize = -1;
                 }
                 break;
             case "EventOfPointer":

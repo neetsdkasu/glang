@@ -42,9 +42,6 @@
                 <div>
                     <button id="stop" type="button" disabled>STOP</button>
                     <button id="run" type="button">RUN</button>
-                    <label>stepSize: 
-                        <input id="step" type="number" min="0" max="100000" value="100" />
-                    </label>
                     <span>status:
                         <span id="status" class="status">...</span>
                     </span>
@@ -52,72 +49,7 @@
                 <details class="srcholder">
                     <summary>source code</summary>
                     <label for="code">source code</label>
-                    <textarea id="code" cols="100" rows="40">' Sample Program
-Sub Main()
-    For let w = 5 To 15 Step 5
-        SetColor 127,127,127
-        DrawRect w, w, width()-2*w, height()-2*w
-    End For
-    SetColor 255,255,200
-    FillRect 20, 20, width()-40, height()-40
-    SetColor 200,255,255
-    SetFontSize 100
-    DrawText 20,20,"STARS"
-    Flush
-    Await 1000
-    Randomize
-    Call DrawStar(60, 100, 100, 0,  0xFF0000)
-    Call DrawStar(50, 200, 100, 30, 0x00FF00)
-    Call DrawStar(80, 150, 250, 70, 0x0000FF)
-    Flush
-    Await 1000
-    For let i = 1 To 30
-        let r = random() % 20 + 10
-        let x = random() % (width() - 2*r) + r
-        let y = random() % (height() - 2*r) + r
-        let rot = random() % 360
-        let red = random() &amp; 0xFF
-        let green = random() &amp; 0xFF
-        let blue = random() &amp; 0xFF
-        let rgb = (red &lt;&lt; 16) | (green &lt;&lt; 8) | blue
-        SetColor 250,230,250
-        FillArc x-r, y-r, 2*r, 0.0, 3.141592*2.0
-        Call DrawStar(r, x, y, rot, rgb)
-        DrawArc x-r, y-r, 2*r, 0.0, 3.141592*2.0
-        Flush
-        Await 1000
-    End For
-    let lasttime = 0.0
-    Do While true
-        let px = 0
-        let py = 0
-        let pkind = 0
-        let ptime = 0.0
-        GetPointerEvent px,py,pkind,ptime
-        If lasttime == ptime || pkind != 1 Then
-            Continue
-        End If
-        lasttime = ptime
-        Call DrawStar(10, px, py, 0, 0)
-        Flush
-    End Do
-End Sub
-Sub DrawStar(r As Integer, offx As Integer, offy As Integer, rot As Integer, rgb As Integer)
-    let rf = CFloat(r)
-    let rotf = 2.0 * 3.14 * CFloat(rot) / 360.0
-    SetColor rgb &gt;&gt; 16, (rgb &gt;&gt; 8) &amp; 0xFF, rgb &amp; 0xFF
-    For let i = 1 To 5
-        let d1 = 2.0 * 3.14 * CFloat(i - 1) / 5.0 + rotf
-        let x1 = CInt( rf * cos(d1) ) + offx
-        let y1 = CInt( rf * sin(d1) ) + offy
-        let d2 = 2.0 * 3.14 * CFloat((i + 1) % 5) / 5.0 + rotf
-        let x2 = CInt( rf * cos(d2) ) + offx
-        let y2 = CInt( rf * sin(d2) ) + offy
-        DrawLine x1, y1, x2, y2
-    End For
-End Sub
-
-</textarea>
+                    <textarea id="code" cols="100" rows="40"></textarea>
                 </details>
             </div>
 
