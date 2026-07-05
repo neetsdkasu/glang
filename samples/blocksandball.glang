@@ -1,0 +1,410 @@
+'
+' ブロック崩しゲーム
+'
+Dim blocks(10, 20) As Integer
+Let count = blocks.size(1) * blocks.size(2)
+Let OffsetX = 100
+Let OffsetY = 20
+Let AreaX = 10
+Let AreaY = 10
+Let AreaW = 22 * blocks.size(2)
+Let AreaH = 250
+Let BlockOffsetX = 30
+Let BlockOffsetY = 20
+Let BlockW = 20
+Let BlockH = 10
+Let BarW = 40
+Let BarH = 5
+Let barX = AreaX + AreaW\2 - BarW\2
+Let BarY = AreaY + AreaH - BarH - 10
+Let BallDM = 5
+Let ballX = barX
+Let ballY = BarY - BallDM
+Let ballVx = 2
+Let ballVy = -2
+Let ButtonSize = 30
+Let LeftButtonX = AreaX + AreaW\2 - ButtonSize - 5
+Let RightButtonX = AreaX + AreaW\2 + 5
+Let ButtonY = AreaY + AreaH + 10
+Let pressed = 0
+Let lastPressedTime = 0.0
+Let pressedX = 0
+Let pressedY = 0
+Let pressedKind = 0
+Let pressedTime = 0.0
+Let running = true
+Let colli = 0
+Let bounded = 0
+Let slip = 0
+Sub DrawBlocks() ' ブロックを描く
+    For Let row = 0 To blocks.size(1)-1
+        Let y = row * BlockH + BlockOffsetY + OffsetY
+        For Let col = 0 To blocks.size(2)-1
+            Let x = col * BlockW + BlockOffsetX + OffsetX
+            If blocks(row, col) == 0 Then
+                ' 未衝突のブロックの描画
+                SetColor 127,127,127
+                FillRect x, y, BlockW-1, BlockH-1
+            Else If blocks(row, col) < 8 Then
+                ' 衝突後フェードアウトするブロックの描画
+                Let c = blocks(row,col) * 10 + 170
+                SetColor c,c,c
+                FillRect x, y, BlockW-1, BlockH-1
+                blocks(row, col) += 1
+            End If
+        End For
+    End For
+End Sub
+Sub DrawButtons() ' ボタンを描く
+    ' 左移動ボタンの描画
+    If pressed == 1 Then
+        ' 左移動ボタンが選択中
+        SetColor 200, 200, 255
+    Else
+        SetColor 0, 0, 0
+    End If
+    DrawRect LeftButtonX+OffsetX, ButtonY+OffsetY, ButtonSize, ButtonSize
+    DrawLine LeftButtonX+OffsetX+5, ButtonY+ButtonSize\2+OffsetY, LeftButtonX+ButtonSize-5+OffsetX, ButtonY+5+OffsetY
+    DrawLine LeftButtonX+OffsetX+5, ButtonY+ButtonSize\2+OffsetY, LeftButtonX+ButtonSize-5+OffsetX, ButtonY+ButtonSize-5+OffsetY
+    DrawLine LeftButtonX+ButtonSize-5+OffsetX, ButtonY+5+OffsetY, LeftButtonX+ButtonSize-5+OffsetX, ButtonY+ButtonSize-5+OffsetY
+    ' 右移動ボタンの描画
+    If pressed == 2 Then
+        ' 右移動ボタンが選択中
+        SetColor 200, 200, 255
+    Else
+        SetColor 0, 0, 0
+    End If
+    DrawRect RightButtonX+OffsetX, ButtonY+OffsetY, ButtonSize, ButtonSize
+    DrawLine RightButtonX+5+OffsetX, ButtonY+5+OffsetY, RightButtonX+5+OffsetX, ButtonY+ButtonSize-5+OffsetY
+    DrawLine RightButtonX+5+OffsetX, ButtonY+5+OffsetY, RightButtonX+ButtonSize-5+OffsetX, ButtonY+ButtonSize\2+OffsetY
+    DrawLine RightButtonX+5+OffsetX, ButtonY+ButtonSize-5+OffsetY, RightButtonX+ButtonSize-5+OffsetX, ButtonY+ButtonSize\2+OffsetY
+End Sub
+Sub DrawAll() ' すべての要素を描く
+    ' 天井や壁を描く
+    SetColor 0,0,0
+    DrawRect AreaX+OffsetX, AreaY+OffsetY, AreaW, AreaH
+    ' ブロックを描く
+    Call DrawBlocks()
+    ' ボールを描く
+    If colli > 0 Then
+        ' 衝突直後を点滅で表現
+        Let c = 100 + (1 + colli % 2) * 40
+        SetColor c,c,c
+        colli -= 1
+    Else
+        SetColor 100,100,100
+    End If
+    FillArc ballX+OffsetX, ballY+OffsetY, BallDM, 0.0, 3.141592*2.0
+    ' バーを描く
+    If slip > 0 Then
+        Let c = 140 + (1 + slip % 2) * 50
+        SetColor c,c,c
+        slip -= 1
+    Else
+        SetColor 50,50,50
+    End If
+    FillRect barX+OffsetX, BarY+OffsetY, BarW, BarH
+    ' 移動ボタンを描く
+    Call DrawButtons()
+    ' 残りブロック数を描く
+    SetColor 0,0,0
+    DrawText OffsetX, 3, "BLOCKS: " + CStr(count) + "  BOUNDED: " + CStr(bounded)
+    ' 画像を転送する、オフスクリーンはクリアされる
+    Transfer
+End Sub
+Sub CheckPressed() ' ボタンの選択確認
+    GetPointerEvent pressedX, pressedY, pressedKind, pressedTime
+    If pressedTime == lastPressedTime Then
+        ' 新規操作は無い
+        Return
+    End If
+    lastPressedTime = pressedTime
+    If pressedKind != 1 || pressedY < ButtonY+OffsetY || pressedY > ButtonY+ButtonSize+OffsetY Then
+        ' ボタンの選択をやめる操作、あるいは、(Y座標からして)ボタンとは無関係な操作
+        pressed = 0
+        Return
+    End If
+    If LeftButtonX+OffsetX <= pressedX && pressedX <= LeftButtonX+ButtonSize+OffsetX Then
+        ' 左移動ボタンを選択する操作
+        pressed = 1
+    Else If RightButtonX+OffsetX <= pressedX && pressedX <= RightButtonX+ButtonSize+OffsetX Then
+        ' 右移動ボタンを選択する操作
+        pressed = 2
+    Else
+        ' (X座標からして)ボタンとは無関係な操作
+        pressed = 0
+    End If
+End Sub
+Sub GameOver(text As String) ' ゲームを終了し、その旨を告げる
+    running = false
+    SetFontSize 30
+    SetColor 200,200,200
+    DrawText AreaX+AreaW\2-100+OffsetX+1, BarY-40+OffsetY+1, text
+    SetColor 0,0,0
+    DrawText AreaX+AreaW\2-100+OffsetX, BarY-40+OffsetY, text
+    SetFontSize 20
+End Sub
+Sub MoveBall() ' ボールの移動処理と衝突判定
+    ballX += ballVx
+    ballY += ballVy
+    If barY+BarH < ballY Then
+        ' ボールがバーの位置を超えたのでプレーヤーの手段がなくなる
+        Call GameOver("Game Over !")
+        Return
+    End If
+    If ballY < AreaY Then
+        ' 天井と衝突、垂直方向が反転、ブロックとは接触しない位置
+        ballVy = -ballVy
+        ballY = AreaY
+        colli = 3
+        bounded += 1
+        Return
+    End If
+    If ballX < AreaX Then
+        ' 左壁と衝突、水平方向が反転、バーとの接触は不明、ブロックとは接触しない位置
+        ballVx = -ballVx
+        ballX = AreaX
+        colli = 3
+        bounded += 1
+    Else If AreaX+AreaW < ballX+BallDM Then
+        ' 右壁と衝突、水平方向が反転、バーとの接触は不明、ブロックとは接触しない位置
+        ballVx = -ballVx
+        ballX = AreaX+AreaW-BallDM
+        colli = 3
+        bounded += 1
+    End If
+    If ballY <= BarY + BarH && BarY <= ballY + BallDM Then
+        If ballX <= barX + BarW && barX <= ballX + BallDM Then
+            ' バーと接触、上方向に飛ばす（反転ではない）、ブロックとは接触しない位置
+            If pressed == 1 Then
+                ' 左移動ボタン選択中ならボールは左に滑る
+                ballX = Max(AreaX, ballX - 3)
+                slip = 7
+            Else If pressed == 2 Then
+                ' 右移動ボタン選択中ならボールは右に滑る
+                ballX = Min(AreaX+AreaW-BallDM,ballX + 3)
+                slip = 7
+            End If
+            ballVy = -Abs(ballVy)
+            colli = 3
+            bounded += 1
+            Return
+        End If
+    End If
+    Let rowTop = (ballY - BlockOffsetY) \ BlockH
+    Let rowTopOk = 0 <= rowTop && rowTop < blocks.size(1)
+    Let colLeft = (ballX - BlockOffsetX) \ BlockW
+    Let colLeftOk = 0 <= colLeft && colLeft < blocks.size(2)
+    Let rowBottom = (ballY + BallDM - BlockOffsetY) \ BlockH
+    Let rowBottomOk = 0 <= rowBottom && rowBottom < blocks.size(1)
+    Let colRight = (ballX + BallDM - BlockOffsetX) \ BlockW
+    Let colRightOk = 0 <= colRight && colRight < blocks.size(2)
+    Let quatro = 0
+    Let diffY = 0
+    Let diffX = 0
+    If colLeftOk && colLeft == colRight Then
+        ' ボール矩形範囲はブロック列の1列の範囲内
+        If rowTopOk && blocks(rowTop, colLeft) == 0 Then
+            ' ボール矩形範囲の上辺が1個のブロックの下辺と衝突、垂直方向が反転
+            blocks(rowTop, colLeft) = 1
+            count -= 1
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        Else If rowBottomOk && blocks(rowBottom, colLeft) == 0 Then
+            ' ボール矩形範囲の下辺が1個のブロックの上辺と衝突、垂直方向が反転
+            blocks(rowBottom, colLeft) = 1
+            count -= 1
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        End If
+    Else If rowTopOk && rowTop == rowBottom Then
+        ' ボール矩形範囲はブロック行の1行の範囲内
+        If colLeftOk && blocks(rowTop, colLeft) == 0 Then
+            ' ボール矩形範囲の左辺が1個のブロックの右辺と衝突、水平方向が反転
+            blocks(rowTop, colLeft) = 1
+            count -= 1
+            ballVx = -ballVx
+            colli = 3
+            bounded += 1
+        Else If colRightOk && blocks(rowTop, colRight) == 0 Then
+            ' ボール矩形範囲の右辺が1個のブロックの左辺と衝突、水平方向が反転
+            blocks(rowTop, colRight) = 1
+            count -= 1
+            ballVx = -ballVx
+            colli = 3
+            bounded += 1
+        End If
+    Else
+        ' 1個のブロックの角付近と衝突 あるいは 2個のブロックと衝突
+        If colLeftOk Then
+            If rowTopOk && blocks(rowTop, colLeft) == 0 Then
+                ' 左上にブロックが存在
+                quatro = 1
+            End If
+            If rowBottomOk && blocks(rowBottom, colLeft) == 0 Then
+                ' 左下にブロックが存在
+                quatro += 2
+            End If
+        End If
+        If colRightOk Then
+            If rowTopOk && blocks(rowTop, colRight) == 0 Then
+                ' 右上にブロックが存在
+                quatro += 4
+            End If
+            If rowBottomOk && blocks(rowBottom, colRight) == 0 Then
+                ' 右下にブロックが存在
+                quatro += 8
+            End If
+        End If
+        If (quatro & 0b1001) == 0b1001 Then
+            ' 左上と右下の2個のブロックと衝突、垂直水平の両方向が反転
+            blocks(rowTop, colLeft) = 1
+            blocks(rowBottom, colRight) = 1
+            count -= 2
+            ballVx = -ballVx
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        Else If (quatro & 0b0110) == 0b0110 Then
+            ' 左下と右上の2個のブロックと衝突、垂直水平の両方向が反転
+            blocks(rowBottom, colLeft) = 1
+            blocks(rowTop, colRight) = 1
+            count -= 2
+            ballVx = -ballVx
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        Else If quatro == 0b0011 Then
+            ' 左上と左下の2個のブロックと衝突、水平方向が反転
+            blocks(rowTop, colLeft) = 1
+            blocks(rowBottom, colLeft) = 1
+            count -= 2
+            ballVx = -ballVx
+            colli = 3
+            bounded += 1
+        Else If quatro == 0b1100 Then
+            ' 右上と右下の2個のブロックと衝突、水平方向が反転
+            blocks(rowTop, colRight) = 1
+            blocks(rowBottom, colRight) = 1
+            count -= 2
+            ballVx = -ballVx
+            colli = 3
+            bounded += 1
+        Else If quatro == 0b0101 Then
+            ' 左上と右上の2個のブロックと衝突、垂直方向が反転
+            blocks(rowTop, colLeft) = 1
+            blocks(rowTop, colRight) = 1
+            count -= 2
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        Else If quatro == 0b1010 Then
+            ' 左下と右下の2個のブロックと衝突、垂直方向が反転
+            blocks(rowBottom, colLeft) = 1
+            blocks(rowBottom, colRight) = 1
+            count -= 2
+            ballVy = -ballVy
+            colli = 3
+            bounded += 1
+        Else If quatro == 1 Then
+            ' 左上のブロックだけ存在し、それの右下角の付近で衝突、移動前のボールの中心座標も考慮して反転を考える必要がある
+            ' 角に衝突は Vx < 0 && Vy < 0 の場合において角の座標を通る傾きVy/Vxの直線上にボールの中心座標
+            blocks(rowTop, colLeft) = 1
+            count -= 1
+            colli = 3
+            bounded += 1
+            diffY = (2 * (ballY - ballVy) + BallDM) - 2 * (rowTop * BlockH + BlockH + BlockOffsetY)
+            diffX = (2 * (ballX - ballVx) + BallDM) - 2 * (colLeft * BlockW + BlockW + BlockOffsetX)
+            If diffY < 0 || diffY <= diffX Then
+                ' ブロックの右辺に衝突（あるいは角に衝突）、水平方向が反転
+                ballVx = -ballVx
+            End If
+            If diffX < 0 || diffY >= diffX Then
+                ' ブロックの下辺に衝突（あるいは角に衝突）、垂直方向が反転
+                ballVy = -ballVy
+            End If
+        Else If quatro == 2 Then
+            ' 左下のブロックだけ存在し、それの右上角の付近で衝突、移動前のボールの中心座標も考慮して反転を考える必要がある
+            ' 角に衝突は Vx < 0 && Vy > 0 の場合おいて角の座標を通る傾きVy/Vxの直線上にボールの中心座標
+            blocks(rowBottom, colLeft) = 1
+            count -= 1
+            colli = 3
+            bounded += 1
+            diffY = (2 * (ballY - ballVy) + BallDM) - 2 * (rowBottom * BlockH + BlockOffsetY)
+            diffX = (2 * (ballX - ballVx) + BallDM) - 2 * (colLeft * BlockW + BlockW + BlockOffsetX)
+            If -diffY < 0 || -diffY <= diffX  Then
+                ' ブロックの右辺に衝突（あるいは角に衝突）、水平方向が反転
+                ballVx = -ballVx
+            End If
+            If diffX < 0 || -diffY >= diffX Then
+                ' ブロックの上辺に衝突（あるいは角に衝突）、垂直方向が反転
+                ballVy = -ballVy
+            End If
+        Else If quatro == 4 Then
+            ' 右上のブロックだけ存在し、それの左下角の付近で衝突、移動前のボールの中心座標も考慮して反転を考える必要がある
+            ' 角に衝突は Vx > 0 && Vy < 0 の場合おいて角の座標を通る傾きVy/Vxの直線上にボールの中心座標
+            blocks(rowTop, colRight) = 1
+            count -= 1
+            colli = 3
+            bounded += 1
+            diffY = (2 * (ballY - ballVy) + BallDM) - 2 * (rowTop * BlockH + BlockH + BlockOffsetY)
+            diffX = (2 * (ballX - ballVx) + BallDM) - 2 * (colRight * BlockW + BlockOffsetX)
+            If diffY < 0 || diffY <= -diffX Then
+                ' ブロックの左辺に衝突（あるいは角に衝突）、水平方向が反転
+                ballVx = -ballVx
+            End If
+            If -diffX < 0 || diffY >= -diffX Then
+                ' ブロックの下辺に衝突（あるいは角に衝突）、垂直方向が反転
+                ballVy = -ballVy
+            End If
+        Else If quatro == 8 Then
+            ' 右下のブロックだけ存在し、それの左上角の付近で衝突、移動前のボールの中心座標も考慮して反転を考える必要がある
+            ' 角に衝突は Vx > 0 && Vy > 0 の場合おいて角の座標を通る傾きVy/Vxの直線上にボールの中心座標
+            blocks(rowBottom, colRight) = 1
+            count -= 1
+            colli = 3
+            bounded += 1
+            diffY = (2 * (ballY - ballVy) + BallDM) - 2 * (rowBottom * BlockH + BlockOffsetY)
+            diffX = (2 * (ballX - ballVx) + BallDM) - 2 * (colRight * BlockW + BlockOffsetX)
+            If -diffY < 0 || -diffY <= -diffX Then
+                ' ブロックの左辺に衝突（あるいは角に衝突）、水平方向が反転
+                ballVx = -ballVx
+            End If
+            If -diffX < 0 || -diffY >= -diffX Then
+                ' ブロックの上辺に衝突（あるいは角に衝突）、垂直方向が反転
+                ballVy = -ballVy
+            End If
+        End If
+    End If
+    If count == 0 Then
+        ' すべてのブロックが除去された
+        For Let row = 0 To blocks.size(1)-1
+            For Let col = 0 To blocks.size(2)-1
+                If blocks(row, col) < 8 Then
+                    blocks(row, col) = 7
+                End If
+            End For
+        End For
+        Call GameOver("Clear !")
+    End If
+End Sub
+Sub Main()
+    ' Randomize ' コメントアウトを解除するとRUNするたびに初期位置が変わる
+    barX = AreaX + random() % (AreaW - BarW - 10) + 5
+    ballX = AreaX + random() % (AreaW - BallDM - 10) + 5
+    ballY = BarY - BallDM - random() % 30
+    ballVx = Sel(random() % 100 < 50, 2, -2)
+    SetFontSize 20
+    Do While running
+        Call CheckPressed()
+        If pressed == 1 && AreaX < barX Then
+            barX = Max(AreaX, barX-15)
+        Else If pressed == 2 && barX+BarW < AreaX+AreaW Then
+            barX = Min(AreaX+AreaW-BarW, barX+15)
+        End If
+        Call MoveBall()
+        Call DrawAll()
+    End Do
+End Sub
