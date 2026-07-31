@@ -2,6 +2,10 @@
 // UI utils
 // 
 
+export function intf(width: number, intValue: number): string {
+    return `${intValue}`.padStart(width, "0");
+}
+
 const RE_REMOVE_SP = /^ {1,4}/;
 const RE_NOT_SP = /[^ ]/;
 const REMOVE_SP: (s: string) => string = s => s.replace(RE_REMOVE_SP, "");

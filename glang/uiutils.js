@@ -1,6 +1,9 @@
 //
 // UI utils
 // 
+export function intf(width, intValue) {
+    return `${intValue}`.padStart(width, "0");
+}
 const RE_REMOVE_SP = /^ {1,4}/;
 const RE_NOT_SP = /[^ ]/;
 const REMOVE_SP = s => s.replace(RE_REMOVE_SP, "");

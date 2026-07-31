@@ -24,6 +24,10 @@ footer {
     margin-bottom: 5em;
 }
 
+#filelist {
+    min-width: 30em;
+}
+
 .indent {
     margin-left: 1em;
 }

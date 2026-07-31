@@ -34,6 +34,7 @@
         "./command.js": ["./command.ts"],
         "./compiler.js": ["./compiler.ts"],
         "./code.js": ["./code.ts"],
+        "./file.js": ["./file.ts"],
         "./logger.js": ["./logger.ts"],
         "./mes.js": ["./mes.ts"],
         "./parser.js": ["./parser.ts"],

@@ -8,6 +8,7 @@ import * as runner from "./runner.js";
 import * as U from "./utils.js";
 import * as UU from "./uiutils.js";
 import * as M from "./mes.js";
+import fileMgr from "./file.js";
 /**
  * UI
  */
@@ -19,6 +20,10 @@ const CodeTextarea = document.getElementById("code");
 const CerrTextarea = document.getElementById("cerr");
 const CinTextarea = document.getElementById("cin");
 const CoutTextarea = document.getElementById("cout");
+const FileListSelect = document.getElementById("filelist");
+const LoadFileButton = document.getElementById("load_file");
+const SaveFileButton = document.getElementById("save_file");
+const NewFileButton = document.getElementById("new_file");
 const ctx = Canvas.getContext("bitmaprenderer");
 U.assert(ctx !== null);
 UU.setEnableTabIndent(CodeTextarea);
@@ -174,4 +179,60 @@ Canvas.addEventListener("pointerup", ev => {
     pstate.kind = runner.PointerStateKind.UP;
     pstate.time = Date.now();
 });
+const samples = [
+    {
+        id: -1,
+        title: "Draw Stars",
+        path: "./glang/samples/drawstars.glang"
+    },
+    {
+        id: -2,
+        title: "ブロック崩し",
+        path: "./glang/samples/blocksandball.glang"
+    }
+];
+function loadFileList() {
+    for (const f of samples) {
+        const opt = FileListSelect.appendChild(document.createElement("option"));
+        opt.value = `${f.id}`;
+        opt.textContent = `[SAMPLE-${UU.intf(3, Math.abs(f.id))}] ${f.title}`;
+    }
+    fileMgr.loadTitles().then(titles => {
+        for (const f of titles) {
+            const opt = FileListSelect.appendChild(document.createElement("option"));
+            opt.value = `${f.id}`;
+            opt.textContent = `[USER-${UU.intf(3, f.id)}] ${f.title}`;
+        }
+        FileListSelect.disabled = false;
+    });
+}
+function loadSample(id) {
+    for (const f of samples) {
+        if (f.id !== id) {
+            continue;
+        }
+        fetch(f.path)
+            .then(res => res.text())
+            .then(text => {
+            CodeTextarea.value = text;
+        });
+    }
+}
+FileListSelect.addEventListener("change", () => {
+    const id = parseInt(FileListSelect.value);
+    if (id === 0) {
+        LoadFileButton.disabled = true;
+    }
+    else {
+        LoadFileButton.disabled = false;
+    }
+});
+LoadFileButton.addEventListener("click", () => {
+    const id = parseInt(FileListSelect.value);
+    if (id < 0) {
+        loadSample(id);
+        return;
+    }
+});
+void loadFileList();
 export default {};
