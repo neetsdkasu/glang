@@ -252,9 +252,13 @@ end for
 
 ## リファレンス（雑）
 
-表記例（命令）:
+表記例（単一キーワード命令）:
 ```
-keyword param1 , param2 [ , param3 ]
+keyword1 param1 , param2 [ , param3 ]
+```
+表記例（複数キーワードある命令）:
+```
+keyword1 param1 keyword2 param2 [ keyword3 param3 ]
 ```
 表記例（戻り値のある関数）:
 ```
@@ -267,7 +271,7 @@ sub name( arg1 as type1 , arg2 as type2 , arg3 as type3 )
 
 | 表記例 | 説明             |
 |-------|------------------|
-| `keyword` |  命令キーワード. |
+| `keyword1`,`keyword2`,`keyword3` |  命令キーワードや関連キーワード. |
 | `param1`, `param2`, `param3` | 命令に与えるパラメータ. |
 | 角括弧 `[ ]` | 省略可能なパラメータを囲む. |
 | `name` | ここでは関数名を表す. |
@@ -319,7 +323,7 @@ do while x <= 10
 end do
 ```
 
-### call
+#### call
 
 例えば引数が3個の関数の場合:
 ```
@@ -340,7 +344,7 @@ call name()
 
 
 
-### continue
+#### continue
 ```
 continue
 ```
@@ -367,7 +371,7 @@ end do
 ```
 
 
-### dim
+#### dim
 
 1次元配列の場合:
 ```
@@ -384,3 +388,239 @@ dim name( size1 , size2 , size3 ) as type
 1次元配列または2次元配列または3次元配列を定義する.  
 配列名`name`は
 各次元の大きさ`size1`,`size2`,`size3`は整数リテラルで指定する必要がある.  
+
+
+#### drawarc
+
+```
+TODO: 説明を書く
+```
+
+#### drawline
+
+```
+TODO: 説明を書く
+```
+
+#### drawrect
+
+```
+TODO: 説明を書く
+```
+
+#### drawtext
+
+```
+TODO: 説明を書く
+```
+
+#### fillarc
+
+```
+TODO: 説明を書く
+```
+
+#### fill rect
+
+```
+TODO: 説明を書く
+```
+
+#### flush
+
+```
+TODO: 説明を書く
+```
+
+#### getpointerevent
+
+```
+TODO: 説明を書く
+```
+
+#### let
+
+```
+TODO: 説明を書く
+```
+
+#### print
+
+```
+TODO: 説明を書く
+```
+
+#### randmize
+
+```
+TODO: 説明を書く
+```
+
+#### return
+
+```
+TODO: 説明を書く
+```
+
+#### setcolor
+
+```
+TODO: 説明を書く
+```
+
+#### setfontsize
+
+```
+TODO: 説明を書く
+```
+
+#### transfer
+
+```
+TODO: 説明を書く
+```
+
+### ブロック命令（アルファベット順）
+
+
+#### do
+
+```
+TODO: 説明を書く
+```
+
+#### for
+
+```
+TODO: 説明を書く
+```
+
+#### func
+
+```
+TODO: 説明を書く
+```
+
+#### if
+
+```
+TODO: 説明を書く
+```
+
+#### sub
+
+```
+TODO: 説明を書く
+```
+
+### 標準関数（アルファベット順）
+
+#### abs
+```
+TODO: 説明を書く
+```
+
+#### cbool
+```
+TODO: 説明を書く
+```
+
+#### ceil
+```
+TODO: 説明を書く
+```
+
+#### cfloat
+```
+TODO: 説明を書く
+```
+
+#### cint
+```
+TODO: 説明を書く
+```
+
+#### cos
+```
+TODO: 説明を書く
+```
+
+#### cstr
+```
+TODO: 説明を書く
+```
+
+#### floor
+```
+TODO: 説明を書く
+```
+
+#### height
+```
+TODO: 説明を書く
+```
+
+#### log
+```
+TODO: 説明を書く
+```
+
+#### log10
+```
+TODO: 説明を書く
+```
+
+#### log2
+```
+TODO: 説明を書く
+```
+
+#### max
+```
+TODO: 説明を書く
+```
+
+#### min
+```
+TODO: 説明を書く
+```
+
+#### pow
+```
+TODO: 説明を書く
+```
+
+#### random
+```
+TODO: 説明を書く
+```
+
+#### sel
+```
+TODO: 説明を書く
+```
+
+#### sign
+```
+TODO: 説明を書く
+```
+
+#### sin
+```
+TODO: 説明を書く
+```
+
+#### sign
+```
+TODO: 説明を書く
+```
+
+#### sqrt
+```
+TODO: 説明を書く
+```
+
+#### width
+```
+TODO: 説明を書く
+```
