@@ -197,13 +197,15 @@ Canvas.addEventListener("pointerup", ev => {
     pstate.time = Date.now();
 });
 
+let currentFileId: number = 0;
+
 interface Sample {
     id: number;
     title: string;
     path: string;
 }
 
-const samples: Sample[] = [
+const samples: readonly Readonly<Sample>[] = [
     {
         id: -1,
         title: "Draw Stars",
@@ -213,6 +215,11 @@ const samples: Sample[] = [
         id: -2,
         title: "ブロック崩し",
         path: "./glang/samples/blocksandball.glang"
+    },
+    {
+        id: -3,
+        title: "Mine Sweeper",
+        path: "./glang/samples/minesweeper.glang"
     }
 ];
 

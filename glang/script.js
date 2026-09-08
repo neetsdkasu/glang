@@ -179,6 +179,7 @@ Canvas.addEventListener("pointerup", ev => {
     pstate.kind = runner.PointerStateKind.UP;
     pstate.time = Date.now();
 });
+let currentFileId = 0;
 const samples = [
     {
         id: -1,
@@ -189,6 +190,11 @@ const samples = [
         id: -2,
         title: "ブロック崩し",
         path: "./glang/samples/blocksandball.glang"
+    },
+    {
+        id: -3,
+        title: "Mine Sweeper",
+        path: "./glang/samples/minesweeper.glang"
     }
 ];
 function loadFileList() {

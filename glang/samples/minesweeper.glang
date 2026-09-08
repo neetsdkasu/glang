@@ -1,0 +1,286 @@
+'
+' mine sweeper
+'
+dim bomb(16, 16) as integer
+dim gfield(16, 16) as integer
+dim arr(256) as integer
+let h = gfield.size(1)
+let w = gfield.size(2)
+let limit = 40
+let mine = -1
+let cellhide = -1
+let cellmark = -2
+let celllock= -3
+let cellempty = 0
+let celldead = -4
+let offset = 10
+let locked = 0
+let unknowns = h * w
+let menu = 0
+let cellsize = 25
+let gameover = false
+sub newgame()
+    menu = 0
+    locked = 0
+    unknowns = h * w
+    gameover = false
+    for let row = 0 to h - 1
+       for let col = 0 to w - 1
+           gfield(row, col) = cellhide
+           bomb(row, col) = 0
+       end for
+    end for
+    for let i = 0 to arr.size(1) - 1
+       arr(i) = i
+    end for
+    for let i = arr.size(1) to 1 step -1
+        let k = random() % i
+        let t = arr(i - 1)
+        arr(i - 1) = arr(k)
+        arr(k) = t
+    end for
+    for let i = 1 to limit
+        let p = arr(i)
+        bomb(p \ w, p % w) = mine
+    end for
+    for let row = 0 to h - 1
+       for let col = 0 to w - 1
+           if bomb(row, col) == mine then
+              continue
+           end if
+           let cnt = 0
+           for let rr = row-1 to row+1
+               for let cc = col-1 to col+1
+                   if rr >= 0 && rr < h && cc >= 0 && cc < w then
+                      if bomb(rr, cc) == mine then
+                          cnt += 1
+                      end if
+                   end if
+               end for
+           end for
+           bomb(row, col) = cnt
+       end for
+    end for
+end sub
+let menuDig = 0
+let menuMark = 1
+let menuUnmark = 2
+let menuLock = 3
+let menuUnlock = 4
+sub showfield()
+    setfontsize 16
+    drawtext 455 + offset, 5 + offset, "MINE SWEEPER"
+    drawtext 460 + offset, 40 + offset, "   MINE: " + cstr(limit) 
+    drawtext 460 + offset, 60 + offset, " LOCKED: " + cstr(locked)
+    drawtext 460 + offset, 80 + offset, "UNKNOWN: " + cstr(unknowns) 
+    setcolor 255, 255, 0
+    fillrect 450 + offset, 120 + menu * 40 + offset, 120, 20
+    setcolor 0, 0, 0
+    drawrect 450 + offset, 120 + offset, 120, 20
+    drawtext 480 + offset, 122 + offset, "DIG"
+    drawrect 450 + offset, 160 + offset, 120, 20
+    drawtext 480 + offset, 162 + offset, "MARK"
+    drawrect 450 + offset, 200 + offset, 120, 20
+    drawtext 480 + offset, 202 + offset, "UNMARK"
+    drawrect 450 + offset, 240 + offset, 120, 20
+    drawtext 480 + offset, 242 + offset, "LOCK"
+    drawrect 450 + offset, 280 + offset, 120, 20
+    drawtext 480 + offset, 282 + offset, "UNLOCK"
+    drawrect 450 + offset, 380 + offset, 120, 20
+    drawtext 475 + offset, 382 + offset, "NEW GAME"
+    for let i = 0 to h
+        drawline offset, i * cellsize + offset, w * cellsize + offset, i * cellsize + offset
+    end for
+    for let i = 0 to w
+        drawline i * cellsize + offset, offset, i * cellsize + offset, h * cellsize + offset
+    end for
+    setfontsize 20
+    for let row = 0 to h - 1
+       let y = row * cellsize + offset
+       for let col = 0 to w - 1
+           let x = col * cellsize + offset
+           let g = gfield(row, col)
+           ' fillarc x+2, y+2, 16, 0.0, 360.0 ' bomb
+           if g == cellmark then
+               drawtext x+7, y+4, "?"
+               setcolor 0, 0, 255
+               drawtext x+6, y+3, "?"
+               setcolor 0, 0, 0
+           else if g == celllock then
+               setcolor 240, 240, 230
+               fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+               drawtext x+8, y+3, "x"
+               setcolor 127, 0, 127
+               drawtext x+7, y+2, "x"
+               setcolor 0, 0, 0
+           else if g == celldead then
+               setcolor 255, 0, 0
+               fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+               setcolor 0, 0, 0
+           else if g == cellempty then
+               fillrect x+11, y+11, 2, 2
+           else if g > 0 then
+               drawtext x+6, y+3, cstr(bomb(row, col))
+           end if
+       end for
+    end for
+    if gameover then
+        let msg = "GREAT"
+        for let row = 0 to h - 1
+           let y = row * cellsize + offset
+           for let col = 0 to w - 1
+               let x = col * cellsize + offset
+               let g = gfield(row, col)
+               if g == celllock then
+                   if bomb(row, col) == mine then
+                       setcolor 0, 255, 0
+                       drawarc x+2, y+2, cellsize-4, 0.0, 360.0
+                   else
+                       setcolor 255, 0, 0
+                       drawtext x+6, y+3, "x"
+                   end if
+                   setcolor 0, 0, 0
+               else if g == celldead then
+                   msg = "DEAD"
+               else if g == cellhide && bomb(row, col) == mine then
+                   fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+               end if
+           end for
+        end for
+        drawtext 476, 341, msg + " !!"
+        if msg == "DEAD" then
+            setcolor 255, 0, 0
+        else
+            setcolor 0, 255, 0
+        end if
+        drawtext 475, 340, msg + " !!"
+        setcolor 0, 0, 0
+    end if
+    transfer
+end sub
+func inRange(t as integer, lowerbound as integer, upperbound as integer) as boolean
+    return lowerbound <= t && t < upperbound
+end func
+func inArea(x as integer, y as integer, aLeft as integer, aTop as integer, aWidth as integer, aHeight as integer) as boolean
+    return inRange(x, aLeft, aLeft + aWidth) && inRange(y, aTop, aTop + aHeight)
+end func
+sub opencells(row as integer, col as integer)
+    let g = gfield(row, col)
+    if g != cellhide && g != cellmark then
+        return
+    end if
+    let b = bomb(row, col)
+    gfield(row, col) = b
+    unknowns -= 1
+    if b != 0 then
+        return
+    end if
+    if row > 0 then
+        call opencells(row - 1, col)
+        if col > 0 then
+            call opencells(row - 1, col - 1)
+        end if
+        if col + 1 < w then
+            call opencells(row - 1, col + 1)
+        end if
+    end if
+    if row + 1 < h then
+        call opencells(row + 1, col)
+        if col > 0 then
+            call opencells(row + 1, col - 1)
+        end if
+        if col + 1 < w then
+            call opencells(row + 1, col + 1)
+        end if
+    end if
+    if col > 0 then
+        call opencells(row, col - 1)
+    end if
+    if col + 1 < w then
+        call opencells(row, col + 1)
+    end if
+end sub
+sub clickcell(row as integer, col as integer)
+    let g = gfield(row, col)
+    if menu == menuDig then
+        if g == cellhide || g == cellmark then
+            if bomb(row, col) != mine then
+                call opencells(row, col)
+                if locked + unknowns == limit then
+                   gameover = true
+                end if
+            else
+                gfield(row, col) = celldead
+                gameover = true
+            end if
+        end if  
+    else if menu == menuMark then
+        if g == cellhide then
+            gfield(row, col) = cellmark
+        end if
+    else if menu == menuUnmark then
+        if g == cellmark then
+            gfield(row, col) = cellhide
+        end if
+    else if menu == menuLock then
+        if g == cellhide || g == cellmark then
+            gfield(row, col) = celllock
+            locked += 1
+            unknowns -= 1
+        end if
+    else if menu == menuUnlock then
+        if g == celllock then
+            gfield(row, col) = cellhide
+            locked += 1
+            unknowns += 1
+        end if
+    end if
+end sub
+let px = 0
+let py = 0
+let pkind = 0
+let ptime = 0.0
+let lastptime = 0.0
+func gamemain() as boolean
+    getpointerevent px, py, pkind, ptime
+    if ptime == lastptime || pkind != 1 then
+        return false
+    end if
+    lastptime = ptime
+    if !inArea(px, py, 0, 0, width(), height()) then
+        return false
+    end if
+    px -= offset
+    py -= offset
+    if inArea(px, py, 0, 0, w * cellsize, h * cellsize) then
+        if !gameover then
+            call clickcell(py \ cellsize, px \ cellsize)
+        end if
+    else if inArea(px, py, 450, 120, 120, 20) then
+        menu = menuDig
+    else if inArea(px, py, 450, 160, 120, 20) then
+        menu = menuMark
+    else if inArea(px, py, 450, 200, 120, 20) then
+        menu = menuUnmark
+    else if inArea(px, py, 450, 240, 120, 20) then
+        menu = menuLock
+    else if inArea(px, py, 450, 280, 120, 20) then
+        menu = menuUnlock
+    else if inArea(px, py, 450, 380, 120, 20) then
+        call newgame()
+    else
+        return false
+    end if
+    return true
+end func
+sub main()
+    randomize
+    call newgame()
+    call showfield()
+    do while true
+        if gamemain() then
+            call showfield()
+        end if
+        await 50
+    end do
+end sub
