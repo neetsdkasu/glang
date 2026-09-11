@@ -231,7 +231,7 @@ sub clickcell(row as integer, col as integer)
     else if menu == menuUnlock then
         if g == celllock then
             gfield(row, col) = cellhide
-            locked += 1
+            locked -= 1
             unknowns += 1
         end if
     end if
