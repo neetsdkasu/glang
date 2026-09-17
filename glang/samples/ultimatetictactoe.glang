@@ -1,0 +1,372 @@
+'
+' Ultimate tic-tac-toe
+'
+
+DIM FIELD1 ( 3 , 3 ) AS INTEGER
+DIM FIELD2 ( 9 , 3 , 3 ) AS INTEGER
+
+LET OFFSET = 20
+LET CELL_SIZE = 40
+LET AREA_R = -1
+LET AREA_C = -1
+LET PLAYER = 1
+LET WINNER = 0
+LET THINKING_TIME = 0
+LET PLAY_COUNT = 0
+LET WIN_PLAYER = 0
+LET WIN_COMPUTER = 0
+
+SUB NEW_GAME ( )
+    PLAY_COUNT += 1
+    THINKING_TIME = 0
+    AREA_R = -1
+    AREA_C = -1
+    PLAYER = 1
+    WINNER = 0
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            FIELD1 ( R , C ) = 0
+        END FOR
+    END FOR
+    FOR LET I = 0 TO 8
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                FIELD2 ( I , R , C ) = 0
+            END FOR
+        END FOR
+    END FOR
+END SUB
+
+SUB DRAW_CROSS ( X AS INTEGER , Y AS INTEGER , S AS INTEGER )
+    DRAWLINE X , Y , X + S , Y + S
+    DRAWLINE X + S , Y , X , Y + S
+END SUB
+
+SUB STAMP_CROSS ( X AS INTEGER , Y AS INTEGER , S AS INTEGER )
+    SETCOLOR 0 , 0 , 255
+    FOR LET DY = -1 TO 1
+        FOR LET DX = -1 TO 1
+            CALL DRAW_CROSS ( X + DX , Y + DY , S )
+        END FOR
+    END FOR
+END SUB
+
+SUB STAMP_CIRCLE ( X AS INTEGER , Y AS INTEGER , S AS INTEGER )
+    SETCOLOR 255 , 0 , 0
+    FOR LET DY = -1 TO 1
+        FOR LET DX = -1 TO 1
+            DRAWARC X + DX , Y + DY , S , 0.0 , 360.0
+        END FOR
+    END FOR
+END SUB
+
+SUB DRAW_GAME ( )
+    SETCOLOR 255 , 255 , 255
+    FILLRECT OFFSET , OFFSET , 9 * CELL_SIZE , 9 * CELL_SIZE
+    IF AREA_R >= 0 THEN
+        SETCOLOR 192 , 192 , 192
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF AREA_R != R || AREA_C != C THEN
+                    FILLRECT OFFSET + C * 3 * CELL_SIZE , OFFSET + R * 3 * CELL_SIZE , 3 * CELL_SIZE , 3 * CELL_SIZE
+                END IF
+            END FOR
+        END FOR
+    END IF
+    FOR LET I = 0 TO 8
+        LET RR = I \ 3
+        LET CC = I % 3
+        LET F1 = FIELD1 ( RR , CC )
+        IF F1 == 0 || F1 == 3 THEN
+            IF F1 == 3 THEN
+                SETCOLOR 192 , 192 , 192
+                FILLRECT OFFSET + CC * 3 * CELL_SIZE , OFFSET + RR * 3 * CELL_SIZE , 3 * CELL_SIZE , 3 * CELL_SIZE
+            END IF
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    LET F2 = FIELD2 ( I , R , C )
+                    IF F2 == 1 THEN
+                        CALL STAMP_CROSS ( OFFSET + ( CC * 3 + C ) * CELL_SIZE + 3 , OFFSET + ( RR * 3 + R ) * CELL_SIZE + 3 , CELL_SIZE - 6 )
+                    ELSE IF F2 == 2 THEN
+                        CALL STAMP_CIRCLE ( OFFSET + ( CC * 3 + C ) * CELL_SIZE + 3 , OFFSET + ( RR * 3 + R ) * CELL_SIZE + 3 , CELL_SIZE - 6 )
+                    END IF
+                END FOR
+            END FOR
+        ELSE IF F1 == 1 THEN
+            CALL STAMP_CROSS ( OFFSET + CC * 3 * CELL_SIZE + 5 , OFFSET + RR * 3 * CELL_SIZE + 5 , 3 * CELL_SIZE - 10 )
+        ELSE IF F1 == 2 THEN
+            CALL STAMP_CIRCLE ( OFFSET + CC * 3 * CELL_SIZE + 5 , OFFSET + RR * 3 * CELL_SIZE + 5, 3 * CELL_SIZE - 10 )
+        END IF
+    END FOR
+    SETCOLOR 127 , 127 , 127
+    FOR LET R = 0 TO 9
+        DRAWLINE OFFSET , OFFSET + R * CELL_SIZE , OFFSET + 9 * CELL_SIZE , OFFSET + R * CELL_SIZE
+    END FOR
+    FOR LET C = 0 TO 9
+       DRAWLINE OFFSET + C * CELL_SIZE , OFFSET , OFFSET + C * CELL_SIZE , OFFSET + 9 * CELL_SIZE
+    END FOR
+    SETCOLOR 0 , 0 , 0
+    FOR LET R = 3 TO 6 STEP 3
+        DRAWLINE OFFSET , OFFSET + R * CELL_SIZE , OFFSET + 9 * CELL_SIZE , OFFSET + R * CELL_SIZE
+    END FOR
+    FOR LET C = 3 TO 6 STEP 3
+       DRAWLINE OFFSET + C * CELL_SIZE , OFFSET , OFFSET + C * CELL_SIZE , OFFSET + 9 * CELL_SIZE
+    END FOR
+    DRAWTEXT OFFSET + 10 * CELL_SIZE , OFFSET + 10 , "ULTIMATE TIC-TAC-TOE"
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 40 , SEL ( PLAYER == 1 , "TURN: PLAYER" , "TURN: COMPUTER" )
+    IF WINNER == 1 THEN
+        SETCOLOR 0 , 0 , 255
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "WINNER: PLAYER"
+        SETCOLOR 0 , 0 , 0
+    ELSE IF WINNER == 2 THEN
+        SETCOLOR 255 , 0 , 0
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "WINNER: COMPUTER"
+        SETCOLOR 0 , 0 , 0
+    ELSE IF WINNER == 3 THEN
+        SETCOLOR 255 , 0 , 255
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "DRAW"
+        SETCOLOR 0 , 0 , 0
+    END IF
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 230 , "  PLAY COUNT: " + CSTR ( PLAY_COUNT )
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 250 , "  PLAYER WON: " + CSTR ( WIN_PLAYER )
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 270 , "COMPUTER WON: " + CSTR ( WIN_COMPUTER )
+    DRAWRECT OFFSET + 10 * CELL_SIZE , OFFSET + 330 , 180 , 20
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 55 , OFFSET + 332 , "NEW GAME"
+END SUB
+
+SUB SHOW_GAME ( )
+    CALL DRAW_GAME ( )
+    TRANSFER
+END SUB
+
+SUB JUDGE ( I AS INTEGER )
+    LET RR = I \ 3
+    LET CC = I % 3
+    LET F = FIELD2 ( I , 1 , 1 )
+    IF F != 0 THEN
+        IF F == FIELD2 ( I , 0 , 0 ) && F == FIELD2 ( I , 2 , 2 ) THEN
+            FIELD1 ( RR , CC ) = F
+            RETURN
+        ELSE IF F == FIELD2 ( I , 0 , 2 ) && F == FIELD2 ( I , 2 , 0 ) THEN
+            FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = FIELD2 ( I , A , 0 )
+        IF F != 0 && F == FIELD2 ( I , A , 1 ) && F == FIELD2 ( I , A , 2 ) THEN
+            FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+        F = FIELD2 ( I , 0 , A )
+        IF F != 0 && F == FIELD2 ( I , 1 , A ) && F == FIELD2 ( I , 2 , A ) THEN
+            FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+    END FOR
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            IF FIELD2 ( I , R , C ) == 0 THEn
+                RETURN
+            END IF
+        END FOR
+    END FOR
+    FIELD1 ( RR , CC ) = 3
+END SUB
+
+SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
+    LET F = FIELD1 ( 1 , 1 )
+    IF F != 0 && F != 3 THEN
+        IF F == FIELD1 ( 0 , 0 ) && F == FIELD1 ( 2 , 2 ) THEN
+            WINNER = PLAYER
+        ELSE IF F == FIELD1 ( 0 , 2 ) && F == FIELD1 ( 2 , 0 ) THEN
+            WINNER = PLAYER
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = FIELD1 ( A , 0 )
+        IF F != 0 && F != 3 && F == FIELD1 ( A , 1 ) && F == FIELD1 ( A , 2 ) THEN
+            WINNER = PLAYER
+            BREAK
+        END IF
+        F = FIELD1 ( 0 , A )
+        IF F != 0 && F != 3 && F == FIELD1 ( 1 , A ) && F == FIELD1 ( 2 , A ) THEN
+            WINNER = PLAYER
+            BREAK
+        END IF
+    END FOR
+    LET COUNT = 0
+    FOR LET RR = 0 TO 2
+        FOR LET CC = 0 TO 2
+            IF FIELD1 ( RR , CC ) == 0 THEN
+                COUNT += 1
+                BREAK
+            END IF
+        END FOR
+    END FOR
+    IF COUNT == 0 THEN
+        WINNER = 3
+    END IF
+    IF WINNER != 0 THEN
+        IF WINNER == 1 THEN
+            WIN_PLAYER += 1
+        ELSE IF WINNER == 2 THEN
+            WIN_COMPUTER += 1
+        END IF
+        AREA_R = -1
+        AREA_C = -1
+        RETURN
+    END IF
+    PLAYER = 3 - PLAYER
+    IF FIELD1 ( R , C ) == 0 THEN
+        AREA_R = R
+        AREA_C = C
+    ELSE
+        AREA_R = -1
+        AREA_C = -1
+    END IF
+END SUB
+
+FUNC IN_RANGE ( V AS INTEGER , LB AS INTEGER , UB AS INTEGER ) AS BOOLEAN
+    RETURN LB <= V && V < UB
+END FUNC
+
+FUNC IN_AREA ( X AS INTEGER , Y AS INTEGER , L AS INTEGER , T AS INTEGER , W AS INTEGER , H AS INTEGER ) AS BOOLEAN
+    RETURN IN_RANGE ( X , L , L + W ) && IN_RANGE ( Y , T , T + H )
+END FUNC
+
+LET KEY_X = 0
+LET KEY_Y = 0
+LET KEY_KIND = 0
+LET KEY_TIME = 0.0
+LET LAST_KEY_TIME = 0.0
+
+FUNC GET_INPUT ( ) AS BOOLEAN
+    GETPOINTEREVENT KEY_X , KEY_Y , KEY_KIND , KEY_TIME
+    IF KEY_KIND != 1 || KEY_TIME == LAST_KEY_TIME THEN
+        RETURN FALSE
+    END IF
+    LAST_KEY_TIME = KEY_TIME
+    KEY_X -= OFFSET
+    KEY_Y -= OFFSET
+    IF WINNER == 0 && PLAYER == 1 && IN_AREA ( KEY_X , KEY_Y , 0 , 0 , 9 * CELL_SIZE , 9 * CELL_SIZE ) THEN
+        KEY_Y \= CELL_SIZE
+        KEY_X \= CELL_SIZE
+        LET RR = KEY_Y \ 3
+        LET CC = KEY_X \ 3
+        LET I = 3 * RR  + CC
+        LET R = KEY_Y % 3
+        LET C = KEY_X % 3
+        IF AREA_C >= 0 THEN
+            IF RR != AREA_R || CC != AREA_C || FIELD2 ( I , R , C ) != 0 THEN
+                RETURN FALSE
+            END IF
+        ELSE IF FIELD1 ( RR , CC ) != 0 || FIELD2 ( I , R , C ) != 0 THEN
+            RETURN FALSE
+        END IF
+        FIELD2 ( I , R , C ) = PLAYER
+        CALL JUDGE ( I )
+        CALL CHANGE_TURN ( R , C )
+        RETURN TRUE
+    END IF
+    IF IN_AREA ( KEY_X , KEY_Y , 10 * CELL_SIZE , 330 , 180 , 20 ) THEN
+        IF WINNER == 0 THEN
+            WIN_COMPUTER += 1
+        END IF
+        CALL NEW_GAME ( )
+        RETURN TRUE
+    END IF
+    RETURN FALSE
+END FUNC
+
+SUB MAIN ( )
+    RANDOMIZE
+    SETFONTSIZE 16
+    CALL NEW_GAME ( )
+    CALL SHOW_GAME ( )
+    DO WHILE TRUE
+        IF GET_INPUT ( ) THEN
+            CALL SHOW_GAME ( )
+        ELSE IF WINNER == 0 && PLAYER != 1 THEN
+            IF THINKING ( ) THEN
+                CALL SHOW_GAME ( )
+            END IF
+        ELSE
+            AWAIT 50        
+        END IF
+    END DO
+END SUB
+
+
+FUNC THINKING ( ) AS BOOLEAN
+    IF THINKING_TIME == 0 THEN
+        THINKING_TIME = 1
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "THINKING..."
+        CALL SHOW_GAME ( )
+        AWAIT 1000
+        RETURN FALSE
+    END IF
+    THINKING_TIME = 0
+    LET COUNT = 0
+    IF AREA_C >= 0 THEN
+        LET I = AREA_R * 3 + AREA_C
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF FIELD2 ( I , R , C ) == 0 THEN
+                    COUNT += 1
+                END IF
+            END FOR
+        END FOR
+        COUNT = RANDOM ( ) % COUNT
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF FIELD2 ( I , R , C ) == 0 THEN
+                    IF COUNT == 0 THEN
+                        FIELD2 ( I , R , C ) = PLAYER
+                        CALL JUDGE ( I )
+                        CALL CHANGE_TURN ( R , C )
+                        RETURN TRUE
+                    END IF
+                    COUNT -= 1
+                END IF
+            END FOR
+        END FOR
+    ELSE
+        FOR LET I = 0 TO 8
+            LET RR = I \ 3
+            LET CC = I % 3
+            IF FIELD1 ( RR , CC ) != 0 THEN
+                CONTINUE
+            END IF
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    IF FIELD2 ( I , R , C ) == 0 THEN
+                        COUNT += 1
+                    END IF
+                END FOR
+            END FOR
+        END FOR
+        COUNT = RANDOM ( ) % COUNT
+        FOR LET I = 0 TO 8
+            LET RR = I \ 3
+            LET CC = I % 3
+            IF FIELD1 ( RR , CC ) != 0 THEN
+                CONTINUE
+            END IF
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    IF FIELD2 ( I , R , C ) == 0 THEN
+                        IF COUNT == 0 THEN
+                            FIELD2 ( I , R , C ) = PLAYER
+                            CALL JUDGE ( I )
+                            CALL CHANGE_TURN ( R , C )
+                            RETURN TRUE
+                        END IF
+                        COUNT -= 1
+                    END IF
+                END FOR
+            END FOR
+        END FOR
+    END IF
+    RETURN FALSE
+END FUNC
