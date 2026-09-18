@@ -15,6 +15,8 @@ LET THINKING_TIME = 0
 LET PLAY_COUNT = 0
 LET WIN_PLAYER = 0
 LET WIN_COMPUTER = 0
+LET LAST_SELECT_CELL_R = -1
+LET LAST_SELECT_CELL_C = -1
 
 SUB NEW_GAME ( )
     PLAY_COUNT += 1
@@ -23,6 +25,8 @@ SUB NEW_GAME ( )
     AREA_C = -1
     PLAYER = 1
     WINNER = 0
+    LAST_SELECT_CELL_R = -1
+    LAST_SELECT_CELL_C = -1
     FOR LET R = 0 TO 2
         FOR LET C = 0 TO 2
             FIELD1 ( R , C ) = 0
@@ -61,8 +65,10 @@ SUB STAMP_CIRCLE ( X AS INTEGER , Y AS INTEGER , S AS INTEGER )
 END SUB
 
 SUB DRAW_GAME ( )
-    SETCOLOR 255 , 255 , 255
-    FILLRECT OFFSET , OFFSET , 9 * CELL_SIZE , 9 * CELL_SIZE
+    ' 盤面のクリア（TRANSFERだし不要では？
+    ' SETCOLOR 255 , 255 , 255
+    ' FILLRECT OFFSET , OFFSET , 9 * CELL_SIZE , 9 * CELL_SIZE
+    ' 選択不能エリアを灰色で塗る
     IF AREA_R >= 0 THEN
         SETCOLOR 192 , 192 , 192
         FOR LET R = 0 TO 2
@@ -73,6 +79,7 @@ SUB DRAW_GAME ( )
             END FOR
         END FOR
     END IF
+    ' マルかバツかドローを描く
     FOR LET I = 0 TO 8
         LET RR = I \ 3
         LET CC = I % 3
@@ -98,6 +105,12 @@ SUB DRAW_GAME ( )
             CALL STAMP_CIRCLE ( OFFSET + CC * 3 * CELL_SIZE + 5 , OFFSET + RR * 3 * CELL_SIZE + 5, 3 * CELL_SIZE - 10 )
         END IF
     END FOR
+    ' 直前の手の明示
+    IF LAST_SELECT_CELL_R >= 0 THEN
+        SETCOLOR 0 , 255 , 255
+        DRAWRECT OFFSET + LAST_SELECT_CELL_C * CELL_SIZE + 2 , OFFSET + LAST_SELECT_CELL_R * CELL_SIZE + 2 , CELL_SIZE - 4 , CELL_SIZE - 4        
+    END IF
+    ' 盤面の格子線を描く
     SETCOLOR 127 , 127 , 127
     FOR LET R = 0 TO 9
         DRAWLINE OFFSET , OFFSET + R * CELL_SIZE , OFFSET + 9 * CELL_SIZE , OFFSET + R * CELL_SIZE
@@ -112,6 +125,7 @@ SUB DRAW_GAME ( )
     FOR LET C = 3 TO 6 STEP 3
        DRAWLINE OFFSET + C * CELL_SIZE , OFFSET , OFFSET + C * CELL_SIZE , OFFSET + 9 * CELL_SIZE
     END FOR
+    ' テキスト系
     DRAWTEXT OFFSET + 10 * CELL_SIZE , OFFSET + 10 , "ULTIMATE TIC-TAC-TOE"
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 40 , SEL ( PLAYER == 1 , "TURN: PLAYER" , "TURN: COMPUTER" )
     IF WINNER == 1 THEN
@@ -127,9 +141,13 @@ SUB DRAW_GAME ( )
         DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "DRAW"
         SETCOLOR 0 , 0 , 0
     END IF
+    IF THINKING_TIME != 0 THEN
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "THINKING..."
+    END IF
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 230 , "  PLAY COUNT: " + CSTR ( PLAY_COUNT )
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 250 , "  PLAYER WON: " + CSTR ( WIN_PLAYER )
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 270 , "COMPUTER WON: " + CSTR ( WIN_COMPUTER )
+    ' NEW GAMEボタン
     DRAWRECT OFFSET + 10 * CELL_SIZE , OFFSET + 330 , 180 , 20
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 55 , OFFSET + 332 , "NEW GAME"
 END SUB
@@ -172,6 +190,18 @@ SUB JUDGE ( I AS INTEGER )
         END FOR
     END FOR
     FIELD1 ( RR , CC ) = 3
+END SUB
+
+SUB SET_LAST_SELECT ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
+    LET RR = I \ 3
+    LET CC = I % 3
+    IF FIELD1 ( RR , CC ) == 0 THEN
+        LAST_SELECT_CELL_C = CC * 3 + C
+        LAST_SELECT_CELL_R = RR * 3 + R
+    ELSE
+        LAST_SELECT_CELL_C = -1
+        LAST_SELECT_CELL_R = -1
+    END IF
 END SUB
 
 SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
@@ -266,6 +296,7 @@ FUNC GET_INPUT ( ) AS BOOLEAN
         END IF
         FIELD2 ( I , R , C ) = PLAYER
         CALL JUDGE ( I )
+        CALL SET_LAST_SELECT ( I , R , C )
         CALL CHANGE_TURN ( R , C )
         RETURN TRUE
     END IF
@@ -288,25 +319,48 @@ SUB MAIN ( )
         IF GET_INPUT ( ) THEN
             CALL SHOW_GAME ( )
         ELSE IF WINNER == 0 && PLAYER != 1 THEN
-            IF THINKING ( ) THEN
-                CALL SHOW_GAME ( )
-            END IF
+            CALL THINKING ( )
+            CALL SHOW_GAME ( )
         ELSE
             AWAIT 50        
         END IF
     END DO
 END SUB
 
-
+'
+' コンピュータ側の思考について考える
+'   [A1] 盤面の指定区画内から選ぶ
+'       [B1] 区画を獲れる手がありそれを選ぶ
+'           [C1] 区画を獲るとゲームで勝利
+'           [C2] 区画を獲ると次の相手の番でゲームで勝利の手が確定（回避する必要がある）
+'           [C3] 上記以外の予想困難（どちらかに必勝手順があったとしても計算大変すぎ）
+'       [B2] 区画を獲れる手を選ばない、あるいは獲れる手がない
+'           [D1] 選んだ手で次の相手の番でゲームで勝利の手が確定（回避する必要がある）
+'           [D2] 上記以外の予想困難（どちらかに必勝手順があったとしても計算大変すぎ）
+'   [A2] 盤面全体から選ぶ
+'       [E1] 区画を獲れる手がありそれを選ぶ
+'           [F1] 区画を獲るとゲームで勝利
+'           [F2] 区画を獲ると次の相手の番でゲームで勝利の手が確定（回避する必要がある）
+'           [F3] 上記以外の予想困難（どちらかに必勝手順があったとしても計算大変すぎ）
+'       [E2] 区画を獲れる手を選ばない、あるいは獲れる手がない
+'           [G1] 選んだ手で次の相手の番でゲームで勝利の手が確定（回避する必要がある）
+'           [G2] 上記以外の予想困難（どちらかに必勝手順があったとしても計算大変すぎ）
+' C1,F1は地道に計算する必要がある
+' C3,D2,F3,G2はMCTSなど使うのが妥当かもだが面倒なのでランダム手
+' C2,D1,F2,G1は回避手を除いて上記と同様の手の決定をすればいいが、回避手が無い場合（負け確）に注意する必要がある
+' 回避手の判定は地味にめちゃ面倒
+'
 FUNC THINKING ( ) AS BOOLEAN
     IF THINKING_TIME == 0 THEN
         THINKING_TIME = 1
-        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "THINKING..."
-        CALL SHOW_GAME ( )
-        AWAIT 1000
         RETURN FALSE
     END IF
+    AWAIT 1000
     THINKING_TIME = 0
+    RETURN COMPUTER_PUT_RANDOM ( )
+END FUNC
+
+FUNC COMPUTER_PUT_RANDOM ( ) AS BOOLEAN
     LET COUNT = 0
     IF AREA_C >= 0 THEN
         LET I = AREA_R * 3 + AREA_C
@@ -324,6 +378,7 @@ FUNC THINKING ( ) AS BOOLEAN
                     IF COUNT == 0 THEN
                         FIELD2 ( I , R , C ) = PLAYER
                         CALL JUDGE ( I )
+                        CALL SET_LAST_SELECT ( I , R , C )
                         CALL CHANGE_TURN ( R , C )
                         RETURN TRUE
                     END IF
@@ -359,6 +414,7 @@ FUNC THINKING ( ) AS BOOLEAN
                         IF COUNT == 0 THEN
                             FIELD2 ( I , R , C ) = PLAYER
                             CALL JUDGE ( I )
+                            CALL SET_LAST_SELECT ( I , R , C )
                             CALL CHANGE_TURN ( R , C )
                             RETURN TRUE
                         END IF
