@@ -319,8 +319,9 @@ SUB MAIN ( )
         IF GET_INPUT ( ) THEN
             CALL SHOW_GAME ( )
         ELSE IF WINNER == 0 && PLAYER != 1 THEN
-            CALL THINKING ( )
-            CALL SHOW_GAME ( )
+            IF THINKING ( ) THEN
+                CALL SHOW_GAME ( )
+            END IF
         ELSE
             AWAIT 50        
         END IF
@@ -353,7 +354,7 @@ END SUB
 FUNC THINKING ( ) AS BOOLEAN
     IF THINKING_TIME == 0 THEN
         THINKING_TIME = 1
-        RETURN FALSE
+        RETURN TRUE
     END IF
     AWAIT 1000
     THINKING_TIME = 0
