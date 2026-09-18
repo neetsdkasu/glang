@@ -97,6 +97,7 @@ function workerOnMessage(ev: MessageEvent<M.SendData>): any {
                 {
                     updateStatus("RuntimeError");
                     toggleItemsDisabled();
+                    StopButton.disabled = true;
                     openErrorDetails(sd.msg, sd.src);
                 }
                 break;
