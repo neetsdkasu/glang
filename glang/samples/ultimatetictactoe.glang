@@ -358,6 +358,71 @@ FUNC THINKING ( ) AS BOOLEAN
     END IF
     AWAIT 1000
     THINKING_TIME = 0
+    IF AREA_R >= 0 THEN
+        RETURN THINKING_A1 ( )
+    ELSE
+        RETURN THINKING_A2 ( )
+    END IF
+END FUNC
+
+FUNC CAN_GET_LINE ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
+    IF FIELD2 ( I , R , C ) != 0 THEN
+        RETURN FALSE
+    END IF
+    FIELD2 ( I , R , C ) = PLAYER
+    LET F = FIELD2 ( I , 1 , 1 )
+    IF F == PLAYER THEN
+        IF F == FIELD2 ( I , 0 , 0 ) && F == FIELD2 ( I , 2 , 2 ) THEN
+            RETURN TRUE
+        ELSE IF F == FIELD2 ( I , 0 , 2 ) && F == FIELD2 ( I , 2 , 0 ) THEN
+            RETURN TRUE
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = FIELD2 ( I , 0 , A )
+        IF F == PLAYER && F == FIELD2 ( I , 1 , A ) && F == FIELD2 ( I , 2 , A ) THEN
+            RETURN TRUE
+        END IF
+        F = FIELD2 ( I , A , 0 )
+        IF F == PLAYER && F == FIELD2 ( I , A , 1 ) && F == FIELD2 ( I , A , 2 ) THEN
+            RETURN TRUE
+        END IF
+    END FOR
+    FIELD2 ( I , R , C ) = 0
+    RETURN FALSE
+END FUNC
+
+FUNC THINKING_A1 ( ) AS BOOLEAN
+    LET I = AREA_R * 3 + AREA_C
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            IF CAN_GET_LINE ( I , R , C ) THEN
+                CALL JUDGE ( I )
+                CALL SET_LAST_SELECT ( I , R , C )
+                CALL CHANGE_TURN ( R , C )
+                RETURN TRUE
+            END IF
+        END FOR
+    END FOR
+    RETURN COMPUTER_PUT_RANDOM ( )
+END FUNC
+
+FUNC THINKING_A2 ( ) AS BOOLEAN
+    FOR LET I = 0 TO 8
+        IF FIELD1 ( I \ 3 , I % 3 ) != 0 THEN
+            CONTINUE
+        END IF
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF CAN_GET_LINE ( I , R , C ) THEN
+                    CALL JUDGE ( I )
+                    CALL SET_LAST_SELECT ( I , R , C )
+                    CALL CHANGE_TURN ( R , C )
+                    RETURN TRUE
+                END IF
+            END FOR
+        END FOR
+    END FOR
     RETURN COMPUTER_PUT_RANDOM ( )
 END FUNC
 
