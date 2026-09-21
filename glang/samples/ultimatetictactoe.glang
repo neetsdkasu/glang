@@ -365,7 +365,38 @@ FUNC THINKING ( ) AS BOOLEAN
     END IF
 END FUNC
 
-FUNC CAN_GET_LINE ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
+FUNC IS_CHANCE ( R AS INTEGER , C AS INTEGER ) AS BOOLEAN
+    IF FIELD1 ( R , C ) != 0 THEN
+        RETURN FALSE
+    END IF
+    FIELD1 ( R , C ) = PLAYER
+    LET F = FIELD1 ( 1 , 1 )
+    IF F == PLAYER THEN
+        IF F == FIELD1 ( 0 , 0 ) && F == FIELD1 ( 2 , 2 ) THEN
+            FIELD1 ( R , C ) = 0
+            RETURN TRUE
+        ELSE IF F == FIELD1 ( 0 , 2 ) && F == FIELD1 ( 2 , 0 ) THEN
+            FIELD1 ( R , C ) = 0
+            RETURN TRUE
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = FIELD1 ( A , 0 )
+        IF F == PLAYER && F == FIELD1 ( A , 1 ) && F == FIELD1 ( A , 2 ) THEN
+            FIELD1 ( R , C ) = 0
+            RETURN TRUE
+        END IF
+        F = FIELD1 ( 0 , A )
+        IF F == PLAYER && F == FIELD1 ( 1 , A ) && F == FIELD1 ( 2 , A ) THEN
+            FIELD1 ( R , C ) = 0
+            RETURN TRUE
+        END IF
+    END FOR
+    FIELD1 ( R , C ) = 0
+    RETURN FALSE
+END FUNC
+
+FUNC CAN_GET_AREA ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
     IF FIELD2 ( I , R , C ) != 0 THEN
         RETURN FALSE
     END IF
@@ -393,28 +424,11 @@ FUNC CAN_GET_LINE ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
 END FUNC
 
 FUNC THINKING_A1 ( ) AS BOOLEAN
-    LET I = AREA_R * 3 + AREA_C
-    FOR LET R = 0 TO 2
-        FOR LET C = 0 TO 2
-            IF CAN_GET_LINE ( I , R , C ) THEN
-                CALL JUDGE ( I )
-                CALL SET_LAST_SELECT ( I , R , C )
-                CALL CHANGE_TURN ( R , C )
-                RETURN TRUE
-            END IF
-        END FOR
-    END FOR
-    RETURN COMPUTER_PUT_RANDOM ( )
-END FUNC
-
-FUNC THINKING_A2 ( ) AS BOOLEAN
-    FOR LET I = 0 TO 8
-        IF FIELD1 ( I \ 3 , I % 3 ) != 0 THEN
-            CONTINUE
-        END IF
+    IF IS_CHANCE ( AREA_R , AREA_C ) THEN
+        LET I = AREA_R * 3 + AREA_C
         FOR LET R = 0 TO 2
             FOR LET C = 0 TO 2
-                IF CAN_GET_LINE ( I , R , C ) THEN
+                IF CAN_GET_AREA ( I , R , C ) THEN
                     CALL JUDGE ( I )
                     CALL SET_LAST_SELECT ( I , R , C )
                     CALL CHANGE_TURN ( R , C )
@@ -422,6 +436,24 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
                 END IF
             END FOR
         END FOR
+    END IF
+    RETURN COMPUTER_PUT_RANDOM ( )
+END FUNC
+
+FUNC THINKING_A2 ( ) AS BOOLEAN
+    FOR LET I = 0 TO 8
+        IF IS_CHANCE ( I \ 3 , I % 3 ) THEN
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    IF CAN_GET_AREA ( I , R , C ) THEN
+                        CALL JUDGE ( I )
+                        CALL SET_LAST_SELECT ( I , R , C )
+                        CALL CHANGE_TURN ( R , C )
+                        RETURN TRUE
+                    END IF
+                END FOR
+            END FOR
+        END IF
     END FOR
     RETURN COMPUTER_PUT_RANDOM ( )
 END FUNC
