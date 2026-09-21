@@ -361,11 +361,13 @@ DIM COM_FIELD2 ( 9 , 3 , 3 ) AS INTEGER
 LET COM_AREA_R = -1
 LET COM_AREA_C = -1
 LET COM_PLAYER = 2
+LET COM_WINNER = 0
 
 SUB COPY_GAME_STATE ( )
     COM_AREA_R = AREA_R
     COM_AREA_C = AREA_C
     COM_PLAYER = PLAYER
+    COM_WINNER = WINNER
     FOR LET R = 0 TO 2
         FOR LET C = 0 TO 2
             COM_FIELD1 ( R , C ) = FIELD1 ( R , C )
@@ -378,6 +380,95 @@ SUB COPY_GAME_STATE ( )
             END FOR
         END FOR
     END FOR
+END SUB
+
+SUB COM_JUDGE ( I AS INTEGER )
+    LET RR = I \ 3
+    LET CC = I % 3
+    LET F = COM_FIELD2 ( I , 1 , 1 )
+    IF F != 0 THEN
+        IF F == COM_FIELD2 ( I , 0 , 0 ) && F == COM_FIELD2 ( I , 2 , 2 ) THEN
+            COM_FIELD1 ( RR , CC ) = F
+            RETURN
+        ELSE IF F == COM_FIELD2 ( I , 0 , 2 ) && F == COM_FIELD2 ( I , 2 , 0 ) THEN
+            COM_FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = COM_FIELD2 ( I , A , 0 )
+        IF F != 0 && F == COM_FIELD2 ( I , A , 1 ) && F == COM_FIELD2 ( I , A , 2 ) THEN
+            COM_FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+        F = COM_FIELD2 ( I , 0 , A )
+        IF F != 0 && F == COM_FIELD2 ( I , 1 , A ) && F == COM_FIELD2 ( I , 2 , A ) THEN
+            COM_FIELD1 ( RR , CC ) = F
+            RETURN
+        END IF
+    END FOR
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            IF COM_FIELD2 ( I , R , C ) == 0 THEn
+                RETURN
+            END IF
+        END FOR
+    END FOR
+    COM_FIELD1 ( RR , CC ) = 3
+END SUB
+
+SUB COM_CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
+    LET F = COM_FIELD1 ( 1 , 1 )
+    IF F != 0 && F != 3 THEN
+        IF F == COM_FIELD1 ( 0 , 0 ) && F == COM_FIELD1 ( 2 , 2 ) THEN
+            COM_WINNER = COM_PLAYER
+        ELSE IF F == COM_FIELD1 ( 0 , 2 ) && F == COM_FIELD1 ( 2 , 0 ) THEN
+            COM_WINNER = COM_PLAYER
+        END IF
+    END IF
+    FOR LET A = 0 TO 2
+        F = COM_FIELD1 ( A , 0 )
+        IF F != 0 && F != 3 && F == COM_FIELD1 ( A , 1 ) && F == COM_FIELD1 ( A , 2 ) THEN
+            COM_WINNER = COM_PLAYER
+            BREAK
+        END IF
+        F = COM_FIELD1 ( 0 , A )
+        IF F != 0 && F != 3 && F == COM_FIELD1 ( 1 , A ) && F == COM_FIELD1 ( 2 , A ) THEN
+            COM_WINNER = COM_PLAYER
+            BREAK
+        END IF
+    END FOR
+    LET COUNT = 0
+    FOR LET RR = 0 TO 2
+        FOR LET CC = 0 TO 2
+            IF COM_FIELD1 ( RR , CC ) == 0 THEN
+                COUNT += 1
+                BREAK
+            END IF
+        END FOR
+    END FOR
+    IF COUNT == 0 THEN
+        COM_WINNER = 3
+    END IF
+    IF COM_WINNER != 0 THEN
+        COM_AREA_R = -1
+        COM_AREA_C = -1
+        RETURN
+    END IF
+    COM_PLAYER = 3 - COM_PLAYER
+    IF COM_FIELD1 ( R , C ) == 0 THEN
+        COM_AREA_R = R
+        COM_AREA_C = C
+    ELSE
+        COM_AREA_R = -1
+        COM_AREA_C = -1
+    END IF
+END SUB
+
+SUB COM_PUT_MARK ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
+    COM_FIELD2 ( I , R , C ) = COM_PLAYER
+    CALL COM_JUDGE ( I )
+    CALL COM_CHANGE_TURN ( R , C )
 END SUB
 
 FUNC THINKING ( ) AS BOOLEAN
