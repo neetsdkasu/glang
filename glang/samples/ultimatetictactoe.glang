@@ -548,9 +548,37 @@ FUNC CAN_GET_AREA ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
     RETURN FALSE
 END FUNC
 
-FUNC THINKING_A1 ( ) AS BOOLEAN
-    IF IS_CHANCE ( COM_AREA_R , COM_AREA_C ) THEN
+FUNC CAN_WIN ( ) AS BOOLEAN
+    IF COM_AREA_R >= 0 THEN
         LET I = COM_AREA_R * 3 + COM_AREA_C
+        IF IS_CHANCE ( COM_AREA_R , COM_AREA_C ) THEN
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    IF CAN_GET_AREA ( I , R , C ) THEN
+                        RETURN TRUE
+                    END IF
+                END FOR
+            END FOR
+        END IF
+    ELSE
+        FOR LET I = 0 TO 8
+            IF IS_CHANCE ( I \ 3 , I % 3 ) THEN
+                FOR LET R = 0 TO 2
+                    FOR LET C = 0 TO 2
+                        IF CAN_GET_AREA ( I , R , C ) THEN
+                            RETURN TRUE
+                        END IF
+                    END FOR
+                END FOR
+            END IF
+        END FOR
+    END IF
+    RETURN FALSE
+END FUNC
+
+FUNC THINKING_A1 ( ) AS BOOLEAN
+    LET I = COM_AREA_R * 3 + COM_AREA_C
+    IF IS_CHANCE ( COM_AREA_R , COM_AREA_C ) THEN
         FOR LET R = 0 TO 2
             FOR LET C = 0 TO 2
                 IF CAN_GET_AREA ( I , R , C ) THEN
@@ -559,6 +587,26 @@ FUNC THINKING_A1 ( ) AS BOOLEAN
                 END IF
             END FOR
         END FOR
+    END IF
+    DIM STK ( 9 ) AS INTEGER
+    LET CNT = 0
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            IF COM_FIELD2 ( I , R , C ) != 0 THEN
+                CONTINUE
+            END IF
+            CALL COM_PUT_MARK ( I , R , C )
+            IF ! CAN_WIN ( ) THEN
+                STK ( CNT ) = R * 3 + C
+                CNT += 1
+            END IF
+            CALL COPY_GAME_STATE ( )
+        END FOR
+    END FOR
+    IF CNT > 0 THEN
+        CNT = STK ( RANDOM ( ) % CNT )
+        CALL PUT_MARK ( I , CNT \ 3 , CNT % 3 )
+        RETURN TRUE
     END IF
     RETURN COMPUTER_PUT_RANDOM ( )
 END FUNC
@@ -576,6 +624,31 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
             END FOR
         END IF
     END FOR
+    DIM STK ( 81 ) AS INTEGER
+    LET CNT = 0
+    FOR LET I = 0 TO 8
+        IF COM_FIELD1 ( I \ 3 , I % 3 ) != 0 THEN
+            CONTINUE
+        END IF
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF COM_FIELD2 ( I , R , C ) != 0 THEN
+                    CONTINUE
+                END IF
+                CALL COM_PUT_MARK ( I , R , C )
+                IF ! CAN_WIN ( ) THEN
+                    STK ( CNT ) = I * 9 + R * 3 + C
+                    CNT += 1
+                END IF
+                CALL COPY_GAME_STATE ( )
+            END FOR
+        END FOR
+    END FOR
+    IF CNT > 0 THEN
+        CNT = STK ( RANDOM ( ) %  CNT )
+        CALL PUT_MARK ( CNT \ 9 , ( CNT % 9 ) \ 3 , CNT % 3 )
+        RETURN TRUE
+    END IF
     RETURN COMPUTER_PUT_RANDOM ( )
 END FUNC
 
