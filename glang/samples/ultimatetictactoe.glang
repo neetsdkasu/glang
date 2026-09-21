@@ -257,6 +257,13 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
     END IF
 END SUB
 
+SUB PUT_MARK ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
+    FIELD2 ( I , R , C ) = PLAYER
+    CALL JUDGE ( I )
+    CALL SET_LAST_SELECT ( I , R , C )
+    CALL CHANGE_TURN ( R , C )
+END SUB
+
 FUNC IN_RANGE ( V AS INTEGER , LB AS INTEGER , UB AS INTEGER ) AS BOOLEAN
     RETURN LB <= V && V < UB
 END FUNC
@@ -294,10 +301,7 @@ FUNC GET_INPUT ( ) AS BOOLEAN
         ELSE IF FIELD1 ( RR , CC ) != 0 || FIELD2 ( I , R , C ) != 0 THEN
             RETURN FALSE
         END IF
-        FIELD2 ( I , R , C ) = PLAYER
-        CALL JUDGE ( I )
-        CALL SET_LAST_SELECT ( I , R , C )
-        CALL CHANGE_TURN ( R , C )
+        CALL PUT_MARK ( I , R , C )
         RETURN TRUE
     END IF
     IF IN_AREA ( KEY_X , KEY_Y , 10 * CELL_SIZE , 330 , 180 , 20 ) THEN
@@ -351,14 +355,40 @@ END SUB
 ' C2,D1,F2,G1は回避手を除いて上記と同様の手の決定をすればいいが、回避手が無い場合（負け確）に注意する必要がある
 ' 回避手の判定は地味にめちゃ面倒
 '
+
+DIM COM_FIELD1 ( 3 , 3 ) AS INTEGER
+DIM COM_FIELD2 ( 9 , 3 , 3 ) AS INTEGER
+LET COM_AREA_R = -1
+LET COM_AREA_C = -1
+LET COM_PLAYER = 2
+
+SUB COPY_GAME_STATE ( )
+    COM_AREA_R = AREA_R
+    COM_AREA_C = AREA_C
+    COM_PLAYER = PLAYER
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            COM_FIELD1 ( R , C ) = FIELD1 ( R , C )
+        END FOR
+    END FOR
+    FOR LET I = 0 TO 8
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                COM_FIELD2 ( I , R , C ) = FIELD2 ( I , R , C )
+            END FOR
+        END FOR
+    END FOR
+END SUB
+
 FUNC THINKING ( ) AS BOOLEAN
     IF THINKING_TIME == 0 THEN
+        CALL COPY_GAME_STATE ( )
         THINKING_TIME = 1
         RETURN TRUE
     END IF
     AWAIT 1000
     THINKING_TIME = 0
-    IF AREA_R >= 0 THEN
+    IF COM_AREA_R >= 0 THEN
         RETURN THINKING_A1 ( )
     ELSE
         RETURN THINKING_A2 ( )
@@ -366,72 +396,74 @@ FUNC THINKING ( ) AS BOOLEAN
 END FUNC
 
 FUNC IS_CHANCE ( R AS INTEGER , C AS INTEGER ) AS BOOLEAN
-    IF FIELD1 ( R , C ) != 0 THEN
+    IF COM_FIELD1 ( R , C ) != 0 THEN
         RETURN FALSE
     END IF
-    FIELD1 ( R , C ) = PLAYER
-    LET F = FIELD1 ( 1 , 1 )
-    IF F == PLAYER THEN
-        IF F == FIELD1 ( 0 , 0 ) && F == FIELD1 ( 2 , 2 ) THEN
-            FIELD1 ( R , C ) = 0
+    COM_FIELD1 ( R , C ) = COM_PLAYER
+    LET F = COM_FIELD1 ( 1 , 1 )
+    IF F == COM_PLAYER THEN
+        IF F == COM_FIELD1 ( 0 , 0 ) && F == COM_FIELD1 ( 2 , 2 ) THEN
+            COM_FIELD1 ( R , C ) = 0
             RETURN TRUE
-        ELSE IF F == FIELD1 ( 0 , 2 ) && F == FIELD1 ( 2 , 0 ) THEN
-            FIELD1 ( R , C ) = 0
+        ELSE IF F == COM_FIELD1 ( 0 , 2 ) && F == COM_FIELD1 ( 2 , 0 ) THEN
+            COM_FIELD1 ( R , C ) = 0
             RETURN TRUE
         END IF
     END IF
     FOR LET A = 0 TO 2
-        F = FIELD1 ( A , 0 )
-        IF F == PLAYER && F == FIELD1 ( A , 1 ) && F == FIELD1 ( A , 2 ) THEN
-            FIELD1 ( R , C ) = 0
+        F = COM_FIELD1 ( A , 0 )
+        IF F == COM_PLAYER && F == COM_FIELD1 ( A , 1 ) && F == COM_FIELD1 ( A , 2 ) THEN
+            COM_FIELD1 ( R , C ) = 0
             RETURN TRUE
         END IF
-        F = FIELD1 ( 0 , A )
-        IF F == PLAYER && F == FIELD1 ( 1 , A ) && F == FIELD1 ( 2 , A ) THEN
-            FIELD1 ( R , C ) = 0
+        F = COM_FIELD1 ( 0 , A )
+        IF F == COM_PLAYER && F == COM_FIELD1 ( 1 , A ) && F == COM_FIELD1 ( 2 , A ) THEN
+            COM_FIELD1 ( R , C ) = 0
             RETURN TRUE
         END IF
     END FOR
-    FIELD1 ( R , C ) = 0
+    COM_FIELD1 ( R , C ) = 0
     RETURN FALSE
 END FUNC
 
 FUNC CAN_GET_AREA ( I AS INTEGER , R AS INTEGER , C AS INTEGER ) AS BOOLEAN
-    IF FIELD2 ( I , R , C ) != 0 THEN
+    IF COM_FIELD2 ( I , R , C ) != 0 THEN
         RETURN FALSE
     END IF
-    FIELD2 ( I , R , C ) = PLAYER
-    LET F = FIELD2 ( I , 1 , 1 )
-    IF F == PLAYER THEN
-        IF F == FIELD2 ( I , 0 , 0 ) && F == FIELD2 ( I , 2 , 2 ) THEN
+    COM_FIELD2 ( I , R , C ) = COM_PLAYER
+    LET F = COM_FIELD2 ( I , 1 , 1 )
+    IF F == COM_PLAYER THEN
+        IF F == COM_FIELD2 ( I , 0 , 0 ) && F == COM_FIELD2 ( I , 2 , 2 ) THEN
+            COM_FIELD2 ( I , R , C ) = 0
             RETURN TRUE
-        ELSE IF F == FIELD2 ( I , 0 , 2 ) && F == FIELD2 ( I , 2 , 0 ) THEN
+        ELSE IF F == COM_FIELD2 ( I , 0 , 2 ) && F == COM_FIELD2 ( I , 2 , 0 ) THEN
+            COM_FIELD2 ( I , R , C ) = 0
             RETURN TRUE
         END IF
     END IF
     FOR LET A = 0 TO 2
-        F = FIELD2 ( I , 0 , A )
-        IF F == PLAYER && F == FIELD2 ( I , 1 , A ) && F == FIELD2 ( I , 2 , A ) THEN
+        F = COM_FIELD2 ( I , 0 , A )
+        IF F == COM_PLAYER && F == COM_FIELD2 ( I , 1 , A ) && F == COM_FIELD2 ( I , 2 , A ) THEN
+            COM_FIELD2 ( I , R , C ) = 0
             RETURN TRUE
         END IF
-        F = FIELD2 ( I , A , 0 )
-        IF F == PLAYER && F == FIELD2 ( I , A , 1 ) && F == FIELD2 ( I , A , 2 ) THEN
+        F = COM_FIELD2 ( I , A , 0 )
+        IF F == COM_PLAYER && F == COM_FIELD2 ( I , A , 1 ) && F == COM_FIELD2 ( I , A , 2 ) THEN
+            COM_FIELD2 ( I , R , C ) = 0
             RETURN TRUE
         END IF
     END FOR
-    FIELD2 ( I , R , C ) = 0
+    COM_FIELD2 ( I , R , C ) = 0
     RETURN FALSE
 END FUNC
 
 FUNC THINKING_A1 ( ) AS BOOLEAN
-    IF IS_CHANCE ( AREA_R , AREA_C ) THEN
-        LET I = AREA_R * 3 + AREA_C
+    IF IS_CHANCE ( COM_AREA_R , COM_AREA_C ) THEN
+        LET I = COM_AREA_R * 3 + COM_AREA_C
         FOR LET R = 0 TO 2
             FOR LET C = 0 TO 2
                 IF CAN_GET_AREA ( I , R , C ) THEN
-                    CALL JUDGE ( I )
-                    CALL SET_LAST_SELECT ( I , R , C )
-                    CALL CHANGE_TURN ( R , C )
+                    CALL PUT_MARK ( I , R , C )
                     RETURN TRUE
                 END IF
             END FOR
@@ -446,9 +478,7 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
             FOR LET R = 0 TO 2
                 FOR LET C = 0 TO 2
                     IF CAN_GET_AREA ( I , R , C ) THEN
-                        CALL JUDGE ( I )
-                        CALL SET_LAST_SELECT ( I , R , C )
-                        CALL CHANGE_TURN ( R , C )
+                        CALL PUT_MARK ( I , R , C )
                         RETURN TRUE
                     END IF
                 END FOR
@@ -460,11 +490,11 @@ END FUNC
 
 FUNC COMPUTER_PUT_RANDOM ( ) AS BOOLEAN
     LET COUNT = 0
-    IF AREA_C >= 0 THEN
-        LET I = AREA_R * 3 + AREA_C
+    IF COM_AREA_C >= 0 THEN
+        LET I = COM_AREA_R * 3 + COM_AREA_C
         FOR LET R = 0 TO 2
             FOR LET C = 0 TO 2
-                IF FIELD2 ( I , R , C ) == 0 THEN
+                IF COM_FIELD2 ( I , R , C ) == 0 THEN
                     COUNT += 1
                 END IF
             END FOR
@@ -472,12 +502,9 @@ FUNC COMPUTER_PUT_RANDOM ( ) AS BOOLEAN
         COUNT = RANDOM ( ) % COUNT
         FOR LET R = 0 TO 2
             FOR LET C = 0 TO 2
-                IF FIELD2 ( I , R , C ) == 0 THEN
+                IF COM_FIELD2 ( I , R , C ) == 0 THEN
                     IF COUNT == 0 THEN
-                        FIELD2 ( I , R , C ) = PLAYER
-                        CALL JUDGE ( I )
-                        CALL SET_LAST_SELECT ( I , R , C )
-                        CALL CHANGE_TURN ( R , C )
+                        CALL PUT_MARK ( I , R , C )
                         RETURN TRUE
                     END IF
                     COUNT -= 1
@@ -488,12 +515,12 @@ FUNC COMPUTER_PUT_RANDOM ( ) AS BOOLEAN
         FOR LET I = 0 TO 8
             LET RR = I \ 3
             LET CC = I % 3
-            IF FIELD1 ( RR , CC ) != 0 THEN
+            IF COM_FIELD1 ( RR , CC ) != 0 THEN
                 CONTINUE
             END IF
             FOR LET R = 0 TO 2
                 FOR LET C = 0 TO 2
-                    IF FIELD2 ( I , R , C ) == 0 THEN
+                    IF COM_FIELD2 ( I , R , C ) == 0 THEN
                         COUNT += 1
                     END IF
                 END FOR
@@ -503,17 +530,14 @@ FUNC COMPUTER_PUT_RANDOM ( ) AS BOOLEAN
         FOR LET I = 0 TO 8
             LET RR = I \ 3
             LET CC = I % 3
-            IF FIELD1 ( RR , CC ) != 0 THEN
+            IF COM_FIELD1 ( RR , CC ) != 0 THEN
                 CONTINUE
             END IF
             FOR LET R = 0 TO 2
                 FOR LET C = 0 TO 2
-                    IF FIELD2 ( I , R , C ) == 0 THEN
+                    IF COM_FIELD2 ( I , R , C ) == 0 THEN
                         IF COUNT == 0 THEN
-                            FIELD2 ( I , R , C ) = PLAYER
-                            CALL JUDGE ( I )
-                            CALL SET_LAST_SELECT ( I , R , C )
-                            CALL CHANGE_TURN ( R , C )
+                            CALL PUT_MARK ( I , R , C )
                             RETURN TRUE
                         END IF
                         COUNT -= 1
