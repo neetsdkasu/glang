@@ -221,6 +221,11 @@ const samples: readonly Readonly<Sample>[] = [
         id: -3,
         title: "Mine Sweeper",
         path: "./glang/samples/minesweeper.glang"
+    },
+    {
+        id: -4,
+        title: "Ultimate Tic-Tac-Toe",
+        path: "./glang/samples/ultimatetictactoe.glang"
     }
 ];
 
