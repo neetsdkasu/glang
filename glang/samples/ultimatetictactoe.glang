@@ -477,7 +477,7 @@ FUNC THINKING ( ) AS BOOLEAN
         THINKING_TIME = 1
         RETURN TRUE
     END IF
-    AWAIT 1000
+    ' AWAIT 1000
     THINKING_TIME = 0
     IF COM_AREA_R >= 0 THEN
         RETURN THINKING_A1 ( )
@@ -588,37 +588,41 @@ FUNC THINKING_A1 ( ) AS BOOLEAN
             END FOR
         END FOR
     END IF
-    DIM STK1 ( 9 ) AS INTEGER
-    LET CNT1 = 0
-    DIM STK2 ( 9 ) AS INTEGER
-    LET CNT2 = 0
+    DIM STK ( 9 ) AS INTEGER
+    LET CNT = 0
     FOR LET R = 0 TO 2
         FOR LET C = 0 TO 2
             IF COM_FIELD2 ( I , R , C ) != 0 THEN
                 CONTINUE
             END IF
-            LET CGA = COM_CAN_GET_AREA ( I , R , C )
             CALL COM_PUT_MARK ( I , R , C )
             IF ! COM_CAN_WIN ( ) THEN
-                IF CGA THEN
-                    STK1 ( CNT1 ) = R * 3 + C
-                    CNT1 += 1
-                ELSE
-                    STK2 ( CNT2 ) = R * 3 + C
-                    CNT2 += 1
-                END IF
+                STK ( CNT ) = R * 3 + C
+                CNT += 1
             END IF
             CALL COPY_GAME_STATE ( )
         END FOR
     END FOR
-    IF CNT1 > 0 THEN
-        CNT1 = STK1 ( RANDOM ( ) % CNT1 )
-        CALL PUT_MARK ( I , CNT1 \ 3 , CNT1 % 3 )
-        RETURN TRUE
-    END IF
-    IF CNT2 > 0 THEN
-        CNT2 = STK2 ( RANDOM ( ) % CNT2 )
-        CALL PUT_MARK ( I , CNT2 \ 3 , CNT2 % 3 )
+    IF CNT > 0 THEN
+        CALL HEAP_CLEAR ( )
+        FOR LET J = 0 TO CNT - 1
+            LET E = STK ( J )
+            CALL HEAP_PUSH ( 2000000 + RANDOM ( ) % 100 , E )
+        END FOR
+        FOR LET Q = 0 TO 400
+            LET K = HEAP_PEEK_KEY ( )
+            LET E = HEAP_PEEK_ITEM ( )
+            CALL HEAP_POP ( )
+            LET R = E \ 3
+            LET C = E % 3
+            CALL COM_PUT_MARK ( I , R , C )
+            CALL COM_SEARCH ( 5 )
+            K += ( 2 * ( COM_WINNER % 3 ) - 3 ) * 500 - 1000
+            CALL HEAP_PUSH ( K , E )
+            CALL COPY_GAME_STATE ( )
+        END FOR
+        LET BEST_E = HEAP_PEEK_ITEM ( )
+        CALL PUT_MARK ( I , BEST_E \ 3 , BEST_E % 3 )
         RETURN TRUE
     END IF
     RETURN COM_PUT_RANDOM ( )
@@ -637,10 +641,8 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
             END FOR
         END IF
     END FOR
-    DIM STK1 ( 81 ) AS INTEGER
-    LET CNT1 = 0
-    DIM STK2 ( 81 ) AS INTEGER
-    LET CNT2 = 0
+    DIM STK ( 81 ) AS INTEGER
+    LET CNT = 0
     FOR LET I = 0 TO 8
         IF COM_FIELD1 ( I \ 3 , I % 3 ) != 0 THEN
             CONTINUE
@@ -650,33 +652,79 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
                 IF COM_FIELD2 ( I , R , C ) != 0 THEN
                     CONTINUE
                 END IF
-                LET CGA = COM_CAN_GET_AREA ( I , R , C )
                 CALL COM_PUT_MARK ( I , R , C )
                 IF ! COM_CAN_WIN ( ) THEN
-                    IF CGA THEN
-                        STK1 ( CNT1 ) = I * 9 + R * 3 + C
-                        CNT1 += 1
-                    ELSE
-                        STK2 ( CNT2 ) = I * 9 + R * 3 + C
-                        CNT2 += 1
-                    END IF
+                    STK ( CNT ) = I * 9 + R * 3 + C
+                    CNT += 1
                 END IF
                 CALL COPY_GAME_STATE ( )
             END FOR
         END FOR
     END FOR
-    IF CNT1 > 0 THEN
-        CNT1 = STK1 ( RANDOM ( ) %  CNT1 )
-        CALL PUT_MARK ( CNT1 \ 9 , ( CNT1 % 9 ) \ 3 , CNT1 % 3 )
-        RETURN TRUE
-    END IF
-    IF CNT2 > 0 THEN
-        CNT2 = STK2 ( RANDOM ( ) %  CNT2 )
-        CALL PUT_MARK ( CNT2 \ 9 , ( CNT2 % 9 ) \ 3 , CNT2 % 3 )
+    IF CNT > 0 THEN
+        CALL HEAP_CLEAR ( )
+        FOR LET J = 0 TO CNT - 1
+            LET E = STK ( J )
+            CALL HEAP_PUSH ( 2000000 + RANDOM ( ) % 100 , E )
+        END FOR
+        FOR LET Q = 0 TO 400
+            LET K = HEAP_PEEK_KEY ( )
+            LET E = HEAP_PEEK_ITEM ( )
+            CALL HEAP_POP ( )
+            LET I = E \ 9
+            LET R = ( E % 9 ) \ 3
+            LET C = E % 3
+            CALL COM_PUT_MARK ( I , R , C )
+            CALL COM_SEARCH ( 5 )
+            K += ( 2 * ( COM_WINNER % 3 ) - 3 ) * 500 - 1000
+            CALL HEAP_PUSH ( K , E )
+            CALL COPY_GAME_STATE ( )
+        END FOR
+        LET BEST_E = HEAP_PEEK_ITEM ( )
+        CALL PUT_MARK ( BEST_E \ 9 , ( BEST_E % 9 ) \ 3 , BEST_E % 3 )
         RETURN TRUE
     END IF
     RETURN COM_PUT_RANDOM ( )
 END FUNC
+
+SUB COM_SEARCH ( D AS INTEGER ) 
+    IF COM_WINNER != 0 || D <= 0 THEN
+        RETURN
+    END IF
+    IF COM_CAN_WIN ( ) THEN
+        COM_WINNER = COM_PLAYER
+        RETURN
+    END IF
+    DIM STK ( 81 ) AS INTEGER
+    LET CNT = 0
+    IF COM_AREA_C >= 0 THEN
+        LET I = COM_AREA_R * 3 + COM_AREA_C
+        FOR LET R = 0 TO 2
+            FOR LET C = 0 TO 2
+                IF COM_FIELD2 ( I , R , C ) == 0 THEN
+                    STK ( CNT ) = I * 9 + R * 3 + C
+                    CNT += 1
+                END IF
+            END FOR
+        END FOR
+    ELSE
+        FOR LET I = 0 TO 8
+            FOR LET R = 0 TO 2
+                FOR LET C = 0 TO 2
+                    IF COM_FIELD2 ( I , R , C ) == 0 THEN
+                        STK ( CNT ) = I * 9 + R * 3 + C
+                        CNT += 1
+                    END IF
+                END FOR
+            END FOR
+        END FOR
+    END IF
+    IF CNT > 0 THEN
+        CNT = STK ( RANDOM ( ) % CNT )
+        CALL COM_PUT_MARK ( CNT \ 9 , ( CNT % 9 ) \ 3 , CNT % 3 )
+        CALL COM_SEARCH ( D - 1 )
+    END IF
+END SUB
 
 FUNC COM_PUT_RANDOM ( ) AS BOOLEAN
     LET COUNT = 0
@@ -738,3 +786,68 @@ FUNC COM_PUT_RANDOM ( ) AS BOOLEAN
     END IF
     RETURN FALSE
 END FUNC
+
+'
+' 1-indexed array binary max heap
+'
+DIM HEAP_KEYS ( 100 ) AS INTEGER
+DIM HEAP_ITEMS ( 100 ) AS INTEGER
+LET HEAP_COUNT = 0
+
+SUB HEAP_CLEAR ( )
+    HEAP_COUNT = 0
+END SUB
+
+SUB HEAP_SWAP ( A AS INTEGER , B AS INTEGER )
+    LET T = HEAP_KEYS ( A )
+    HEAP_KEYS ( A ) = HEAP_KEYS ( B )
+    HEAP_KEYS ( B ) = T
+    T = HEAP_ITEMS ( A )
+    HEAP_ITEMS ( A ) = HEAP_ITEMS ( B )
+    HEAP_ITEMS ( B ) = T
+END SUB
+
+SUB HEAP_PUSH ( HEAP_KEY AS INTEGER , HEAP_ITEM AS INTEGER )
+    HEAP_COUNT += 1
+    HEAP_KEYS ( HEAP_COUNT ) = HEAP_KEY
+    HEAP_ITEMS ( HEAP_COUNT ) = HEAP_ITEM
+    LET E = HEAP_COUNT
+    DO WHILE E > 1
+        LET F = E >> 1
+        IF HEAP_KEYS ( E ) > HEAP_KEYS ( F ) THEN
+            CALL HEAP_SWAP ( E , F )
+            E = F
+        ELSE
+            RETURN
+        END IF
+    END DO
+END SUB
+
+FUNC HEAP_PEEK_KEY ( ) AS INTEGER
+    RETURN HEAP_KEYS ( 1 )
+END FUNC
+
+FUNC HEAP_PEEK_ITEM ( ) AS INTEGER
+    RETURN HEAP_ITEMS ( 1 )
+END FUNC
+
+SUB HEAP_POP ( )
+    HEAP_KEYS ( 1 ) = HEAP_KEYS ( HEAP_COUNT )
+    HEAP_ITEMS ( 1 ) = HEAP_ITEMS ( HEAP_COUNT )
+    HEAP_COUNT -= 1
+    LET E = 1
+    DO WHILE ( E << 1 ) <= HEAP_COUNT
+        LET F = E << 1
+        IF F < HEAP_COUNT THEN
+            IF HEAP_KEYS ( F + 1 ) > HEAP_KEYS ( F ) THEN
+                F += 1
+            END IF
+        END IF
+        IF HEAP_KEYS ( F ) > HEAP_KEYS ( E ) THEN
+            CALL HEAP_SWAP ( F , E )
+            E = F
+        ELSE
+            RETURN
+        END IF
+    END DO
+END SUB
