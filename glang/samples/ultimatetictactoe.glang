@@ -23,7 +23,7 @@ SUB NEW_GAME ( )
     THINKING_TIME = 0
     AREA_R = -1
     AREA_C = -1
-    PLAYER = 1
+    PLAYER = 2 - PLAY_COUNT % 2
     WINNER = 0
     LAST_SELECT_CELL_R = -1
     LAST_SELECT_CELL_C = -1
