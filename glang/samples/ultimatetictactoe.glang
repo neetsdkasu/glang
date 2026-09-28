@@ -17,8 +17,10 @@ LET WIN_PLAYER = 0
 LET WIN_COMPUTER = 0
 LET LAST_SELECT_CELL_R = -1
 LET LAST_SELECT_CELL_C = -1
+LET STEPS = 1
 
 SUB NEW_GAME ( )
+    STEPS = 1
     PLAY_COUNT += 1
     THINKING_TIME = 0
     AREA_R = -1
@@ -127,22 +129,24 @@ SUB DRAW_GAME ( )
     END FOR
     ' テキスト系
     DRAWTEXT OFFSET + 10 * CELL_SIZE , OFFSET + 10 , "ULTIMATE TIC-TAC-TOE"
-    DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 40 , SEL ( PLAYER == 1 , "TURN: PLAYER" , "TURN: COMPUTER" )
+    DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , SEL ( PLAYER == 1 , "TURN: PLAYER" , "TURN: COMPUTER" )
     IF WINNER == 1 THEN
         SETCOLOR 0 , 0 , 255
-        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "WINNER: PLAYER"
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 120 , "WINNER: PLAYER"
         SETCOLOR 0 , 0 , 0
     ELSE IF WINNER == 2 THEN
         SETCOLOR 255 , 0 , 0
-        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "WINNER: COMPUTER"
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 120 , "WINNER: COMPUTER"
         SETCOLOR 0 , 0 , 0
     ELSE IF WINNER == 3 THEN
         SETCOLOR 255 , 0 , 255
-        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "DRAW"
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 120 , "DRAW"
         SETCOLOR 0 , 0 , 0
     END IF
     IF THINKING_TIME != 0 THEN
-        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 80 , "THINKING..."
+        SETCOLOR 100 , 100 , 100
+        DRAWTEXT OFFSET + 10 * CELL_SIZE + 20 , OFFSET + 120 , "THINKING..."
+        SETCOLOR 0 , 0 , 0
     END IF
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 230 , "  PLAY COUNT: " + CSTR ( PLAY_COUNT )
     DRAWTEXT OFFSET + 10 * CELL_SIZE + 15 , OFFSET + 250 , "  PLAYER WON: " + CSTR ( WIN_PLAYER )
@@ -204,6 +208,56 @@ SUB SET_LAST_SELECT ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
     END IF
 END SUB
 
+FUNC IS_DRAW ( ) AS BOOLEAN
+    ' 0 1 2
+    ' 3 4 5
+    ' 6 7 8
+    ' -> 001122334455667788
+    ' none     0 ^ 0b11 -> 0b11
+    ' player   1 ^ 0b11 -> 0b10
+    ' computer 2 ^ 0b11 -> 0b01
+    ' draw     3 ^ 0b11 -> 0b00
+    LET F = 0
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            F = ( F << 2 ) | ( 0b11 ^ FIELD1 ( R , C ) )
+        END FOR
+    END FOR
+    ' 0-1-2, 3-4-5, 6-7-8
+    ' 001122334455667788
+    '             ******
+    '       ******
+    ' ******
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 2 ) & ( F >> 4 ) ) & 0b11000011000011 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 0-3-6, 1-4-7, 2-5-8
+    ' 001122334455667788
+    '     **    **    **
+    '   **    **    **
+    ' **    **    **
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 6 ) & ( F >> 12 ) ) & 0b111111 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 0-4-8
+    ' 001122334455667788
+    ' **      **      **
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 8 ) & ( F >> 16 ) ) & 0b11 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 2-4-6
+    ' 001122334455667788
+    '     **  **  **
+    ' 16141210 8 6 4 2 0
+    IF ( ( ( F >> 4 )  & ( F >> 8 ) & ( F >> 12 ) ) & 0b11 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    RETURN TRUE
+END FUNC
+
 SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
     LET F = FIELD1 ( 1 , 1 )
     IF F != 0 && F != 3 THEN
@@ -234,7 +288,7 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
             END IF
         END FOR
     END FOR
-    IF COUNT == 0 THEN
+    IF COUNT == 0 || IS_DRAW ( ) THEN
         WINNER = 3
     END IF
     IF WINNER != 0 THEN
@@ -247,6 +301,7 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
         AREA_C = -1
         RETURN
     END IF
+    STEPS += 1
     PLAYER = 3 - PLAYER
     IF FIELD1 ( R , C ) == 0 THEN
         AREA_R = R
@@ -479,6 +534,9 @@ FUNC THINKING ( ) AS BOOLEAN
     END IF
     ' AWAIT 1000
     THINKING_TIME = 0
+    IF STEPS == 1 THEN
+        RETURN COM_PUT_RANDOM ( )
+    END IF
     IF COM_AREA_R >= 0 THEN
         RETURN THINKING_A1 ( )
     ELSE
@@ -603,7 +661,7 @@ FUNC THINKING_A1 ( ) AS BOOLEAN
             CALL COPY_GAME_STATE ( )
         END FOR
     END FOR
-    IF CNT > 0 THEN
+    IF CNT > 1 THEN
         CALL HEAP_CLEAR ( )
         FOR LET J = 0 TO CNT - 1
             LET E = STK ( J )
@@ -623,6 +681,10 @@ FUNC THINKING_A1 ( ) AS BOOLEAN
         END FOR
         LET BEST_E = HEAP_PEEK_ITEM ( )
         CALL PUT_MARK ( I , BEST_E \ 3 , BEST_E % 3 )
+        RETURN TRUE
+    ELSE IF CNT == 1 THEN
+        CNT = STK ( 0 )
+        CALL PUT_MARK ( I , CNT \ 3 , CNT % 3 )
         RETURN TRUE
     END IF
     RETURN COM_PUT_RANDOM ( )
@@ -661,7 +723,7 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
             END FOR
         END FOR
     END FOR
-    IF CNT > 0 THEN
+    IF CNT > 1 THEN
         CALL HEAP_CLEAR ( )
         FOR LET J = 0 TO CNT - 1
             LET E = STK ( J )
@@ -683,6 +745,10 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
         LET BEST_E = HEAP_PEEK_ITEM ( )
         CALL PUT_MARK ( BEST_E \ 9 , ( BEST_E % 9 ) \ 3 , BEST_E % 3 )
         RETURN TRUE
+    ELSE IF CNT == 1 THEN
+        CNT = STK ( 0 )
+        CALL PUT_MARK ( CNT \ 9 , ( CNT % 9 ) \ 3 , CNT % 3 )
+        RETURN TRUE
     END IF
     RETURN COM_PUT_RANDOM ( )
 END FUNC
@@ -691,8 +757,7 @@ SUB COM_SEARCH ( D AS INTEGER )
     IF COM_CAN_WIN ( ) THEN
         COM_WINNER = COM_PLAYER
         RETURN
-    END IF
-    IF COM_WINNER != 0 || D <= 0 THEN
+    ELSE IF COM_WINNER != 0 || D <= 0 THEN
         RETURN
     END IF
     DIM STK ( 81 ) AS INTEGER
