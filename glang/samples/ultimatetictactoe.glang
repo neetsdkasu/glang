@@ -313,7 +313,10 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
 END SUB
 
 SUB PRINT_PUT_MARK ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
-    PRINT "- - - - - - - - - - - - - -"
+    ' デバッグ用の中身表示処理
+    ' ゲームの判定のどこかにバグがあるらしく、わからん
+    PRINT "- - - - - - - - - - - - - - - - - - - - -"
+    PRINT "GAME:" , PLAY_COUNT
     PRINT "STEPS:" , STEPS
     PRINT "PLAYER:" , PLAYER , " (" , SEL ( PLAYER == 1 , "P" , "C" ) , ")"
     PRINT "AREA_C:" , AREA_C , ", AREA_R:" , AREA_R
