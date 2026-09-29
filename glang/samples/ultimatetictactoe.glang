@@ -312,7 +312,36 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
     END IF
 END SUB
 
+SUB PRINT_PUT_MARK ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
+    PRINT "- - - - - - - - - - - - - -"
+    PRINT "STEPS:" , STEPS
+    PRINT "PLAYER:" , PLAYER , " (" , SEL ( PLAYER == 1 , "P" , "C" ) , ")"
+    PRINT "AREA_C:" , AREA_C , ", AREA_R:" , AREA_R
+    PRINT "PUT ( I:" , I , ", R:" , R , ", C:" , C , " )"
+    PRINT "FIELD1 ( I\3 , I%3 ):" , FIELD1 ( I \ 3 , I % 3 )
+    PRINT "FIELD2 ( I , R , C ):" , FIELD2 ( I , R , C )
+    FOR LET RR = 0 TO 8
+        IF RR % 3 == 0 THEN
+            PRINT "| -- -- -- | -- -- -- | -- -- --"
+        END IF
+        LET S = ""
+        FOR LET CC = 0 TO 8
+            IF CC % 3 == 0 THEN
+                S += "| "
+            END IF
+            S += CSTR ( FIELD1 ( RR \ 3 , CC \ 3 ) ) + CSTR ( FIELD2 ( ( RR \ 3 ) * 3 + CC \ 3 , RR % 3 , CC % 3 ) )
+            IF RR % 3 == R && CC % 3 == C && ( RR \ 3 ) * 3 + CC \ 3 == I THEN
+                S += "<"
+            ELSE
+                S += " "
+            END IF
+        END FOR
+        PRINT S
+    END FOR
+END SUB
+
 SUB PUT_MARK ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
+    CALL PRINT_PUT_MARK ( I , R , C )
     FIELD2 ( I , R , C ) = PLAYER
     CALL JUDGE ( I )
     CALL SET_LAST_SELECT ( I , R , C )
@@ -667,7 +696,7 @@ FUNC THINKING_A1 ( ) AS BOOLEAN
             LET E = STK ( J )
             CALL HEAP_PUSH ( 2000000 + RANDOM ( ) % 100 , E )
         END FOR
-        FOR LET Q = 0 TO 400
+        FOR LET Q = 0 TO 100
             LET K = HEAP_PEEK_KEY ( )
             LET E = HEAP_PEEK_ITEM ( )
             CALL HEAP_POP ( )
@@ -729,7 +758,7 @@ FUNC THINKING_A2 ( ) AS BOOLEAN
             LET E = STK ( J )
             CALL HEAP_PUSH ( 2000000 + RANDOM ( ) % 100 , E )
         END FOR
-        FOR LET Q = 0 TO 400
+        FOR LET Q = 0 TO 100
             LET K = HEAP_PEEK_KEY ( )
             LET E = HEAP_PEEK_ITEM ( )
             CALL HEAP_POP ( )
