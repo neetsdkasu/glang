@@ -208,6 +208,56 @@ SUB SET_LAST_SELECT ( I AS INTEGER , R AS INTEGER , C AS INTEGER )
     END IF
 END SUB
 
+FUNC IS_DRAW_AREA ( I AS INTEGER ) AS BOOLEAN
+    ' 0 1 2
+    ' 3 4 5
+    ' 6 7 8
+    ' -> 001122334455667788
+    ' none     0 ^ 0b11 -> 0b11
+    ' player   1 ^ 0b11 -> 0b10
+    ' computer 2 ^ 0b11 -> 0b01
+    ' draw     3 ^ 0b11 -> 0b00
+    LET F = 0
+    FOR LET R = 0 TO 2
+        FOR LET C = 0 TO 2
+            F = ( F << 2 ) | ( 0b11 ^ FIELD2 ( I , R , C ) )
+        END FOR
+    END FOR
+    ' 0-1-2, 3-4-5, 6-7-8
+    ' 001122334455667788
+    '             ******
+    '       ******
+    ' ******
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 2 ) & ( F >> 4 ) ) & 0b11000011000011 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 0-3-6, 1-4-7, 2-5-8
+    ' 001122334455667788
+    '     **    **    **
+    '   **    **    **
+    ' **    **    **
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 6 ) & ( F >> 12 ) ) & 0b111111 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 0-4-8
+    ' 001122334455667788
+    ' **      **      **
+    ' 16141210 8 6 4 2 0
+    IF ( ( F & ( F >> 8 ) & ( F >> 16 ) ) & 0b11 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    ' 2-4-6
+    ' 001122334455667788
+    '     **  **  **
+    ' 16141210 8 6 4 2 0
+    IF ( ( ( F >> 4 )  & ( F >> 8 ) & ( F >> 12 ) ) & 0b11 ) != 0 THEN
+        RETURN FALSE
+    END IF
+    RETURN TRUE
+END FUNC
+
 FUNC IS_DRAW ( ) AS BOOLEAN
     ' 0 1 2
     ' 3 4 5
@@ -220,7 +270,11 @@ FUNC IS_DRAW ( ) AS BOOLEAN
     LET F = 0
     FOR LET R = 0 TO 2
         FOR LET C = 0 TO 2
-            F = ( F << 2 ) | ( 0b11 ^ FIELD1 ( R , C ) )
+            IF FIELD1 ( R , C ) != 0 || ! IS_DRAW_AREA ( R * 3 + C ) THEN
+                F = ( F << 2 ) | ( 0b11 ^ FIELD1 ( R , C ) )
+            ELSE
+                F <<= 2
+            END IF
         END FOR
     END FOR
     ' 0-1-2, 3-4-5, 6-7-8
@@ -288,7 +342,7 @@ SUB CHANGE_TURN ( R AS INTEGER , C AS INTEGER )
             END IF
         END FOR
     END FOR
-    IF COUNT == 0 || IS_DRAW ( ) THEN
+    IF WINNER == 0 && ( COUNT == 0 || IS_DRAW ( ) ) THEN
         WINNER = 3
     END IF
     IF WINNER != 0 THEN
