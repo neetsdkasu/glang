@@ -1,6 +1,8 @@
 //
 // utils
 //
+import Logger, { LogLevel } from "./logger.js";
+const log = new Logger("utils", LogLevel.ALL);
 export function inRange(min, max, value) {
     return min <= value && value <= max;
 }
@@ -41,7 +43,7 @@ export function popCount(n) {
 }
 /**
  * 二分探索.
- * find index -> (index == 0 || test(index-1) == false) && test(index) == true .
+ * find index -> 0 <= index && (index === 0 || test(arr[index-1]) === true) && (arr.length <= index || test(arr[index]) === false).
  * @param arr
  * @param test
  */
@@ -51,14 +53,30 @@ export function binarySearch(arr, test) {
     while (lower + 1 < upper) {
         const half = (lower + upper) >> 1;
         if (test(arr[half])) {
-            upper = half;
-        }
-        else {
             lower = half;
         }
+        else {
+            upper = half;
+        }
     }
-    return upper < arr.length ? upper : undefined;
+    return test(arr[lower]) ? upper : lower;
 }
+(function test_binarySearch() {
+    log.debug("test binarySearch...");
+    const arr1 = [0, 1, 2, 3, 4, 5, 6];
+    for (let i = -1; i <= 8; i++) {
+        const expect = Math.min(arr1.length, Math.max(0, i));
+        const actual = binarySearch(arr1, x => x < i);
+        assert(actual === expect, `arr1: i=${i}, expect=${expect}, actual=${actual}`);
+    }
+    const arr2 = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
+    for (let i = -1; i <= 8; i++) {
+        const expect = Math.min(arr2.length, Math.max(0, i * 2));
+        const actual = binarySearch(arr2, x => x < i);
+        assert(actual === expect, `arr2: i=${i}, expect=${expect}, actual=${actual}`);
+    }
+    log.debug("test ok.");
+})();
 export class Range {
     min;
     max;

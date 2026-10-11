@@ -147,8 +147,8 @@ export class Runner {
     }
 
     #findSource(addr: number): Source | undefined {
-        const index = U.binarySearch(this.#sourceMap, (s => s.addr.min >= addr ));
-        if (index !== undefined && this.#sourceMap[index].addr.include(addr)) {
+        const index = U.binarySearch(this.#sourceMap, ( s => s.addr.max < addr ) );
+        if (this.#sourceMap.at(index)?.addr.include(addr)) {
             return this.#sourceMap[index];
         }
         return undefined;
