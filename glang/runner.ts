@@ -103,6 +103,7 @@ export class Runner {
     readonly #sourceMap: Readonly<Source[]>;
     readonly #debugMsgPool: Readonly<string[]>;
     readonly #funcAddressList: Readonly<Readonly<FuncAddress>[]>;
+    readonly #returnPointList: Readonly<Source[]>;
 
     #pos: number = 0;
     #isRunning: boolean = true;
@@ -126,6 +127,7 @@ export class Runner {
         this.#sourceMap = program.sourceMap;
         this.#debugMsgPool = program.debugMsgPool;
         this.#funcAddressList = program.funcAddressList;
+        this.#returnPointList = program.returnPointList;
         this.#block = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#io = io;
@@ -160,29 +162,38 @@ export class Runner {
         return undefined;
     }    
 
-    #makeStacktrace(addr: number): string[] {
+    #makeStacktrace(addr: number, src: Source | undefined): string[] {
         const stacktrace: string[] = [];
         const index = U.binarySearch(this.#funcAddressList, x => x.addr.max < addr);
+        const lineNum = src?.lineNumber ?? -1;
         if (this.#funcAddressList.at(index)?.addr.include(addr)) {
-            stacktrace.push(this.#funcAddressList[index].funcName);
+            stacktrace.push(`${this.#funcAddressList[index].funcName}@${lineNum}`);
         } else {
-            stacktrace.push("<unknown>");
+            stacktrace.push(`<unknown>@${lineNum}`);
         }
         for (let i = this.#addressStack.length-1; i >= 0; i--) {
             const retAddr = this.#addressStack[i];
             const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+            let funName: string;
             if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
-                stacktrace.push(this.#funcAddressList[retfIndex].funcName);
+                funName = this.#funcAddressList[retfIndex].funcName;
             } else {
-                stacktrace.push("<unknown>");
+                funName = "<unknown>";
+            }
+            const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
+            if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
+                const src = this.#returnPointList[srcIndex];
+                stacktrace.push(`${funName}@${src.lineNumber}`);
+            } else {
+                stacktrace.push(`${funName}@-1`);
             }
         }
         return stacktrace;
     }
 
     #runtimeError(addr: number, msg: string): void {
-        const stacktrace = this.#makeStacktrace(addr);
         const src = this.#findSource(addr);
+        const stacktrace = this.#makeStacktrace(addr, src);
         this.#error = new RuntimeError(msg, stacktrace, src);
         this.#state = State.ERROR;
         this.#isRunning = false;

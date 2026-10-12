@@ -15,6 +15,14 @@ export class Source {
         this.addr = addr;
         this.src = src;
     }
+    get lineNumber() {
+        if (this.src instanceof Token) {
+            return this.src.row + 1;
+        }
+        else {
+            return (this.src.at(0)?.row ?? -2) + 1;
+        }
+    }
     toString() {
         if (this.src instanceof Token) {
             return `Source{ addr: ${this.addr}, src: ${this.src} }`;
@@ -32,6 +40,7 @@ export class Program {
     sourceMap;
     debugMsgPool;
     funcAddressList;
+    returnPointList;
     constructor(param) {
         this.program = param.program;
         this.litStrPool = param.litStrPool;
@@ -39,6 +48,7 @@ export class Program {
         this.sourceMap = param.sourceMap;
         this.debugMsgPool = param.debugMsgPool;
         this.funcAddressList = param.funcAddressList;
+        this.returnPointList = param.returnPointList;
     }
     toString() {
         return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length}, debugMsgPool: ${this.debugMsgPool.length} }`;

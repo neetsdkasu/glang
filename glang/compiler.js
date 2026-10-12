@@ -20,6 +20,7 @@ class Compiler {
     #blockIdStack = []; // pushBlockするたびにブロックIDをスタック構造で管理.
     #debugMsgIdMap = new Map();
     #debugMsgPool = [];
+    #returnPointList = [];
     #sourceMap = [];
     constructor(src) {
         this.src = src;
@@ -67,13 +68,18 @@ class Compiler {
     #addCmdCallStdFunc(stdfuncId) {
         this.#addCmd(Cmd.CALL_STDFUNC, stdfuncId);
     }
-    #addCmdCallUserFunc(funcId) {
+    #addCmdCallUserFunc(funcId, src) {
         this.#addCmd(Cmd.CALL_USERFUNC);
         const userfuncAddressReferrer = this.#addParam(funcId);
         this.#userFuncAddressReferrers.push(userfuncAddressReferrer);
         const returnAddressReferrer = this.#addParam(0);
         const returnAddress = this.#getNextAddress();
         this.#setParam(returnAddressReferrer, returnAddress);
+        if (src !== null) {
+            const r = new U.Range(returnAddress, returnAddress);
+            const source = new Source(r, src);
+            this.#returnPointList.push(source);
+        }
     }
     #addCmdGetVarVal(nameInfo) {
         let cmd;
@@ -196,7 +202,7 @@ class Compiler {
         const mainSubId = mainSubIdHolder.get();
         this.#pushBlock(this.src.blockInfo);
         this.#compileCodeBlock(dimlet);
-        this.#addCmdCallUserFunc(mainSubId);
+        this.#addCmdCallUserFunc(mainSubId, null);
         this.#popBlock(this.src.blockInfo);
         this.#addCmd(Cmd.END);
         for (const code of subfunc) {
@@ -221,6 +227,7 @@ class Compiler {
             this.#program[referrer] = address.addr.min;
         }
         this.#sourceMap.sort((a, b) => a.addr.cmp(b.addr));
+        this.#returnPointList.sort((a, b) => a.addr.cmp(b.addr));
         const funcAddressList = [...this.#userFuncAddressMap.values()];
         funcAddressList.sort((a, b) => a.addr.cmp(b.addr));
         return new Program({
@@ -229,7 +236,8 @@ class Compiler {
             totalBlockCount: this.src.totalBlockCount,
             sourceMap: this.#sourceMap,
             debugMsgPool: this.#debugMsgPool,
-            funcAddressList: funcAddressList
+            funcAddressList: funcAddressList,
+            returnPointList: this.#returnPointList
         });
     }
     #compileCodeBlock(block) {
@@ -1191,7 +1199,7 @@ class Compiler {
         for (const arg of args) {
             this.#compileExpr(arg);
         }
-        this.#addCmdCallUserFunc(funcInfo.varId);
+        this.#addCmdCallUserFunc(funcInfo.varId, expr.src);
     }
     #compileCallStdFunc(code) {
         for (const arg of code.args) {
@@ -1208,7 +1216,7 @@ class Compiler {
         for (const arg of code.args) {
             this.#compileExpr(arg);
         }
-        this.#addCmdCallUserFunc(code.funcInfo.varId);
+        this.#addCmdCallUserFunc(code.funcInfo.varId, code.src);
         if (code.funcInfo.isFunc) {
             this.#addCmd(Cmd.POP);
         }
