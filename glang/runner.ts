@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("runner", LogLevel.ALL);
 
-import { Cmd, Program, StdFunc, Source } from "./command.js";
+import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE } from "./command.js";
 import { Result } from "./utils.js";
 import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
@@ -99,6 +99,7 @@ export class Runner {
     readonly #litStrPool: Readonly<string[]>;
     readonly #io: IO;
     readonly #sourceMap: Readonly<Source[]>;
+    readonly #debugMsgPool: Readonly<string[]>;
 
     #pos: number = 0;
     #isRunning: boolean = true;
@@ -120,6 +121,7 @@ export class Runner {
         this.#program = program.program;
         this.#litStrPool = program.litStrPool;
         this.#sourceMap = program.sourceMap;
+        this.#debugMsgPool = program.debugMsgPool;
         this.#block = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#io = io;
@@ -1356,6 +1358,17 @@ export class Runner {
                     const top = this.#valueStack.pop() as number;
                     const left = this.#valueStack.pop() as number;
                     this.#io.g.drawText(left, top, text);
+                }
+                return;
+            case Cmd.ABORT:
+                {
+                    const msgId = this.#program[this.#pos++];
+                    if (msgId === ABORT_NO_MESSAGE) {
+                        this.#runtimeError(this.#pos-2, "program has called command ABORT");
+                    } else {
+                        const msg = this.#debugMsgPool[msgId];
+                        this.#runtimeError(this.#pos-2, `program has called command ABORT: ${msg}`);
+                    }
                 }
                 return;
             default:

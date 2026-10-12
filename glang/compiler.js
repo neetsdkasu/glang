@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("compiler", LogLevel.ERROR | LogLevel.WARN);
 import * as C from "./code.js";
-import { Cmd, Program, StdFunc, Source } from "./command.js";
+import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE } from "./command.js";
 import * as U from "./utils.js";
 class Compiler {
     src;
@@ -18,6 +18,8 @@ class Compiler {
     #breakAddressMap = new Map(); // ループブロックID => ループ終了処理先頭アドレス.
     #breakAddressReferres = []; // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
     #blockIdStack = []; // pushBlockするたびにブロックIDをスタック構造で管理.
+    #debugMsgIdMap = new Map();
+    #debugMsgPool = [];
     #sourceMap = [];
     constructor(src) {
         this.src = src;
@@ -32,6 +34,15 @@ class Compiler {
         const id = this.#litStrPool.length;
         this.#litStrPool.push(s);
         this.#litStrIdMap.set(s, id);
+        return id;
+    }
+    #getDebugMsgId(msg) {
+        if (this.#debugMsgIdMap.has(msg)) {
+            return this.#debugMsgIdMap.get(msg);
+        }
+        const id = this.#debugMsgPool.length;
+        this.#debugMsgPool.push(msg);
+        this.#debugMsgIdMap.set(msg, id);
         return id;
     }
     #addCmd(cmd, ...params) {
@@ -210,11 +221,15 @@ class Compiler {
             this.#program[referrer] = address;
         }
         this.#sourceMap.sort((a, b) => a.addr.cmp(b.addr));
-        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount, this.#sourceMap);
+        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount, this.#sourceMap, this.#debugMsgPool);
     }
     #compileCodeBlock(block) {
         for (const code of block) {
             switch (code.kind) {
+                case C.CodeKind.ABORT:
+                    U.assert(code instanceof C.Abort);
+                    this.#compileAbort(code);
+                    break;
                 case C.CodeKind.ASSIGN_ARRAY:
                     U.assert(code instanceof C.AssignArray);
                     this.#compileAssignArray(code);
@@ -1290,6 +1305,20 @@ class Compiler {
         this.#compileExpr(code.top);
         this.#compileExpr(code.text);
         this.#addCmd(Cmd.DRAW_TEXT);
+    }
+    #compileAbort(code) {
+        const addr = this.#getNextAddress();
+        const r = new U.Range(addr, addr + 1); // [Cmd.ABORT, msgId]
+        const source = new Source(r, code.src);
+        this.#sourceMap.push(source);
+        const msg = code.msg;
+        if (msg === null) {
+            this.#addCmd(Cmd.ABORT, ABORT_NO_MESSAGE);
+        }
+        else {
+            const msgId = this.#getDebugMsgId(msg);
+            this.#addCmd(Cmd.ABORT, msgId);
+        }
     }
 }
 export function compile(src) {

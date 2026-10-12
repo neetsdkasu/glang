@@ -3,7 +3,7 @@
 // 
 import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("runner", LogLevel.ALL);
-import { Cmd, StdFunc } from "./command.js";
+import { Cmd, StdFunc, ABORT_NO_MESSAGE } from "./command.js";
 import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
 export class RuntimeError {
@@ -54,6 +54,7 @@ export class Runner {
     #litStrPool;
     #io;
     #sourceMap;
+    #debugMsgPool;
     #pos = 0;
     #isRunning = true;
     #error = null;
@@ -69,6 +70,7 @@ export class Runner {
         this.#program = program.program;
         this.#litStrPool = program.litStrPool;
         this.#sourceMap = program.sourceMap;
+        this.#debugMsgPool = program.debugMsgPool;
         this.#block = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#io = io;
@@ -90,8 +92,8 @@ export class Runner {
         return this.#cmd;
     }
     #findSource(addr) {
-        const index = U.binarySearch(this.#sourceMap, (s => s.addr.min >= addr));
-        if (index !== undefined && this.#sourceMap[index].addr.include(addr)) {
+        const index = U.binarySearch(this.#sourceMap, (s => s.addr.max < addr));
+        if (this.#sourceMap.at(index)?.addr.include(addr)) {
             return this.#sourceMap[index];
         }
         return undefined;
@@ -1326,6 +1328,18 @@ export class Runner {
                     const top = this.#valueStack.pop();
                     const left = this.#valueStack.pop();
                     this.#io.g.drawText(left, top, text);
+                }
+                return;
+            case Cmd.ABORT:
+                {
+                    const msgId = this.#program[this.#pos++];
+                    if (msgId === ABORT_NO_MESSAGE) {
+                        this.#runtimeError(this.#pos - 2, "program has called command ABORT");
+                    }
+                    else {
+                        const msg = this.#debugMsgPool[msgId];
+                        this.#runtimeError(this.#pos - 2, `program has called command ABORT: ${msg}`);
+                    }
                 }
                 return;
             default:

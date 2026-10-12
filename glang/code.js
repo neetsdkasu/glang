@@ -1008,32 +1008,33 @@ export class ExprArrayRef extends ExprVar {
 }
 export var CodeKind;
 (function (CodeKind) {
-    CodeKind[CodeKind["ASSIGN_ARRAY"] = 0] = "ASSIGN_ARRAY";
-    CodeKind[CodeKind["ASSIGN_VAR"] = 1] = "ASSIGN_VAR";
-    CodeKind[CodeKind["AWAIT"] = 2] = "AWAIT";
-    CodeKind[CodeKind["BLOCK"] = 3] = "BLOCK";
-    CodeKind[CodeKind["BREAK"] = 4] = "BREAK";
-    CodeKind[CodeKind["CALL_STD_FUNC"] = 5] = "CALL_STD_FUNC";
-    CodeKind[CodeKind["CALL_USER_FUNC"] = 6] = "CALL_USER_FUNC";
-    CodeKind[CodeKind["CONTINUE"] = 7] = "CONTINUE";
-    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 8] = "DEFINE_USER_FUNC";
-    CodeKind[CodeKind["DIM"] = 9] = "DIM";
-    CodeKind[CodeKind["DO_WHILE"] = 10] = "DO_WHILE";
-    CodeKind[CodeKind["DRAW_ARC"] = 11] = "DRAW_ARC";
-    CodeKind[CodeKind["DRAW_LINE"] = 12] = "DRAW_LINE";
-    CodeKind[CodeKind["DRAW_RECT"] = 13] = "DRAW_RECT";
-    CodeKind[CodeKind["DRAW_TEXT"] = 14] = "DRAW_TEXT";
-    CodeKind[CodeKind["FLUSH"] = 15] = "FLUSH";
-    CodeKind[CodeKind["FOR"] = 16] = "FOR";
-    CodeKind[CodeKind["GET_POINTER_EVENT"] = 17] = "GET_POINTER_EVENT";
-    CodeKind[CodeKind["IF"] = 18] = "IF";
-    CodeKind[CodeKind["LET"] = 19] = "LET";
-    CodeKind[CodeKind["PRINT"] = 20] = "PRINT";
-    CodeKind[CodeKind["RANDOMIZE"] = 21] = "RANDOMIZE";
-    CodeKind[CodeKind["RETURN"] = 22] = "RETURN";
-    CodeKind[CodeKind["SET_COLOR"] = 23] = "SET_COLOR";
-    CodeKind[CodeKind["SET_FONT_SIZE"] = 24] = "SET_FONT_SIZE";
-    CodeKind[CodeKind["TRANSFER"] = 25] = "TRANSFER";
+    CodeKind[CodeKind["ABORT"] = 0] = "ABORT";
+    CodeKind[CodeKind["ASSIGN_ARRAY"] = 1] = "ASSIGN_ARRAY";
+    CodeKind[CodeKind["ASSIGN_VAR"] = 2] = "ASSIGN_VAR";
+    CodeKind[CodeKind["AWAIT"] = 3] = "AWAIT";
+    CodeKind[CodeKind["BLOCK"] = 4] = "BLOCK";
+    CodeKind[CodeKind["BREAK"] = 5] = "BREAK";
+    CodeKind[CodeKind["CALL_STD_FUNC"] = 6] = "CALL_STD_FUNC";
+    CodeKind[CodeKind["CALL_USER_FUNC"] = 7] = "CALL_USER_FUNC";
+    CodeKind[CodeKind["CONTINUE"] = 8] = "CONTINUE";
+    CodeKind[CodeKind["DEFINE_USER_FUNC"] = 9] = "DEFINE_USER_FUNC";
+    CodeKind[CodeKind["DIM"] = 10] = "DIM";
+    CodeKind[CodeKind["DO_WHILE"] = 11] = "DO_WHILE";
+    CodeKind[CodeKind["DRAW_ARC"] = 12] = "DRAW_ARC";
+    CodeKind[CodeKind["DRAW_LINE"] = 13] = "DRAW_LINE";
+    CodeKind[CodeKind["DRAW_RECT"] = 14] = "DRAW_RECT";
+    CodeKind[CodeKind["DRAW_TEXT"] = 15] = "DRAW_TEXT";
+    CodeKind[CodeKind["FLUSH"] = 16] = "FLUSH";
+    CodeKind[CodeKind["FOR"] = 17] = "FOR";
+    CodeKind[CodeKind["GET_POINTER_EVENT"] = 18] = "GET_POINTER_EVENT";
+    CodeKind[CodeKind["IF"] = 19] = "IF";
+    CodeKind[CodeKind["LET"] = 20] = "LET";
+    CodeKind[CodeKind["PRINT"] = 21] = "PRINT";
+    CodeKind[CodeKind["RANDOMIZE"] = 22] = "RANDOMIZE";
+    CodeKind[CodeKind["RETURN"] = 23] = "RETURN";
+    CodeKind[CodeKind["SET_COLOR"] = 24] = "SET_COLOR";
+    CodeKind[CodeKind["SET_FONT_SIZE"] = 25] = "SET_FONT_SIZE";
+    CodeKind[CodeKind["TRANSFER"] = 26] = "TRANSFER";
 })(CodeKind || (CodeKind = {}));
 export class Code {
     kind;
@@ -1050,7 +1051,8 @@ export var BlockEndKind;
     BlockEndKind[BlockEndKind["CONTINUE"] = 1] = "CONTINUE";
     BlockEndKind[BlockEndKind["BREAK"] = 2] = "BREAK";
     BlockEndKind[BlockEndKind["RETURN"] = 4] = "RETURN";
-    BlockEndKind[BlockEndKind["ALL"] = 7] = "ALL";
+    BlockEndKind[BlockEndKind["ABORT"] = 8] = "ABORT";
+    BlockEndKind[BlockEndKind["ALL"] = 15] = "ALL";
 })(BlockEndKind || (BlockEndKind = {}));
 export class BlockInfo {
     src;
@@ -1985,6 +1987,24 @@ export class DrawText extends Code {
     }
     toString() {
         return `DrawText{ left: ${this.left}, top: ${this.top}, text: ${this.text} }`;
+    }
+}
+export class Abort extends Code {
+    msg;
+    constructor(src, msg) {
+        super(CodeKind.ABORT, src);
+        this.msg = msg;
+    }
+    rebuild(findUserFunc) {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
+    toString() {
+        if (this.msg === null) {
+            return `Abort{ msg: ${this.msg} }`;
+        }
+        else {
+            return `Abort{ msg: "${this.msg?.replaceAll('"', '""')}" }`;
+        }
     }
 }
 export default {};

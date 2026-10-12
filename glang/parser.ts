@@ -56,6 +56,7 @@ function boundaryError<R>(msg: string, src: Token | Readonly<Token[]>): Result<R
 }
 
 enum Keyword {
+    ABORT = "abort",
     AS = "as",
     AWAIT = "await",
     BOOLEAN = "boolean",
@@ -1130,6 +1131,9 @@ class Parser {
                 case Keyword.SUB:
                 case Keyword.FUNC:
                     return syntaxError("ブロック内でユーザ関数の定義はできません.", cmdToken);
+                case Keyword.ABORT:
+                    res = this.#parseAbort(line);
+                    break;
                 case Keyword.AWAIT:
                     res = this.#parseAwait(line);
                     break;
@@ -4245,6 +4249,42 @@ class Parser {
         this.#env.addCode(code);
 
         log.debug("PARSED drawtext.");
+        log.dump("src", Token.lineToString, src);
+
+        return OK;
+    }
+
+    #parseAbort(line: RQueue<Token>): ParserResult {
+        const abortToken = line.dequeue()!;
+        const src: Token[] = [abortToken];
+
+        log.debug("PARSE abort...");
+
+        let msg: string | null;
+
+        if (line.front!.tokenType === TokenType.STRING) {
+            const msgToken = line.dequeue()!;
+            src.push(msgToken);
+            msg = msgToken.value;
+        } else {
+            msg = null;
+        }
+        log.dump("msg", msg);
+
+        const eolToken = line.dequeue()!;
+        if (eolToken.tokenType === TokenType.EOF) {
+            return syntaxError("ここでソースコードの末尾は不正です.", eolToken);
+        } else if (eolToken.tokenType !== TokenType.EOL) {
+            return syntaxError("不正な文字(あるいは文字列)です.", eolToken);
+        }
+
+        const code = new C.Abort(src, msg);
+
+        this.#env.addCode(code);
+
+        this.#env.setBlockEnd(C.BlockEndKind.ABORT);
+    
+        log.debug("PARSED abort.");
         log.dump("src", Token.lineToString, src);
 
         return OK;

@@ -6,6 +6,7 @@ export const GET_POINTER_EVENT_MIN_WAIT_COUNT = 0;
 export const GET_POINTER_EVENT_MAX_WAIT_COUNT = 100;
 export const AWAIT_MIN_WAIT_TIME = 1;
 export const AWAIT_MAX_WAIT_TIME = 1000;
+export const ABORT_NO_MESSAGE = -1;
 export class Source {
     addr;
     src;
@@ -27,14 +28,16 @@ export class Program {
     litStrPool;
     totalBlockCount;
     sourceMap;
-    constructor(program, litStrPool, totalBlockCount, sourceMap) {
+    debugMsgPool;
+    constructor(program, litStrPool, totalBlockCount, sourceMap, debugMsgPool) {
         this.program = program;
         this.litStrPool = litStrPool;
         this.totalBlockCount = totalBlockCount;
         this.sourceMap = sourceMap;
+        this.debugMsgPool = debugMsgPool;
     }
     toString() {
-        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length}, debugMsgPool: ${this.debugMsgPool.length} }`;
     }
 }
 export var Cmd;
@@ -172,7 +175,8 @@ export var Cmd;
     Cmd[Cmd["FILL_RECT"] = 130] = "FILL_RECT";
     Cmd[Cmd["FILL_ARC"] = 131] = "FILL_ARC";
     Cmd[Cmd["SET_FONT_SIZE"] = 132] = "SET_FONT_SIZE";
-    Cmd[Cmd["DRAW_TEXT"] = 133] = "DRAW_TEXT"; // DRAW_TEXT () [...,left,top,text] => [...]
+    Cmd[Cmd["DRAW_TEXT"] = 133] = "DRAW_TEXT";
+    Cmd[Cmd["ABORT"] = 134] = "ABORT"; // ABORT ( msgId ) [...] => [...] : if no message, set ABORT_NO_MESSAGE to msgId
 })(Cmd || (Cmd = {}));
 export var StdFunc;
 (function (StdFunc) {

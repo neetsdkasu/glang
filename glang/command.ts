@@ -9,6 +9,7 @@ export const GET_POINTER_EVENT_MIN_WAIT_COUNT = 0;
 export const GET_POINTER_EVENT_MAX_WAIT_COUNT = 100;
 export const AWAIT_MIN_WAIT_TIME = 1;
 export const AWAIT_MAX_WAIT_TIME = 1000;
+export const ABORT_NO_MESSAGE = -1;
 
 export class Source {
     readonly addr: U.Range;
@@ -34,16 +35,18 @@ export class Program {
     readonly litStrPool: Readonly<string[]>;
     readonly totalBlockCount: number;
     readonly sourceMap: Readonly<Source[]>;
+    readonly debugMsgPool: Readonly<string[]>;
 
-    constructor(program: number[], litStrPool: string[], totalBlockCount: number, sourceMap: Source[]) {
+    constructor(program: number[], litStrPool: string[], totalBlockCount: number, sourceMap: Source[], debugMsgPool: string[]) {
         this.program = program;
         this.litStrPool = litStrPool;
         this.totalBlockCount = totalBlockCount;
         this.sourceMap = sourceMap;
+        this.debugMsgPool = debugMsgPool;
     }
 
     toString(): string {
-        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length} }`;
+        return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length}, debugMsgPool: ${this.debugMsgPool.length} }`;
     }
 }
 
@@ -181,7 +184,8 @@ export enum Cmd {
     FILL_RECT,      // FILL_RECT () [...,left,top,width,height] => [...]
     FILL_ARC,       // FILL_ARC () [...,left,top,diameter,startAngle,endAngle] => [...]
     SET_FONT_SIZE,  // SET_FONT_SIZE () [...,size] => [...]
-    DRAW_TEXT       // DRAW_TEXT () [...,left,top,text] => [...]
+    DRAW_TEXT,      // DRAW_TEXT () [...,left,top,text] => [...]
+    ABORT           // ABORT ( msgId ) [...] => [...] : if no message, set ABORT_NO_MESSAGE to msgId
 }
 
 export enum StdFunc {

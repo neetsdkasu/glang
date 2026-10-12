@@ -1108,6 +1108,7 @@ export class ExprArrayRef extends ExprVar {
 }
 
 export enum CodeKind {
+    ABORT,
     ASSIGN_ARRAY,
     ASSIGN_VAR,
     AWAIT,
@@ -1155,7 +1156,8 @@ export enum BlockEndKind {
     CONTINUE = 1 << 0,
     BREAK    = 1 << 1,
     RETURN   = 1 << 2,
-    ALL = CONTINUE | BREAK | RETURN
+    ABORT    = 1 << 3,
+    ALL = CONTINUE | BREAK | RETURN | ABORT
 }
 
 export class BlockInfo {
@@ -2202,6 +2204,27 @@ export class DrawText extends Code {
 
     toString(): string {
         return `DrawText{ left: ${this.left}, top: ${this.top}, text: ${this.text} }`;
+    }
+}
+
+export class Abort extends Code {
+    readonly msg: string | null;
+
+    constructor(src: Readonly<Token[]>, msg: string | null) {
+        super(CodeKind.ABORT, src);
+        this.msg = msg;
+    }
+
+    rebuild(findUserFunc: (name: string) => FuncInfo): Result<{ code: Code; sideEffect: SideEffect; }, RebuildError> {
+        return Result.ok({ code: this, sideEffect: SideEffect.NONE });
+    }
+
+    toString(): string {
+        if (this.msg === null) {
+            return `Abort{ msg: ${this.msg} }`
+        } else {
+            return `Abort{ msg: "${this.msg?.replaceAll('"', '""')}" }`;
+        }
     }
 }
 
