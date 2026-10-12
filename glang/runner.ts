@@ -4,7 +4,7 @@
 import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("runner", LogLevel.ALL);
 
-import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE } from "./command.js";
+import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE, FuncAddress } from "./command.js";
 import { Result } from "./utils.js";
 import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
@@ -12,15 +12,17 @@ import * as U from "./utils.js";
 export class RuntimeError 
 {
     readonly msg: string;
+    readonly stacktrace: Readonly<string[]>;
     readonly src: Source | undefined;
 
-    constructor(msg: string, src: Source | undefined) {
+    constructor(msg: string, stacktrace: string[], src: Source | undefined) {
         this.msg = msg;
+        this.stacktrace = stacktrace;
         this.src = src;
     }
 
     toString(): string {
-        return `RuntimeError{ msg: ${this.msg}, src: ${this.src} }`;
+        return `RuntimeError{ msg: ${this.msg}, src: ${this.src}, stacktrace: ${this.stacktrace.length} }`;
     }
 }
 
@@ -100,6 +102,7 @@ export class Runner {
     readonly #io: IO;
     readonly #sourceMap: Readonly<Source[]>;
     readonly #debugMsgPool: Readonly<string[]>;
+    readonly #funcAddressList: Readonly<Readonly<FuncAddress>[]>;
 
     #pos: number = 0;
     #isRunning: boolean = true;
@@ -122,6 +125,7 @@ export class Runner {
         this.#litStrPool = program.litStrPool;
         this.#sourceMap = program.sourceMap;
         this.#debugMsgPool = program.debugMsgPool;
+        this.#funcAddressList = program.funcAddressList;
         this.#block = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map( () => [] );
         this.#io = io;
@@ -156,9 +160,30 @@ export class Runner {
         return undefined;
     }    
 
+    #makeStacktrace(addr: number): string[] {
+        const stacktrace: string[] = [];
+        const index = U.binarySearch(this.#funcAddressList, x => x.addr.max < addr);
+        if (this.#funcAddressList.at(index)?.addr.include(addr)) {
+            stacktrace.push(this.#funcAddressList[index].funcName);
+        } else {
+            stacktrace.push("<unknown>");
+        }
+        for (let i = this.#addressStack.length-1; i >= 0; i--) {
+            const retAddr = this.#addressStack[i];
+            const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+            if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                stacktrace.push(this.#funcAddressList[retfIndex].funcName);
+            } else {
+                stacktrace.push("<unknown>");
+            }
+        }
+        return stacktrace;
+    }
+
     #runtimeError(addr: number, msg: string): void {
+        const stacktrace = this.#makeStacktrace(addr);
         const src = this.#findSource(addr);
-        this.#error = new RuntimeError(msg, src);
+        this.#error = new RuntimeError(msg, stacktrace, src);
         this.#state = State.ERROR;
         this.#isRunning = false;
     }

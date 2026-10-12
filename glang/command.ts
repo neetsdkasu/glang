@@ -11,6 +11,11 @@ export const AWAIT_MIN_WAIT_TIME = 1;
 export const AWAIT_MAX_WAIT_TIME = 1000;
 export const ABORT_NO_MESSAGE = -1;
 
+export interface FuncAddress {
+    readonly funcName: string;
+    readonly addr: U.Range;
+};
+
 export class Source {
     readonly addr: U.Range;
     readonly src: Token | Readonly<Token[]>;
@@ -30,19 +35,30 @@ export class Source {
 
 }
 
+export interface ProgramParam {
+    program: number[];
+    litStrPool: string[];
+    totalBlockCount: number;
+    sourceMap: Source[];
+    debugMsgPool: string[];
+    funcAddressList: FuncAddress[];
+};
+
 export class Program {
     readonly program: Readonly<number[]>;
     readonly litStrPool: Readonly<string[]>;
     readonly totalBlockCount: number;
     readonly sourceMap: Readonly<Source[]>;
     readonly debugMsgPool: Readonly<string[]>;
+    readonly funcAddressList: Readonly<Readonly<FuncAddress>[]>;
 
-    constructor(program: number[], litStrPool: string[], totalBlockCount: number, sourceMap: Source[], debugMsgPool: string[]) {
-        this.program = program;
-        this.litStrPool = litStrPool;
-        this.totalBlockCount = totalBlockCount;
-        this.sourceMap = sourceMap;
-        this.debugMsgPool = debugMsgPool;
+    constructor(param: ProgramParam) {
+        this.program = param.program;
+        this.litStrPool = param.litStrPool;
+        this.totalBlockCount = param.totalBlockCount;
+        this.sourceMap = param.sourceMap;
+        this.debugMsgPool = param.debugMsgPool;
+        this.funcAddressList = param.funcAddressList;
     }
 
     toString(): string {

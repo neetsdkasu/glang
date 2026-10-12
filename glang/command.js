@@ -7,6 +7,7 @@ export const GET_POINTER_EVENT_MAX_WAIT_COUNT = 100;
 export const AWAIT_MIN_WAIT_TIME = 1;
 export const AWAIT_MAX_WAIT_TIME = 1000;
 export const ABORT_NO_MESSAGE = -1;
+;
 export class Source {
     addr;
     src;
@@ -23,18 +24,21 @@ export class Source {
         }
     }
 }
+;
 export class Program {
     program;
     litStrPool;
     totalBlockCount;
     sourceMap;
     debugMsgPool;
-    constructor(program, litStrPool, totalBlockCount, sourceMap, debugMsgPool) {
-        this.program = program;
-        this.litStrPool = litStrPool;
-        this.totalBlockCount = totalBlockCount;
-        this.sourceMap = sourceMap;
-        this.debugMsgPool = debugMsgPool;
+    funcAddressList;
+    constructor(param) {
+        this.program = param.program;
+        this.litStrPool = param.litStrPool;
+        this.totalBlockCount = param.totalBlockCount;
+        this.sourceMap = param.sourceMap;
+        this.debugMsgPool = param.debugMsgPool;
+        this.funcAddressList = param.funcAddressList;
     }
     toString() {
         return `Program{ size: ${this.program.length}, litStrPool: ${this.litStrPool.length}, totalBlockCount: ${this.totalBlockCount}, sourceMap: ${this.sourceMap.length}, debugMsgPool: ${this.debugMsgPool.length} }`;

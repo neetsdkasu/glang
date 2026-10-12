@@ -8,13 +8,15 @@ import Xorshift32 from "./xorshift.js";
 import * as U from "./utils.js";
 export class RuntimeError {
     msg;
+    stacktrace;
     src;
-    constructor(msg, src) {
+    constructor(msg, stacktrace, src) {
         this.msg = msg;
+        this.stacktrace = stacktrace;
         this.src = src;
     }
     toString() {
-        return `RuntimeError{ msg: ${this.msg}, src: ${this.src} }`;
+        return `RuntimeError{ msg: ${this.msg}, src: ${this.src}, stacktrace: ${this.stacktrace.length} }`;
     }
 }
 export var State;
@@ -55,6 +57,7 @@ export class Runner {
     #io;
     #sourceMap;
     #debugMsgPool;
+    #funcAddressList;
     #pos = 0;
     #isRunning = true;
     #error = null;
@@ -71,6 +74,7 @@ export class Runner {
         this.#litStrPool = program.litStrPool;
         this.#sourceMap = program.sourceMap;
         this.#debugMsgPool = program.debugMsgPool;
+        this.#funcAddressList = program.funcAddressList;
         this.#block = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#blockStack = new Array(program.totalBlockCount).fill([]).map(() => []);
         this.#io = io;
@@ -98,9 +102,31 @@ export class Runner {
         }
         return undefined;
     }
+    #makeStacktrace(addr) {
+        const stacktrace = [];
+        const index = U.binarySearch(this.#funcAddressList, x => x.addr.max < addr);
+        if (this.#funcAddressList.at(index)?.addr.include(addr)) {
+            stacktrace.push(this.#funcAddressList[index].funcName);
+        }
+        else {
+            stacktrace.push("<unknown>");
+        }
+        for (let i = this.#addressStack.length - 1; i >= 0; i--) {
+            const retAddr = this.#addressStack[i];
+            const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+            if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                stacktrace.push(this.#funcAddressList[retfIndex].funcName);
+            }
+            else {
+                stacktrace.push("<unknown>");
+            }
+        }
+        return stacktrace;
+    }
     #runtimeError(addr, msg) {
+        const stacktrace = this.#makeStacktrace(addr);
         const src = this.#findSource(addr);
-        this.#error = new RuntimeError(msg, src);
+        this.#error = new RuntimeError(msg, stacktrace, src);
         this.#state = State.ERROR;
         this.#isRunning = false;
     }

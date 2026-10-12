@@ -25,6 +25,7 @@ export interface RuntimeError {
     kind: "RuntimeError";
     msg: string;
     src: IToken | Readonly<IToken[]> | null;
+    stacktrace: Readonly<string[]>;
 }
 
 export interface Message {
@@ -115,7 +116,8 @@ export function sendRuntimeError(sender: Sender, error: runner.RuntimeError): vo
     const sd: RuntimeError = {
         kind: "RuntimeError",
         msg: error.msg,
-        src: error.src?.src ?? null
+        src: error.src?.src ?? null,
+        stacktrace: error.stacktrace
     };
     send(sender, sd);
 }

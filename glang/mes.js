@@ -33,7 +33,8 @@ export function sendRuntimeError(sender, error) {
     const sd = {
         kind: "RuntimeError",
         msg: error.msg,
-        src: error.src?.src ?? null
+        src: error.src?.src ?? null,
+        stacktrace: error.stacktrace
     };
     send(sender, sd);
 }

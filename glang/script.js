@@ -35,7 +35,7 @@ function toggleItemsDisabled() {
     CinTextarea.disabled = !CinTextarea.disabled;
     CodeTextarea.disabled = !CodeTextarea.disabled;
 }
-function openErrorDetails(msg, src) {
+function openErrorDetails(msg, src, stacktrace) {
     document.querySelectorAll("details.errcatch").forEach(e => void (e.open = true));
     if (src !== null) {
         document.querySelector("details.srcholder").open = true;
@@ -49,9 +49,12 @@ function openErrorDetails(msg, src) {
             msg += ` ( ${src.row + 1}行目 ${src.col}文字目 "${src.value}" )`;
         }
     }
+    if (stacktrace !== null) {
+        msg += "\nstacktrace: " + stacktrace.join("\n <- ");
+    }
     const start = CerrTextarea.textLength;
     CerrTextarea.value += msg;
-    const end = CerrTextarea.textLength - 1;
+    const end = CerrTextarea.textLength;
     if (src === null) {
         CerrTextarea.focus();
         CerrTextarea.setSelectionRange(start, end);
@@ -78,7 +81,7 @@ function workerOnMessage(ev) {
                 {
                     updateStatus("ParseError");
                     toggleItemsDisabled();
-                    openErrorDetails(sd.msg, sd.src);
+                    openErrorDetails(sd.msg, sd.src, null);
                 }
                 break;
             case "RuntimeError":
@@ -86,7 +89,7 @@ function workerOnMessage(ev) {
                     updateStatus("RuntimeError");
                     toggleItemsDisabled();
                     StopButton.disabled = true;
-                    openErrorDetails(sd.msg, sd.src);
+                    openErrorDetails(sd.msg, sd.src, sd.stacktrace);
                 }
                 break;
             case "Message":

@@ -5,7 +5,7 @@ import Logger, { LogLevel } from "./logger.js";
 const log = new Logger("compiler", LogLevel.ERROR | LogLevel.WARN);
 
 import * as C from "./code.js";
-import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE } from "./command.js";
+import { Cmd, Program, StdFunc, Source, ABORT_NO_MESSAGE, FuncAddress } from "./command.js";
 import { Token } from "./scanner.js";
 import * as U from "./utils.js";
 
@@ -15,7 +15,7 @@ class Compiler {
     #program: number[] = [];
     #litStrIdMap: Map<string,number> = new Map();        // 文字列リテラル => 文字列リテラルプールID.
     #litStrPool: string[] = [];                          // 文字列リテラルプール.
-    #userFuncAddressMap: Map<number,number> = new Map(); // ユーザ関数ID(ブロック変数ID) => call呼び出し先アドレス.
+    #userFuncAddressMap: Map<number,FuncAddress> = new Map(); // ユーザ関数ID(ブロック変数ID) => call呼び出し先アドレス.
     #userFuncAddressReferrers: number[] = [];            // callオペランド位置アドレス. 仮初期値: #program[address] = ユーザ関数ID.
     #continueAddressMap: Map<number,number> = new Map(); // ループブロックID => 継続処理部先頭アドレス.
     #continueAddressReferrers: number[] = [];            // jumpオペランド位置アドレス. 仮初期値: #program[address] = ループブロックID.
@@ -241,12 +241,22 @@ class Compiler {
             const funcId = this.#program[referrer];
             const address = this.#userFuncAddressMap.get(funcId);
             U.assert(address !== undefined);
-            this.#program[referrer] = address;
+            this.#program[referrer] = address.addr.min;
         }
 
         this.#sourceMap.sort( (a: Source, b: Source) => a.addr.cmp(b.addr) );
+        
+        const funcAddressList: FuncAddress[] = [...this.#userFuncAddressMap.values()];
+        funcAddressList.sort( (a: FuncAddress, b: FuncAddress) => a.addr.cmp(b.addr) );
 
-        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount, this.#sourceMap, this.#debugMsgPool);
+        return new Program({
+            program: this.#program,
+            litStrPool: this.#litStrPool,
+            totalBlockCount: this.src.totalBlockCount,
+            sourceMap: this.#sourceMap,
+            debugMsgPool: this.#debugMsgPool,
+            funcAddressList: funcAddressList
+        });
     }
 
 
@@ -364,8 +374,7 @@ class Compiler {
     #compileDefineUserFunc(code: C.DefineUserFunc): void {
         const funcInfo = code.funcInfo;
         const funcId = funcInfo.varId;
-        const address = this.#getNextAddress();
-        this.#userFuncAddressMap.set(funcId, address);
+        const startAddress = this.#getNextAddress();
 
         const outerBlockInfo = code.blockInfo;
         this.#pushBlock(outerBlockInfo);
@@ -402,6 +411,12 @@ class Compiler {
         this.#popBlock(outerBlockInfo);
         this.#addCmd(Cmd.RET);
 
+        const endAddress = this.#getNextAddress() - 1;
+
+        this.#userFuncAddressMap.set(funcId, {
+            funcName: code.funcInfo.name,
+            addr: new U.Range(startAddress, endAddress)
+        });
     }
 
     #compileAssignOp(op: C.AssignOpInfo, vtype: C.Vtype) {

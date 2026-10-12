@@ -218,10 +218,19 @@ class Compiler {
             const funcId = this.#program[referrer];
             const address = this.#userFuncAddressMap.get(funcId);
             U.assert(address !== undefined);
-            this.#program[referrer] = address;
+            this.#program[referrer] = address.addr.min;
         }
         this.#sourceMap.sort((a, b) => a.addr.cmp(b.addr));
-        return new Program(this.#program, this.#litStrPool, this.src.totalBlockCount, this.#sourceMap, this.#debugMsgPool);
+        const funcAddressList = [...this.#userFuncAddressMap.values()];
+        funcAddressList.sort((a, b) => a.addr.cmp(b.addr));
+        return new Program({
+            program: this.#program,
+            litStrPool: this.#litStrPool,
+            totalBlockCount: this.src.totalBlockCount,
+            sourceMap: this.#sourceMap,
+            debugMsgPool: this.#debugMsgPool,
+            funcAddressList: funcAddressList
+        });
     }
     #compileCodeBlock(block) {
         for (const code of block) {
@@ -334,8 +343,7 @@ class Compiler {
     #compileDefineUserFunc(code) {
         const funcInfo = code.funcInfo;
         const funcId = funcInfo.varId;
-        const address = this.#getNextAddress();
-        this.#userFuncAddressMap.set(funcId, address);
+        const startAddress = this.#getNextAddress();
         const outerBlockInfo = code.blockInfo;
         this.#pushBlock(outerBlockInfo);
         const argNames = funcInfo.argNames;
@@ -373,6 +381,11 @@ class Compiler {
         this.#popBlock(innerBlockInfo);
         this.#popBlock(outerBlockInfo);
         this.#addCmd(Cmd.RET);
+        const endAddress = this.#getNextAddress() - 1;
+        this.#userFuncAddressMap.set(funcId, {
+            funcName: code.funcInfo.name,
+            addr: new U.Range(startAddress, endAddress)
+        });
     }
     #compileAssignOp(op, vtype) {
         let cmd;
