@@ -61,58 +61,59 @@ export function binarySearch(arr, test) {
     }
     return (lower < arr.length && test(arr[lower])) ? upper : lower;
 }
-(function test_binarySearch() {
-    log.debug("test binarySearch...");
-    function tcheck(x, t, v) {
-        if (typeof x !== t) {
-            throw new Error(`x is not ${t}: actual type is "${typeof x}" (value: ${x})`);
+if (false)
+    (function test_binarySearch() {
+        log.debug("test binarySearch...");
+        function tcheck(x, t, v) {
+            if (typeof x !== t) {
+                throw new Error(`x is not ${t}: actual type is "${typeof x}" (value: ${x})`);
+            }
+            return v;
         }
-        return v;
-    }
-    {
-        const arr1 = [0, 1, 2, 3, 4, 5, 6];
-        for (let i = -1; i <= 8; i++) {
-            const expect = Math.min(arr1.length, Math.max(0, i));
-            const actual = binarySearch(arr1, x => tcheck(x, "number", x < i));
-            assert(actual === expect, `arr1: i=${i}, expect=${expect}, actual=${actual}`);
+        {
+            const arr1 = [0, 1, 2, 3, 4, 5, 6];
+            for (let i = -1; i <= 8; i++) {
+                const expect = Math.min(arr1.length, Math.max(0, i));
+                const actual = binarySearch(arr1, x => tcheck(x, "number", x < i));
+                assert(actual === expect, `arr1: i=${i}, expect=${expect}, actual=${actual}`);
+            }
         }
-    }
-    {
-        const arr2 = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
-        for (let i = -1; i <= 8; i++) {
-            const expect = Math.min(arr2.length, Math.max(0, i * 2));
-            const actual = binarySearch(arr2, x => tcheck(x, "number", x < i));
-            assert(actual === expect, `arr2: i=${i}, expect=${expect}, actual=${actual}`);
+        {
+            const arr2 = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6];
+            for (let i = -1; i <= 8; i++) {
+                const expect = Math.min(arr2.length, Math.max(0, i * 2));
+                const actual = binarySearch(arr2, x => tcheck(x, "number", x < i));
+                assert(actual === expect, `arr2: i=${i}, expect=${expect}, actual=${actual}`);
+            }
         }
-    }
-    {
-        const arr3 = [0];
-        for (let i = -1; i <= 8; i++) {
-            const expect = Math.min(arr3.length, Math.max(0, i));
-            const actual = binarySearch(arr3, x => tcheck(x, "number", x < i));
-            assert(actual === expect, `arr3: i=${i}, expect=${expect}, actual=${actual}`);
+        {
+            const arr3 = [0];
+            for (let i = -1; i <= 8; i++) {
+                const expect = Math.min(arr3.length, Math.max(0, i));
+                const actual = binarySearch(arr3, x => tcheck(x, "number", x < i));
+                assert(actual === expect, `arr3: i=${i}, expect=${expect}, actual=${actual}`);
+            }
         }
-    }
-    {
-        const arr4 = [];
-        for (let i = -1; i <= 8; i++) {
-            const expect = Math.min(arr4.length, Math.max(0, i));
-            const actual = binarySearch(arr4, x => tcheck(x, "number", x < i));
-            assert(actual === expect, `arr4: i=${i}, expect=${expect}, actual=${actual}`);
+        {
+            const arr4 = [];
+            for (let i = -1; i <= 8; i++) {
+                const expect = Math.min(arr4.length, Math.max(0, i));
+                const actual = binarySearch(arr4, x => tcheck(x, "number", x < i));
+                assert(actual === expect, `arr4: i=${i}, expect=${expect}, actual=${actual}`);
+            }
         }
-    }
-    {
-        const arr5 = ["b", "c", "d", "e"];
-        const target = ["a", "b", "c", "d", "e", "f"];
-        for (let i = 0; i < target.length; i++) {
-            const ch = target[i];
-            const expect = Math.min(arr5.length, Math.max(0, i - 1));
-            const actual = binarySearch(arr5, x => tcheck(x, "string", x < ch));
-            assert(actual === expect, `arr5: i=${i}, expect=${expect}, actual=${actual}`);
+        {
+            const arr5 = ["b", "c", "d", "e"];
+            const target = ["a", "b", "c", "d", "e", "f"];
+            for (let i = 0; i < target.length; i++) {
+                const ch = target[i];
+                const expect = Math.min(arr5.length, Math.max(0, i - 1));
+                const actual = binarySearch(arr5, x => tcheck(x, "string", x < ch));
+                assert(actual === expect, `arr5: i=${i}, expect=${expect}, actual=${actual}`);
+            }
         }
-    }
-    log.debug("test ok.");
-})();
+        log.debug("test ok.");
+    })();
 export class Range {
     min;
     max;

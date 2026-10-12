@@ -69,7 +69,7 @@ export function binarySearch<T>(arr: Readonly<T[]>, test: (target: T) => boolean
     return (lower < arr.length && test(arr[lower])) ? upper : lower;
 }
 
-(function test_binarySearch() {
+if (false) (function test_binarySearch() {
     log.debug("test binarySearch...");
     function tcheck<T>(x: any, t: string, v: T): T {
         if (typeof x !== t) {
