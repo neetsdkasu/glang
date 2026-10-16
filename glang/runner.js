@@ -51,6 +51,7 @@ function isValidIndex3(arr, index1, index2, index3) {
         && 0 <= index2 && index2 < arr[index1].length
         && 0 <= index3 && index3 < arr[index1][index2].length;
 }
+export const CALL_STACK_LIMIT = 100000;
 export class Runner {
     #program;
     #litStrPool;
@@ -102,6 +103,10 @@ export class Runner {
         if (this.#sourceMap.at(index)?.addr.include(addr)) {
             return this.#sourceMap[index];
         }
+        const rindex = U.binarySearch(this.#returnPointList, (s => s.addr.min < addr));
+        if (this.#returnPointList.at(rindex)?.addr.include(addr)) {
+            return this.#returnPointList[rindex];
+        }
         return undefined;
     }
     #makeStacktrace(addr, src) {
@@ -114,23 +119,96 @@ export class Runner {
         else {
             stacktrace.push(`<unknown>@${lineNum}`);
         }
-        for (let i = this.#addressStack.length - 1; i >= 0; i--) {
-            const retAddr = this.#addressStack[i];
-            const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
-            let funName;
-            if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
-                funName = this.#funcAddressList[retfIndex].funcName;
+        if (this.#addressStack.length <= 20) {
+            for (let i = this.#addressStack.length - 1; i >= 0; i--) {
+                const retAddr = this.#addressStack[i];
+                const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+                let funName;
+                if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                    funName = this.#funcAddressList[retfIndex].funcName;
+                }
+                else {
+                    funName = "<unknown>";
+                }
+                const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
+                if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
+                    const src = this.#returnPointList[srcIndex];
+                    stacktrace.push(`${funName}@${src.lineNumber}`);
+                }
+                else {
+                    stacktrace.push(`${funName}@-1`);
+                }
             }
-            else {
-                funName = "<unknown>";
+        }
+        else {
+            for (let j = 1; j <= 10; j++) {
+                const retAddr = this.#addressStack[this.#addressStack.length - j];
+                const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+                let funName;
+                if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                    funName = this.#funcAddressList[retfIndex].funcName;
+                }
+                else {
+                    funName = "<unknown>";
+                }
+                const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
+                if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
+                    const src = this.#returnPointList[srcIndex];
+                    stacktrace.push(`${funName}@${src.lineNumber}`);
+                }
+                else {
+                    stacktrace.push(`${funName}@-1`);
+                }
             }
-            const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
-            if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
-                const src = this.#returnPointList[srcIndex];
-                stacktrace.push(`${funName}@${src.lineNumber}`);
+            stacktrace.push("...");
+            const keys = [];
+            const counter = new Map();
+            for (let i = this.#addressStack.length - 11; i >= 10; i--) {
+                const retAddr = this.#addressStack[i];
+                if (!counter.has(retAddr)) {
+                    keys.push(retAddr);
+                }
+                const count = counter.get(retAddr) ?? 0;
+                counter.set(retAddr, count + 1);
             }
-            else {
-                stacktrace.push(`${funName}@-1`);
+            for (const retAddr of keys) {
+                const count = counter.get(retAddr);
+                const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+                let funName;
+                if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                    funName = this.#funcAddressList[retfIndex].funcName;
+                }
+                else {
+                    funName = "<unknown>";
+                }
+                const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
+                if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
+                    const src = this.#returnPointList[srcIndex];
+                    stacktrace.push(`${funName}@${src.lineNumber}:${count}`);
+                }
+                else {
+                    stacktrace.push(`${funName}@-1:${count}`);
+                }
+            }
+            stacktrace.push("...");
+            for (let i = 9; i >= 0; i--) {
+                const retAddr = this.#addressStack[i];
+                const retfIndex = U.binarySearch(this.#funcAddressList, x => x.addr.max < retAddr);
+                let funName;
+                if (this.#funcAddressList.at(retfIndex)?.addr.include(retAddr)) {
+                    funName = this.#funcAddressList[retfIndex].funcName;
+                }
+                else {
+                    funName = "<unknown>";
+                }
+                const srcIndex = U.binarySearch(this.#returnPointList, x => x.addr.min < retAddr);
+                if (this.#returnPointList.at(srcIndex)?.addr.include(retAddr)) {
+                    const src = this.#returnPointList[srcIndex];
+                    stacktrace.push(`${funName}@${src.lineNumber}`);
+                }
+                else {
+                    stacktrace.push(`${funName}@-1`);
+                }
             }
         }
         return stacktrace;
@@ -1205,6 +1283,10 @@ export class Runner {
                 {
                     const userfuncAddress = this.#program[this.#pos++];
                     const returnAddress = this.#program[this.#pos++];
+                    if (this.#addressStack.length > CALL_STACK_LIMIT) {
+                        this.#runtimeError(returnAddress, `reached call stack size to limit: ${CALL_STACK_LIMIT}`);
+                        return;
+                    }
                     this.#pos = userfuncAddress;
                     this.#addressStack.push(returnAddress);
                 }
