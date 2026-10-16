@@ -25,10 +25,16 @@ export function setEnableTabIndent(el: HTMLTextAreaElement): void {
             let index2;
             if (el.selectionStart === el.selectionEnd) {
                 index2 = el.value.indexOf("\n", Math.max(0, el.selectionEnd));
+                if (index2 < 0) {
+                    index2 = el.value.length;
+                }
                 index1 = Math.max(0, el.value.lastIndexOf("\n", Math.max(0, index2-1))+1);
             } else {
                 index1 = Math.max(0, el.value.lastIndexOf("\n", el.selectionStart)+1);
                 index2 = el.value.indexOf("\n", Math.max(0, el.selectionEnd-1));
+                if (index2 < 0) {
+                    index2 = el.value.length;
+                }
             }
             const lines = el.value.slice(index1, index2).split("\n").map(e.shiftKey ? REMOVE_SP : PAD_SP);
             if (lines.length === 1 && (lines[0].at(-1) ?? " ") === " ") {
