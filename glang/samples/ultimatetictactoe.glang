@@ -61,7 +61,7 @@ SUB STAMP_CIRCLE ( X AS INTEGER , Y AS INTEGER , S AS INTEGER )
     SETCOLOR 255 , 0 , 0
     FOR LET DY = -1 TO 1
         FOR LET DX = -1 TO 1
-            DRAWARC X + DX , Y + DY , S , 0.0 , 360.0
+            DRAWARC X + DX , Y + DY , S , 0.0 , 2.0 * 3.141592
         END FOR
     END FOR
 END SUB

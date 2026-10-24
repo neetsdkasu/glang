@@ -100,7 +100,7 @@ sub showfield()
        for let col = 0 to w - 1
            let x = col * cellsize + offset
            let g = gfield(row, col)
-           ' fillarc x+2, y+2, 16, 0.0, 360.0 ' bomb
+           ' fillarc x+2, y+2, 16, 0.0, 6.283185307179 ' bomb
            if g == cellmark then
                drawtext x+7, y+4, "?"
                setcolor 0, 0, 255
@@ -108,14 +108,14 @@ sub showfield()
                setcolor 0, 0, 0
            else if g == celllock then
                setcolor 240, 240, 230
-               fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+               fillarc x+2, y+2, cellsize-4, 0.0, 6.283185307179
                drawtext x+8, y+3, "x"
                setcolor 127, 0, 127
                drawtext x+7, y+2, "x"
                setcolor 0, 0, 0
            else if g == celldead then
                setcolor 255, 0, 0
-               fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+               fillarc x+2, y+2, cellsize-4, 0.0, 6.283185307179
                setcolor 0, 0, 0
            else if g == cellempty then
                fillrect x+11, y+11, 2, 2
@@ -134,7 +134,7 @@ sub showfield()
                if g == celllock then
                    if bomb(row, col) == mine then
                        setcolor 0, 255, 0
-                       drawarc x+2, y+2, cellsize-4, 0.0, 360.0
+                       drawarc x+2, y+2, cellsize-4, 0.0, 6.283185307179
                    else
                        setcolor 255, 0, 0
                        drawtext x+6, y+3, "x"
@@ -143,7 +143,7 @@ sub showfield()
                else if g == celldead then
                    msg = "DEAD"
                else if g == cellhide && bomb(row, col) == mine then
-                   fillarc x+2, y+2, cellsize-4, 0.0, 360.0
+                   fillarc x+2, y+2, cellsize-4, 0.0, 6.283185307179
                end if
            end for
         end for
